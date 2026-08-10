@@ -1,0 +1,884 @@
+<title>최희준 — 의료 마케팅 × 소프트웨어</title>
+<meta name="description" content="마케터로 문제를 정의하고, 그 문제를 풀 도구를 직접 만들어 운영까지 붙입니다. AEO 측정·생산·감시 도구를 개발해 병원 위키 189페이지를 운영 중.">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="최희준 — 의료 마케팅 × 소프트웨어">
+<meta property="og:description" content="측정되지 않던 것을 계측하고, 반복되던 것을 자동화합니다.">
+<meta property="og:type" content="profile">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+
+<style>
+  :root {
+    /* warm near-black, paper-white ink, one signal colour */
+    --void:  #0A0A0C;
+    --panel: #101013;
+    --panel2:#151519;
+    --line:  #22222A;
+    --line2: #33333E;
+
+    --ink:   #F2F1ED;
+    --ink2:  #C6C4BD;
+    --mute:  #8B8982;
+    --dim:   #5C5A55;
+
+    --sig:   #FFAE1A;   /* signal amber — AI hits, live numbers */
+    --sig-d: #4A3407;
+    --cool:  #6E8BB5;   /* functional only: search bots */
+    --grey:  #55545C;   /* functional only: junk bots */
+
+    --disp: "Space Grotesk", "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --kr:   "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: "Space Mono", ui-monospace, "Cascadia Mono", Consolas, "D2Coding", monospace;
+
+    --f--2: .68rem;
+    --f--1: clamp(.72rem, .70rem + .08vw, .78rem);
+    --f-0:  clamp(.94rem, .91rem + .14vw, 1.02rem);
+    --f-1:  clamp(1.06rem, 1.01rem + .24vw, 1.2rem);
+    --f-2:  clamp(1.3rem, 1.18rem + .55vw, 1.7rem);
+    --f-3:  clamp(1.75rem, 1.45rem + 1.4vw, 2.7rem);
+    --f-4:  clamp(2.4rem, 1.6rem + 3.6vw, 5.2rem);
+
+    --rail: 8.5rem;   /* left metadata rail */
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--ink);
+    font-family: var(--kr);
+    font-size: var(--f-0);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  /* faint horizontal scan texture — reads as a readout surface, not decoration */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: repeating-linear-gradient(180deg,
+      rgba(255,255,255,.017) 0 1px, transparent 1px 4px);
+  }
+  .scan {
+    position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 30;
+    background: var(--sig); transform-origin: 0 50%; transform: scaleX(0);
+    pointer-events: none;
+  }
+
+  .wrap { width: min(100% - 2.5rem, 74rem); margin-inline: auto; position: relative; z-index: 1; }
+
+  /* ---------- the log line: shared structural device ---------- */
+  .logline {
+    display: grid; grid-template-columns: var(--rail) 1fr;
+    gap: 0 1.6rem; align-items: start;
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+  .logline > .meta {
+    font-family: var(--mono); font-size: var(--f--1); line-height: 1.6;
+    color: var(--dim); letter-spacing: .01em;
+    display: flex; flex-direction: column; gap: .15rem;
+  }
+  .logline > .meta .id { color: var(--sig); }
+  .logline > .meta .st { color: var(--mute); }
+  @media (max-width: 46rem) {
+    :root { --rail: 0; }
+    .logline { grid-template-columns: 1fr; gap: .6rem; }
+    .logline > .meta { flex-direction: row; flex-wrap: wrap; gap: .2rem .9rem; }
+  }
+
+  /* ---------- masthead ---------- */
+  .top {
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: var(--f--1);
+    color: var(--dim); letter-spacing: .04em;
+  }
+  .top .wrap {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1.6rem;
+    padding-block: .85rem;
+  }
+  .top b { color: var(--ink); font-weight: 700; letter-spacing: .1em; }
+  .top .live { color: var(--sig); display: inline-flex; align-items: center; gap: .45rem; margin-left: auto; }
+  .top .live::before {
+    content: ""; width: .42rem; height: .42rem; background: var(--sig);
+    animation: blip 2.2s steps(1) infinite;
+  }
+  @keyframes blip { 0%,55% { opacity: 1; } 56%,100% { opacity: .15; } }
+
+  .hero { padding-block: clamp(3.5rem, 9vw, 7rem) clamp(2.5rem, 5vw, 4rem); }
+  .hero h1 {
+    font-family: var(--disp);
+    font-size: var(--f-4); line-height: 1.0; letter-spacing: -.045em;
+    font-weight: 700; margin: 0; max-width: 18ch; text-wrap: balance;
+  }
+  .hero h1 mark {
+    background: none; color: var(--sig); position: relative;
+    padding-inline: .06em;
+  }
+  .hero h1 mark::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: .08em;
+    height: 3px; background: var(--sig); opacity: .35;
+  }
+  .hero .sub {
+    font-size: var(--f-1); color: var(--ink2); max-width: 40rem;
+    margin: 2rem 0 0; line-height: 1.68;
+  }
+  .hero .sub b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- readout strip ---------- */
+  .readout {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    border: 1px solid var(--line); border-bottom: 0;
+    margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  }
+  .readout > div {
+    padding: 1.15rem 1.2rem 1.3rem;
+    border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+  }
+  .readout > div:last-child { border-right: 0; }
+  .readout dt {
+    font-family: var(--mono); font-size: var(--f--2);
+    letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+    margin-bottom: .55rem;
+  }
+  .readout dd {
+    margin: 0; font-family: var(--mono); font-weight: 700;
+    font-variant-numeric: tabular-nums; color: var(--sig);
+    font-size: clamp(1.7rem, 1.15rem + 1.9vw, 2.5rem); line-height: 1;
+    letter-spacing: -.05em;
+  }
+  .readout dd small {
+    display: block; font-family: var(--kr); font-size: .72rem; font-weight: 400;
+    letter-spacing: 0; color: var(--mute); margin-top: .6rem;
+  }
+
+  /* ---------- live console ---------- */
+  .console { border: 1px solid var(--line); background: var(--panel); }
+  .console__bar {
+    display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+    padding: .7rem 1rem; border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: var(--f--1); color: var(--dim);
+    background: var(--panel2);
+  }
+  .console__bar .cmd { color: var(--ink2); }
+  .console__bar .cmd span { color: var(--sig); }
+  .console__bar .count { margin-left: auto; color: var(--mute); font-variant-numeric: tabular-nums; }
+
+  .console__split { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); }
+  @media (max-width: 58rem) { .console__split { grid-template-columns: 1fr; } }
+  .console__in { display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+  @media (max-width: 58rem) { .console__in { border-right: 0; border-bottom: 1px solid var(--line); } }
+
+  #log {
+    width: 100%; flex: 1; min-height: 15rem; resize: vertical;
+    background: transparent; border: 0; color: var(--ink2);
+    font-family: var(--mono); font-size: .72rem; line-height: 1.85;
+    padding: .9rem 1rem; white-space: pre; overflow: auto; tab-size: 2;
+  }
+  #log:focus { outline: 0; box-shadow: inset 2px 0 0 var(--sig); }
+  .console__hint {
+    padding: .65rem 1rem .85rem; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: var(--f--2); color: var(--dim); line-height: 1.7;
+  }
+  .console__hint b { color: var(--mute); font-weight: 400; }
+
+  .console__out { padding: 1rem; display: flex; flex-direction: column; gap: .85rem; }
+  .bar { display: grid; grid-template-columns: 1fr auto; gap: 0 .8rem; align-items: baseline; }
+  .bar__label { font-family: var(--mono); font-size: var(--f--1); color: var(--ink2); }
+  .bar__label i { font-style: normal; color: var(--dim); }
+  .bar__n {
+    font-family: var(--mono); font-size: var(--f--1); font-weight: 700;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .bar__track { grid-column: 1/-1; height: 5px; background: #1B1B21; margin-top: .35rem; }
+  .bar__fill { height: 100%; width: 0; transition: width .5s cubic-bezier(.2,.7,.25,1); }
+  .bar[data-k="ai"]     .bar__fill { background: var(--sig); }
+  .bar[data-k="human"]  .bar__fill { background: var(--ink2); }
+  .bar[data-k="search"] .bar__fill { background: var(--cool); }
+  .bar[data-k="junk"]   .bar__fill { background: var(--grey); }
+
+  .verdict {
+    border: 1px solid var(--line); border-left: 2px solid var(--sig);
+    background: var(--panel2); padding: .8rem .95rem;
+    font-size: var(--f--1); line-height: 1.75; color: var(--ink2);
+  }
+  .verdict b { color: var(--ink); font-weight: 600; }
+  .verdict em { font-style: normal; color: var(--sig); font-family: var(--mono); }
+  .verdict ul { margin: .45rem 0 0; padding-left: 1rem; }
+  .verdict li { margin-top: .15rem; }
+  .verdict .none { color: var(--dim); }
+
+  /* ---------- sections ---------- */
+  .band { padding-block: clamp(3.5rem, 7vw, 5.5rem); }
+  .band__head h2 {
+    font-family: var(--disp); font-size: var(--f-3); line-height: 1.12;
+    letter-spacing: -.035em; font-weight: 700; margin: 0; text-wrap: balance;
+  }
+  .band__head p { color: var(--mute); margin: .9rem 0 0; max-width: 44rem; }
+  .sect-rule { border-top: 1px solid var(--line2); }
+
+  /* ---------- pillars ---------- */
+  .pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    border-left: 1px solid var(--line); margin-top: 2.2rem; }
+  .pillar { border-right: 1px solid var(--line); border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); padding: 1.4rem 1.4rem 1.6rem; }
+  .pillar__k {
+    font-family: var(--mono); font-size: var(--f--2); letter-spacing: .2em;
+    text-transform: uppercase; color: var(--sig);
+  }
+  .pillar h3 { font-size: var(--f-1); line-height: 1.4; margin: .7rem 0 .7rem; font-weight: 700; letter-spacing: -.015em; }
+  .pillar p { margin: 0; color: var(--ink2); font-size: var(--f--1) ; line-height: 1.8; }
+
+  /* ---------- records ---------- */
+  .records { margin-top: 2.2rem; }
+  .rec { border-top: 1px solid var(--line2); padding-block: 1.6rem; }
+  .rec:last-child { border-bottom: 1px solid var(--line2); }
+  .rec__head {
+    display: grid; grid-template-columns: var(--rail) 1fr; gap: 0 1.6rem;
+    align-items: baseline;
+  }
+  .rec__stamp {
+    font-family: var(--mono); font-size: var(--f--1); color: var(--dim);
+    display: flex; flex-direction: column; gap: .15rem; line-height: 1.6;
+  }
+  .rec__stamp .id { color: var(--sig); }
+  .rec__title { margin: 0; }
+  .rec__title b {
+    font-family: var(--mono); font-size: var(--f-2); font-weight: 700;
+    letter-spacing: -.03em; color: var(--ink); display: block;
+  }
+  .rec__title i {
+    font-style: normal; color: var(--mute); font-size: var(--f-0); display: block; margin-top: .2rem;
+  }
+  .rec__tags {
+    grid-column: 2; display: flex; flex-wrap: wrap; gap: .35rem .5rem; margin-top: .8rem;
+    font-family: var(--mono); font-size: var(--f--2);
+  }
+  .rec__tags span { border: 1px solid var(--line2); padding: .12rem .5rem; color: var(--mute); }
+  .rec__body { display: grid; grid-template-columns: var(--rail) 1fr; gap: 0 1.6rem; margin-top: 1.2rem; }
+  .rec__body > dl { grid-column: 2; margin: 0; display: flex; flex-direction: column; }
+  .row { display: grid; grid-template-columns: 4.6rem 1fr; gap: 0 1.2rem; padding-block: .6rem; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row dt {
+    font-family: var(--mono); font-size: var(--f--2); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--dim); padding-top: .35rem;
+  }
+  .row dd { margin: 0; color: var(--ink2); font-size: var(--f--1); line-height: 1.85; }
+  .row b { color: var(--ink); font-weight: 600; }
+  .row .n { font-family: var(--mono); font-weight: 700; color: var(--sig); font-variant-numeric: tabular-nums; }
+  .row--v dt { color: var(--sig); }
+  .row--v dd { color: var(--ink); }
+  @media (max-width: 46rem) {
+    .rec__head, .rec__body { grid-template-columns: 1fr; }
+    .rec__tags, .rec__body > dl { grid-column: 1; }
+    .rec__stamp { flex-direction: row; flex-wrap: wrap; gap: .2rem .9rem; margin-bottom: .7rem; }
+    .row { grid-template-columns: 1fr; gap: .25rem; }
+    .row dt { padding-top: 0; }
+  }
+
+  /* ---------- index table ---------- */
+  .tbl-wrap { overflow-x: auto; margin-top: 2.2rem; border: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--f--1); }
+  thead th {
+    font-family: var(--mono); font-size: var(--f--2); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--dim); text-align: left; font-weight: 400;
+    padding: .7rem 1rem; border-bottom: 1px solid var(--line2); background: var(--panel2);
+    white-space: nowrap;
+  }
+  tbody td { padding: .85rem 1rem; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--mute); line-height: 1.7; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--panel); color: var(--ink2); }
+  td.nm { font-family: var(--mono); color: var(--ink); font-weight: 700; white-space: nowrap; }
+  td.kd { font-family: var(--mono); font-size: var(--f--2); color: var(--sig); white-space: nowrap; }
+  tbody td b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- capability ---------- */
+  .stack { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    border-left: 1px solid var(--line); margin-top: 2.2rem; }
+  .stack section { border-right: 1px solid var(--line); border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); padding: 1.3rem 1.3rem 1.5rem; }
+  .stack h3 {
+    font-family: var(--mono); font-size: var(--f--2); letter-spacing: .2em;
+    text-transform: uppercase; color: var(--sig); margin: 0 0 .9rem; font-weight: 400;
+  }
+  .stack ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .45rem; }
+  .stack li { color: var(--mute); font-size: var(--f--1); line-height: 1.7; }
+  .stack li strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- close ---------- */
+  .close { padding-block: clamp(3.5rem, 7vw, 5.5rem) 3rem; border-top: 1px solid var(--line2); }
+  .close h2 {
+    font-family: var(--disp); font-size: var(--f-2); font-weight: 500;
+    line-height: 1.5; letter-spacing: -.02em; max-width: 30ch; margin: 0;
+  }
+  .colophon {
+    margin-top: 2.8rem; padding-top: 1.1rem; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: var(--f--2); color: var(--dim); line-height: 1.95;
+  }
+
+  code {
+    font-family: var(--mono); font-size: .86em; color: var(--ink);
+    background: #17171C; border: 1px solid var(--line); padding: .04em .34em;
+    white-space: nowrap;
+  }
+
+  /* ---------- motion ---------- */
+  .reveal { opacity: 0; transform: translateY(10px); }
+  .reveal.in { opacity: 1; transform: none;
+    transition: opacity .55s ease, transform .55s cubic-bezier(.2,.7,.25,1); }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
+    .top .live::before { animation: none; }
+    .bar__fill { transition: none; }
+  }
+  :focus-visible { outline: 2px solid var(--sig); outline-offset: 2px; }
+</style>
+
+<div class="scan" id="scan"></div>
+
+<header class="top">
+  <div class="wrap">
+    <b>최희준 · CHOI HEEJOON</b>
+    <span>의료 마케팅 × 소프트웨어</span>
+    <span class="live">189 pages live</span>
+  </div>
+</header>
+
+<section class="hero wrap">
+  <h1>측정되지 않던 것을 <mark>계측</mark>하고,<br>반복되던 것을 <mark>자동화</mark>합니다.</h1>
+  <p class="sub">
+    마케터로 문제를 정의하고, 그 문제를 풀 도구를 직접 만들어 운영까지 붙입니다.
+    검색 트래픽이 AI 답변으로 옮겨가는 전환기에, 기존 SEO 상품을 대체할
+    <b>AEO(답변엔진 최적화)</b> 밸류체인을 측정 · 생산 · 감시 세 층으로 개발해 실서비스로 돌리고 있습니다.
+  </p>
+
+  <dl class="readout">
+    <div><dt>Wiki live</dt><dd>189<small>페이지 · 2개 병원</small></dd></div>
+    <div><dt>Records</dt><dd>8.3만<small>청구 건 · 2.5년치</small></dd></div>
+    <div><dt>Tools</dt><dd>14<small>개 · 실무 투입</small></dd></div>
+    <div><dt>Tenancy</dt><dd>N<small>병원 · 코드 수정 0줄</small></dd></div>
+  </dl>
+</section>
+
+<main>
+
+<!-- ===== live tool ===== -->
+<section class="band wrap sect-rule reveal">
+  <div class="logline" style="border-top:0;padding-top:0">
+    <div class="meta">
+      <span class="id">TRY-01</span>
+      <span>interactive</span>
+      <span class="st">runs here</span>
+    </div>
+    <div>
+      <div class="band__head">
+        <h2>설명 대신, 직접 돌려보세요</h2>
+        <p>제 대표 도구 <b><code>aeo-log-analyzer</code></b>의 판별 로직을 이 페이지에 그대로 옮겨 두었습니다.
+          아래는 샘플 access log입니다. <b>지우고 실제 서버 로그를 붙여넣으면</b> 그 자리에서
+          AI 크롤러 · AI 경유 유입 · 검색봇 · 차단 권장 봇을 분류합니다.
+          전송되는 곳은 없고, 계산은 전부 이 브라우저 안에서 끝납니다.</p>
+      </div>
+
+      <div class="console" style="margin-top:1.8rem">
+        <div class="console__bar">
+          <span class="cmd">$ analyze_access_log.py <span>--verify-bots</span></span>
+          <span class="count" id="count">0 lines</span>
+        </div>
+        <div class="console__split">
+          <div class="console__in">
+            <label for="log" class="visually-hidden" style="position:absolute;left:-9999px">access log 입력</label>
+            <textarea id="log" spellcheck="false" autocomplete="off"></textarea>
+            <p class="console__hint">
+              <b>combined 로그 형식</b> — <code>IP - - [date] "GET /path" status size "referer" "user-agent"</code><br>
+              봇은 JavaScript를 실행하지 않아 GA에 잡히지 않습니다. 서버 로그만이 AI의 크롤을 보여줍니다.
+            </p>
+          </div>
+          <div class="console__out" id="out"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== definition ===== -->
+<section class="band wrap sect-rule reveal">
+  <div class="logline" style="border-top:0;padding-top:0">
+    <div class="meta">
+      <span class="id">DEF-00</span>
+      <span>who</span>
+      <span class="st">3 traits</span>
+    </div>
+    <div>
+      <div class="band__head">
+        <h2>어떤 사람인가</h2>
+        <p>세 가지가 모든 프로젝트에서 반복됩니다. 스택이 아니라 이 세 가지가 실제 역량입니다.</p>
+      </div>
+      <div class="pillars">
+        <article class="pillar">
+          <span class="pillar__k">도메인</span>
+          <h3>도구보다 시장 구조를 먼저 확인합니다</h3>
+          <p>네이버 블로그가 GPTBot·ClaudeBot·PerplexityBot을 전부 <code>Disallow</code> 처리한다는 것을
+            robots.txt 실측으로 확인하고, "네이버는 AI 인용 불가 · 검색 유입 전용"으로 채널 역할을 다시 정의했습니다.
+            의료법 제56조 광고 심의, 전면적 소프트 404, JSON-LD 파싱 실패처럼 현장에서만 드러나는 제약을 먼저 잡아 설계에 넣습니다.</p>
+        </article>
+        <article class="pillar">
+          <span class="pillar__k">관점</span>
+          <h3>신사업이 아니라 대체 상품 문제로 봤습니다</h3>
+          <p>검색 트래픽 감소는 새 아이템을 찾을 신호가 아니라, 지금 팔고 있는 상품이 죽고 있다는 신호입니다.
+            그래서 AEO를 부가 기능이 아니라 밸류체인 전체로 만들었습니다 —
+            성과를 <b>측정</b>하는 로그 분석기, 콘텐츠를 <b>생산</b>하는 위키 파이프라인, 경쟁 구도를 <b>감시</b>하는 SERP 모니터.</p>
+        </article>
+        <article class="pillar">
+          <span class="pillar__k">설계</span>
+          <h3>1건이 아니라 N건 구조로 만듭니다</h3>
+          <p>거의 모든 도구가 멀티테넌트입니다. 병원 하나 = 설정 파일 하나.
+            클라이언트를 추가할 때 코드를 고치지 않습니다.
+            그리고 GUI·원클릭 설치·직원용 사용안내서까지 함께 만듭니다 — 제가 없어도 돌아가야 도구입니다.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== records ===== -->
+<section class="band wrap sect-rule">
+  <div class="logline reveal" style="border-top:0;padding-top:0">
+    <div class="meta">
+      <span class="id">WORK</span>
+      <span>selected</span>
+      <span class="st">6 records</span>
+    </div>
+    <div class="band__head">
+      <h2>대표 프로젝트</h2>
+      <p>실서비스로 운영 중이거나 실무에 투입된 것만 골랐습니다. 좌측 메타는 저장소 커밋 이력에서 그대로 가져왔습니다.</p>
+    </div>
+  </div>
+
+  <div class="records">
+
+    <article class="rec reveal">
+      <div class="rec__head">
+        <div class="rec__stamp"><span class="id">2025-12 → 2026-08</span><span>76 commits</span><span>Python</span></div>
+        <h3 class="rec__title"><b>aeo_sync</b><i>AEO 의료위키 생성 · 발행 파이프라인</i></h3>
+        <div class="rec__tags"><span>LLM</span><span>MkDocs</span><span>JSON-LD</span><span>SFTP 배포</span><span>멀티테넌트</span></div>
+      </div>
+      <div class="rec__body"><dl>
+        <div class="row"><dt>문제</dt><dd>검색 트래픽이 AI 답변으로 이동하면서 기존에 팔던 검색 순위 상품이 무력화되고 있었습니다.
+          AI에 인용되는 콘텐츠를 만들어야 하는데, 의료 콘텐츠는 틀리면 안 되고 심의 대상입니다.</dd></div>
+        <div class="row"><dt>한 일</dt><dd>주제 등록 → LLM 초안 → 근거 수집·사실검증 → 품질 게이트 → JSON-LD 스키마 주입 → MkDocs 빌드 →
+          SFTP 자동 발행까지 단일 파이프라인으로 만들었습니다. 인라인 크로스링크는 위키피디아 MOS:LINK 규칙(첫 등장 1회·자기링크 금지)을
+          AI 없이 코드로 구현해 멱등하게 돕니다.</dd></div>
+        <div class="row"><dt>결과</dt><dd><b>민병원 110페이지 + 골드만 79페이지 = <span class="n">189</span>페이지</b>를 발행·운영 중입니다.
+          전문의 감수자 실명을 <code>reviewedBy</code>로 주입해 품질 점수를 <span class="n">81 → 97</span>로 올렸고,
+          FAQPage 스키마 Q&amp;A 필수필드 누락은 0건입니다.</dd></div>
+        <div class="row row--v"><dt>판단</dt><dd>의료 콘텐츠의 리스크는 코드가 아니라 프로세스로 통제해야 한다고 봤습니다.
+          커밋 이력에 비급여 금액 오류 교정, 로봇수술 술식 표기 정정, 109페이지 전수 사실검증이 그대로 남아 있습니다.
+          자동 생성한 뒤 사람이 검수하는 게 아니라, 검수를 파이프라인 안에 넣었습니다.</dd></div>
+      </dl></div>
+    </article>
+
+    <article class="rec reveal">
+      <div class="rec__head">
+        <div class="rec__stamp"><span class="id">2026-07</span><span>14 commits</span><span>MIT · 공개</span></div>
+        <h3 class="rec__title"><b>aeo-log-analyzer</b><i>AI 크롤러 유입 계측 도구 — 위에서 직접 돌려본 그것</i></h3>
+        <div class="rec__tags"><span>표준 라이브러리만</span><span>역DNS 검증</span><span>tkinter GUI</span><span>Sheets 동기화</span></div>
+      </div>
+      <div class="rec__body"><dl>
+        <div class="row"><dt>문제</dt><dd>AI 봇은 JavaScript를 실행하지 않아 Google Analytics에 잡히지 않습니다.
+          즉 AEO 작업의 성과를 증명할 방법 자체가 없었습니다.</dd></div>
+        <div class="row"><dt>한 일</dt><dd>Apache/Nginx access log 하나로 GPTBot·ClaudeBot·PerplexityBot·Gemini의 크롤과,
+          ChatGPT·Perplexity를 경유해 들어온 실제 사람 유입을 함께 집계합니다.
+          역DNS 조회로 UA만 봇인 사칭을 걸러내고, AI가 읽어가지만 유입이 0인 페이지를 자동 표시해 다음 액션을 지정합니다.</dd></div>
+        <div class="row"><dt>결과</dt><dd>병원마다 설정 파일 하나인 멀티테넌트 구조 + 데스크톱 앱 + 구글시트 KPI 동기화까지 붙여,
+          비개발자 직원이 바탕화면 아이콘으로 운용합니다. SFTP 로그 수집도 자동입니다.</dd></div>
+        <div class="row row--v"><dt>판단</dt><dd>외부 의존성을 0으로 두고 파이썬 표준 라이브러리만 썼습니다.
+          사내 도구의 실제 병목은 성능이 아니라 설치 장벽이라고 봤고, 그래서 <code>pip install</code> 없이 바로 도는 쪽을 택했습니다.</dd></div>
+      </dl></div>
+    </article>
+
+    <article class="rec reveal">
+      <div class="rec__head">
+        <div class="rec__stamp"><span class="id">2025-12 → 2026-07</span><span>13 commits</span><span>Python</span></div>
+        <h3 class="rec__title"><b>MediSTT</b><i>의료 영상 STT · 자막 · SEO 자동화 웹앱</i></h3>
+        <div class="rec__tags"><span>Whisper</span><span>GPT</span><span>YouTube API</span><span>용어 사전</span><span>환각 필터</span></div>
+      </div>
+      <div class="rec__body"><dl>
+        <div class="row"><dt>문제</dt><dd>병원 유튜브 영상의 자막·제목·설명·태그가 전부 수작업이었고,
+          Whisper는 질환명·의료진 이름 같은 전문 용어를 자주 틀렸습니다.</dd></div>
+        <div class="row"><dt>한 일</dt><dd>드래그앤드롭 웹 UI로 묶었습니다. 용어 교정 사전을 만들어
+          <b>변환 전에 AI에게 미리 알려주고, 그래도 틀린 것은 변환 직후 자동 교정</b>합니다.
+          자막은 한국어 방송 관례(한 줄 20자 · 최대 2줄 · 초당 9자 · 1~7초)로 정규화하고,
+          무음 구간의 Whisper 환각과 무한 반복을 걸러냅니다.</dd></div>
+        <div class="row"><dt>결과</dt><dd>영상 주소만 붙여넣으면 SRT 자막 트랙과 제목·설명·태그가 유튜브에 바로 반영됩니다.
+          AI가 자신 없어 한 구간만 타임코드와 함께 뽑아주는 검토 목록이 있어, 담당자가 전체를 다시 듣지 않아도 됩니다.</dd></div>
+        <div class="row row--v"><dt>판단</dt><dd>모델 정확도가 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.
+          직원용 설치 안내서와 배포용 압축 스크립트까지 만든 것도 같은 이유입니다 — 쓰는 사람이 못 쓰면 정확도는 의미가 없습니다.</dd></div>
+      </dl></div>
+    </article>
+
+    <article class="rec reveal">
+      <div class="rec__head">
+        <div class="rec__stamp"><span class="id">2026-05 → 2026-08</span><span>37 commits</span><span>Python</span></div>
+        <h3 class="rec__title"><b>MetaPorter</b><i>광고 성과 수집 · 리포팅 파이프라인</i></h3>
+        <div class="rec__tags"><span>Meta Graph API</span><span>Google Sheets</span><span>Slack</span><span>멱등성</span></div>
+      </div>
+      <div class="rec__body"><dl>
+        <div class="row"><dt>문제</dt><dd>주간 광고 성과 리포트를 병원마다 수작업으로 만들고 있었습니다.
+          집행 중 예산 소진 상황은 따로 확인해야 했습니다.</dd></div>
+        <div class="row"><dt>한 일</dt><dd>Meta Graph API에서 날짜 · 캠페인 · 광고세트 · 광고 · 연령/성별 · 지역 6개 축으로 수집해 구글시트에 적재합니다.
+          ISO 주차를 계산해 주간 전용 탭을 자동 개설하고, 같은 주차를 다시 돌려도 시트를 비우고 덮어써 <b>멱등성</b>을 보장합니다.
+          월 예산 대비 누적 소진율(MTD)을 교차 조회해 안전 등급에 따라 셀 배경색을 바꾸고 슬랙으로 알립니다.</dd></div>
+        <div class="row"><dt>결과</dt><dd><code>hospitals/</code>에 <code>.env</code> 파일을 하나 더 넣으면 병원이 하나 추가됩니다.
+          파일 이름이 곧 병원 이름이 되어 실행 창 목록 · 스케줄 이름 · 로그 파일명 · 슬랙 알림 제목에 그대로 쓰입니다.
+          병원 추가 시 코드 수정은 <span class="n">0</span>줄입니다.</dd></div>
+        <div class="row row--v"><dt>판단</dt><dd>자동화 도구가 실무에서 깨지는 지점은 대부분 재실행입니다.
+          그래서 기능보다 멱등성을 먼저 설계했습니다.</dd></div>
+      </dl></div>
+    </article>
+
+    <article class="rec reveal">
+      <div class="rec__head">
+        <div class="rec__stamp"><span class="id">2026-06 → 2026-08</span><span>4 commits</span><span>Python</span></div>
+        <h3 class="rec__title"><b>SERP Sentinel</b><i>경쟁 가시성(Share of Voice) 모니터링</i></h3>
+        <div class="rec__tags"><span>Playwright</span><span>Claude API</span><span>SQLite</span><span>로컬 Ollama</span></div>
+      </div>
+      <div class="rec__body"><dl>
+        <div class="row"><dt>문제</dt><dd>전문 마케터가 매일 주요 키워드를 직접 검색해 보며
+          "우리가 어느 영역 몇 번째에 있나, 경쟁사는 어디 있나"를 눈으로 판단하고 있었습니다.</dd></div>
+        <div class="row"><dt>한 일</dt><dd>네이버 · 구글 SERP를 수집해 영역/순위로 구조화하고, 자사 대 경쟁사 노출 점유율을 산출합니다.
+          어제 대비 누가 올라오고 빠졌는지, 새로 등장한 콘텐츠는 누구 것이고 어떤 성격인지를 AI가 분석합니다.
+          구글 AI 개요와 ChatGPT 라이브 노출까지 포함해 GEO 노출도 함께 봅니다.</dd></div>
+        <div class="row"><dt>결과</dt><dd>멀티 클라이언트 지원, 비개발자용 브라우저 UI, 인수인계 문서 포함.
+          AI 분석은 로컬 Ollama를 기본으로 두어 운영 비용을 0으로 유지합니다.</dd></div>
+        <div class="row row--v"><dt>판단</dt><dd>설계서 첫 장에 "핵심 산출물은 변동 로그가 아니라 경쟁 가시성 리포트이며,
+          순서 변동 추적은 그 수단이다"라고 못박고 시작했습니다.
+          수단과 목적을 분리해두지 않으면 기능만 늘어나는 도구가 됩니다.</dd></div>
+      </dl></div>
+    </article>
+
+    <article class="rec reveal">
+      <div class="rec__head">
+        <div class="rec__stamp"><span class="id">2026-07</span><span>Ollama</span><span>Python</span></div>
+        <h3 class="rec__title"><b>KPIY</b><i>병원 진료 · 매출 분석 에이전트</i></h3>
+        <div class="rec__tags"><span>ReAct</span><span>pandas</span><span>익명화</span><span>Sheets</span></div>
+      </div>
+      <div class="rec__body"><dl>
+        <div class="row"><dt>문제</dt><dd>자연어로 물어보면 답이 나오는 분석 도구가 필요했지만,
+          LLM이 숫자를 지어내면 경영 보고서로 쓸 수 없습니다.</dd></div>
+        <div class="row"><dt>한 일</dt><dd>RAG가 아니라 ReAct(코드 실행형)로 만들었습니다.
+          AI는 검증된 KPI 헬퍼를 호출하는 코드만 생성하고, 실제 계산은 pandas가 합니다.
+          AI는 그 관측값을 <b>해석만</b> 합니다. 이름 삭제와 차트번호 익명화는 로딩 단계에서 자동 처리합니다.</dd></div>
+        <div class="row"><dt>결과</dt><dd>청구 <span class="n">8.3만</span> 건 · 환자 <span class="n">1.7만</span> 명 · 2.5년치를 분석합니다.
+          시트를 갱신하면 항상 최신 데이터로 돌고, 8개 KPI와 그래프가 자동 생성됩니다. 리포트 수치는 관측값과 100% 일치합니다.</dd></div>
+        <div class="row row--v"><dt>판단</dt><dd>표 데이터에 RAG를 붙이지 않았습니다.
+          정확도가 요구되는 곳에는 검색이 아니라 실행을 붙여야 한다고 봤습니다.
+          RAG는 나중에 소견 · 상담 메모 같은 자유 텍스트가 생기면 그때 붙일 것으로 남겨뒀습니다.</dd></div>
+      </dl></div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ===== index ===== -->
+<section class="band wrap sect-rule reveal">
+  <div class="logline" style="border-top:0;padding-top:0">
+    <div class="meta"><span class="id">IDX</span><span>also built</span><span class="st">11 entries</span></div>
+    <div class="band__head">
+      <h2>그 밖에 만든 것</h2>
+      <p>도메인 도구 외에 웹 서비스 · 데스크톱 앱 · 게임 · 분석 보고까지 형태를 가리지 않고 만듭니다.</p>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>이름</th><th>종류</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">multilang</td><td class="kd">파이프라인</td>
+          <td>병원 국문 사이트를 영·러·몽·중으로 생성. 용어집을 <b>다시 못 만드는 유일한 자산</b>으로 정의하고, 라이브 사이트 무손상 · 원격 읽기전용 · 업로드 수동을 코드 이전에 원칙으로 못박았습니다.</td></tr>
+        <tr><td class="nm">FDR</td><td class="kd">웹 서비스</td>
+          <td>쇼핑몰 키즈 맛집 탐색. <b>60 커밋을 1주에</b> 쌓아 크롤링 수집, AI 자동 채움, 관리자 백오피스, Vercel 배포까지 끝냈습니다. Next.js · Supabase.</td></tr>
+        <tr><td class="nm">SBTI</td><td class="kd">웹 서비스</td>
+          <td>역량 진단 서비스. 진단 로직 → 결과 대시보드 → 프리미엄 페이월 → 결제 → 엔타이틀먼트까지 <b>수익화 전 구간</b>을 구현했습니다.</td></tr>
+        <tr><td class="nm">전립선비대증 진단</td><td class="kd">환자용 웹</td>
+          <td>10문항 문진으로 증상 · 전립선 크기 · 기저질환을 평가해 7단계 수술 옵션을 추천합니다. 문항마다 설계 의도를 문서화해 <b>원장 검토를 받고 v1.6까지</b> 반영했습니다.</td></tr>
+        <tr><td class="nm">erazer</td><td class="kd">데스크톱</td>
+          <td>영상 자막을 지우고 한국어로 더빙. 파이썬 · ffmpeg가 없으면 알아서 설치하는 원클릭 배치와, 처음 쓰는 사람도 읽을 수 있는 안내문을 동봉했습니다.</td></tr>
+        <tr><td class="nm">naver-rank-tracker</td><td class="kd">수집기</td>
+          <td>네이버 플레이스 · 구글 로컬팩 순위 자동 추적. IP 차단을 감지해 자동 쿨다운하고, 시트 기록이 실패해도 로컬 CSV로 데이터를 보존합니다.</td></tr>
+        <tr><td class="nm">담낭몬의 모험</td><td class="kd">게임</td>
+          <td>담낭 · 담석 환자 대상 턴제 RPG. 포켓몬 구조를 패러디해 정크푸드 몬스터를 물리치며 담낭 건강 정보를 학습합니다. 30~40대 타깃, 기획서부터 배포까지.</td></tr>
+        <tr><td class="nm">Keepy</td><td class="kd">모니터링</td>
+          <td>병원 홈페이지 감시. HTTP 상태 · 응답속도 주기 점검에 더해 <b>상담 폼을 실제로 자동 제출</b>해보고, 장애 시 메일로 알립니다. FastAPI · Playwright.</td></tr>
+        <tr><td class="nm">골드만 5지점 KPI</td><td class="kd">데이터 분석</td>
+          <td>5개 지점 진료 · 매출 KPI 분해. 시트의 연도 오기를 잡아내 <b>-23%로 과대 계산되던 초진 감소율</b>을 바로잡고, 지점별 퍼널로 원인을 특정했습니다.</td></tr>
+        <tr><td class="nm">민병원 마케팅 전략</td><td class="kd">전략 보고</td>
+          <td>마케팅비가 70% 늘고 홈페이지 방문이 2배가 됐는데 초진과 수술 전환은 정체. 이를 예산 문제가 아닌 <b>퍼널 하단 문제</b>로 규정하고 매체별 실행안을 제안했습니다.</td></tr>
+        <tr><td class="nm">컴플라이언스 스크리너</td><td class="kd">기획</td>
+          <td>영상 자막에서 의료법 위반 소지 구간을 표시하고, 심의 통과 가능한 문안으로 파생 콘텐츠를 만드는 도구. robots.txt 실측으로 채널별 AI 인용 가능 여부를 확인하고 진입 지점을 잡았습니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== capability ===== -->
+<section class="band wrap sect-rule reveal">
+  <div class="logline" style="border-top:0;padding-top:0">
+    <div class="meta"><span class="id">CAP</span><span>stack</span><span class="st">4 groups</span></div>
+    <div class="band__head"><h2>다루는 것</h2></div>
+  </div>
+  <div class="stack">
+    <section>
+      <h3>언어 · 프레임워크</h3>
+      <ul>
+        <li><strong>Python</strong> — pandas, FastAPI, Playwright, Selenium, tkinter</li>
+        <li><strong>TypeScript / React</strong> — Next.js (App Router), Vite</li>
+        <li><strong>PowerShell / Bash</strong> — 배포 · 수집 자동화</li>
+        <li>PHP · MkDocs · WordPress 운영 대응</li>
+      </ul>
+    </section>
+    <section>
+      <h3>LLM 응용</h3>
+      <ul>
+        <li><strong>ReAct 코드 실행형</strong> 에이전트 — 수치 정확도 확보</li>
+        <li><strong>품질 게이트</strong> — 자동 생성물의 발행 전 검증</li>
+        <li><strong>환각 제어</strong> — 도메인 사전 · 사후 교정 · 반복 필터</li>
+        <li>OpenAI · Anthropic · 로컬 Ollama 혼용(비용 설계)</li>
+      </ul>
+    </section>
+    <section>
+      <h3>데이터 · 인프라</h3>
+      <ul>
+        <li>Supabase · SQLite · Google Sheets API</li>
+        <li>SFTP/SSH 자동 배포 · 서버 로그 파싱</li>
+        <li>Meta Graph · YouTube Data · Slack · Telegram API</li>
+        <li>JSON-LD 구조화 데이터 설계 및 검증</li>
+      </ul>
+    </section>
+    <section>
+      <h3>도메인</h3>
+      <ul>
+        <li><strong>AEO / GEO / SEO</strong> — 측정부터 생산까지</li>
+        <li><strong>의료법 제56조</strong> 광고 심의 제약 설계</li>
+        <li>퍼포먼스 마케팅 — Meta · 검색광고 · 예산 운용</li>
+        <li>병원 KPI — 초진 · 재진 · 수술 전환 퍼널</li>
+      </ul>
+    </section>
+  </div>
+</section>
+
+</main>
+
+<footer class="close wrap reveal">
+  <div class="logline" style="border-top:0;padding-top:0">
+    <div class="meta"><span class="id">EOF</span><span>—</span></div>
+    <div>
+      <h2>마케팅 문제를 정의할 수 있고, 그 문제를 풀 도구를 직접 만들어,
+        다른 사람이 쓸 수 있는 상태까지 가져다 놓습니다.</h2>
+      <div class="colophon">
+        최희준 · CHOI HEEJOON<br>
+        수치는 2026년 8월 기준 저장소 커밋 이력과 산출물에서 인용<br>
+        서버 접속정보 · 클라이언트 내부 실적 수치는 제외
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- scroll scan ---------- */
+  var scan = document.getElementById('scan');
+  function onScroll() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    scan.style.transform = 'scaleX(' + (h > 0 ? window.scrollY / h : 0) + ')';
+  }
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+  onScroll();
+
+  /* ---------- reveal ---------- */
+  var els = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window) ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    els.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -5% 0px', threshold: .03 });
+    els.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ================= log analyzer =================
+     Mirrors the classification in aeo-log-analyzer. Everything stays in
+     this browser — nothing is uploaded. */
+
+  var AI_BOTS = [
+    ['GPTBot', 'OpenAI'], ['OAI-SearchBot', 'OpenAI'], ['ChatGPT-User', 'OpenAI'],
+    ['ClaudeBot', 'Anthropic'], ['Claude-SearchBot', 'Anthropic'], ['anthropic-ai', 'Anthropic'],
+    ['PerplexityBot', 'Perplexity'], ['Perplexity-User', 'Perplexity'],
+    ['Google-Extended', 'Google'], ['Applebot-Extended', 'Apple'],
+    ['meta-externalagent', 'Meta'], ['Amazonbot', 'Amazon'], ['cohere-ai', 'Cohere']
+  ];
+  var SEARCH_BOTS = ['Googlebot', 'bingbot', 'Yeti', 'DuckDuckBot', 'Daum', 'Applebot'];
+  /* crawl load with no marketing upside — the tool flags these for robots.txt */
+  var JUNK_BOTS = ['Bytespider', 'CCBot', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot', 'DataForSeoBot'];
+  var AI_REFERERS = ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'gemini.google.com',
+                     'claude.ai', 'copilot.microsoft.com', 'you.com'];
+
+  /* IP - - [date] "METHOD /path PROTO" status size "referer" "ua" */
+  var LINE = /^(\S+)\s+\S+\s+\S+\s+\[([^\]]*)\]\s+"([A-Z]+)\s+(\S+)[^"]*"\s+(\d{3})\s+(\S+)\s+"([^"]*)"\s+"([^"]*)"/;
+
+  function classify(ua, referer) {
+    var i, hit;
+    for (i = 0; i < AI_BOTS.length; i++) {
+      if (ua.indexOf(AI_BOTS[i][0]) !== -1) return { k: 'ai', who: AI_BOTS[i][0], org: AI_BOTS[i][1] };
+    }
+    for (i = 0; i < JUNK_BOTS.length; i++) {
+      if (ua.indexOf(JUNK_BOTS[i]) !== -1) return { k: 'junk', who: JUNK_BOTS[i] };
+    }
+    for (i = 0; i < SEARCH_BOTS.length; i++) {
+      if (ua.indexOf(SEARCH_BOTS[i]) !== -1) return { k: 'search', who: SEARCH_BOTS[i] };
+    }
+    hit = AI_REFERERS.filter(function (r) { return referer.indexOf(r) !== -1; })[0];
+    if (hit) return { k: 'human', who: hit };
+    return { k: 'other', who: '일반 방문' };
+  }
+
+  function analyze(text) {
+    var res = {
+      parsed: 0, skipped: 0,
+      ai: 0, human: 0, search: 0, junk: 0, other: 0,
+      byBot: {}, junkBots: {}, aiPaths: {}, humanPaths: {}
+    };
+    text.split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim();
+      if (!line) return;
+      var m = LINE.exec(line);
+      if (!m) { res.skipped++; return; }
+      res.parsed++;
+      var path = m[4], referer = m[7], ua = m[8];
+      var c = classify(ua, referer);
+      res[c.k]++;
+      if (c.k === 'ai') {
+        res.byBot[c.who] = (res.byBot[c.who] || 0) + 1;
+        res.aiPaths[path] = (res.aiPaths[path] || 0) + 1;
+      } else if (c.k === 'junk') {
+        res.junkBots[c.who] = (res.junkBots[c.who] || 0) + 1;
+      } else if (c.k === 'human') {
+        res.humanPaths[path] = (res.humanPaths[path] || 0) + 1;
+      }
+    });
+    return res;
+  }
+
+  function topKeys(obj, n) {
+    return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, n);
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function bar(k, label, note, n, total) {
+    var pct = total ? Math.round(n / total * 100) : 0;
+    return '<div class="bar" data-k="' + k + '">' +
+      '<span class="bar__label">' + esc(label) + ' <i>' + esc(note) + '</i></span>' +
+      '<span class="bar__n">' + n + '</span>' +
+      '<span class="bar__track"><span class="bar__fill" style="width:' + pct + '%"></span></span>' +
+      '</div>';
+  }
+
+  var out = document.getElementById('out');
+  var counter = document.getElementById('count');
+
+  function render(r) {
+    var total = r.parsed;
+    counter.textContent = total + ' lines' + (r.skipped ? ' · ' + r.skipped + ' skipped' : '');
+
+    if (!total) {
+      out.innerHTML = '<div class="verdict"><span class="none">combined 형식의 로그 줄을 인식하지 못했습니다. ' +
+        '위 형식 안내를 확인해 주세요.</span></div>';
+      return;
+    }
+
+    var html =
+      bar('ai',     'AI 크롤러',     '콘텐츠를 수집해 간 AI',    r.ai,     total) +
+      bar('human',  'AI 경유 유입',  'AI 답변 → 클릭한 사람',    r.human,  total) +
+      bar('search', '검색엔진 봇',   'Google · Bing · Naver',    r.search, total) +
+      bar('junk',   '차단 권장 봇',  '부하만 주는 크롤',         r.junk,   total);
+
+    var lines = [];
+    if (r.ai) {
+      lines.push('<b>AI가 이 사이트를 읽고 있습니다.</b> ' +
+        topKeys(r.byBot, 3).map(function (b) {
+          return '<em>' + esc(b) + '</em> ' + r.byBot[b] + '회';
+        }).join(' · ') + '. GA에는 한 건도 잡히지 않는 트래픽입니다.');
+    } else {
+      lines.push('<span class="none">AI 크롤러 방문이 없습니다. robots.txt가 AI 봇을 막고 있는지 먼저 확인할 대목입니다.</span>');
+    }
+
+    /* the tool's signature finding: crawled but never converted */
+    var dead = topKeys(r.aiPaths, 20).filter(function (p) { return !r.humanPaths[p]; });
+    if (dead.length) {
+      lines.push('<b>AI가 읽어갔지만 유입이 0인 페이지</b> — 인용은 되는데 클릭이 오지 않는 지점입니다.' +
+        '<ul>' + dead.slice(0, 3).map(function (p) {
+          return '<li><code>' + esc(p) + '</code> — 크롤 ' + r.aiPaths[p] + '회 · 유입 0</li>';
+        }).join('') + '</ul>');
+    }
+    if (r.junk) {
+      lines.push('<b>차단 권장</b> — ' + topKeys(r.junkBots, 3).map(esc).join(' · ') +
+        '. 마케팅 가치 없이 서버 부하만 만듭니다. robots.txt에 추가하세요.');
+    }
+
+    out.innerHTML = html + '<div class="verdict">' + lines.join('<br>') + '</div>';
+  }
+
+  var box = document.getElementById('log');
+  var SAMPLE = [
+    '52.230.152.11 - - [09/Aug/2026:03:12:44 +0900] "GET /docs/thyroid-cancer/ HTTP/1.1" 200 41822 "-" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot"',
+    '52.230.152.11 - - [09/Aug/2026:03:12:51 +0900] "GET /docs/thyroid-cancer/cost/ HTTP/1.1" 200 28104 "-" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot"',
+    '160.79.104.8 - - [09/Aug/2026:04:01:09 +0900] "GET /docs/gallbladder/surgery/ HTTP/1.1" 200 33970 "-" "Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)"',
+    '160.79.104.8 - - [09/Aug/2026:04:01:38 +0900] "GET /docs/gallbladder/ HTTP/1.1" 200 22518 "-" "Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)"',
+    '44.221.181.63 - - [09/Aug/2026:05:22:03 +0900] "GET /docs/hernia/diagnosis/ HTTP/1.1" 200 19883 "-" "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)"',
+    '211.36.140.22 - - [09/Aug/2026:09:41:17 +0900] "GET /docs/gallbladder/surgery/ HTTP/1.1" 200 33970 "https://chatgpt.com/" "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"',
+    '175.223.9.87 - - [09/Aug/2026:10:03:52 +0900] "GET /docs/gallbladder/ HTTP/1.1" 200 22518 "https://www.perplexity.ai/" "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/139.0 Mobile Safari/537.36"',
+    '66.249.66.14 - - [09/Aug/2026:11:15:02 +0900] "GET /docs/sitemap.xml HTTP/1.1" 200 8841 "-" "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"',
+    '125.209.222.10 - - [09/Aug/2026:11:44:30 +0900] "GET /docs/thyroid-cancer/ HTTP/1.1" 200 41822 "-" "Mozilla/5.0 (compatible; Yeti/1.1; +https://naver.me/spd)"',
+    '110.249.201.44 - - [09/Aug/2026:12:08:11 +0900] "GET /docs/ HTTP/1.1" 200 15220 "-" "Mozilla/5.0 (Linux; Android 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 (compatible; Bytespider; spider-feedback@bytedance.com)"',
+    '110.249.201.51 - - [09/Aug/2026:12:08:19 +0900] "GET /docs/hernia/ HTTP/1.1" 200 17740 "-" "Mozilla/5.0 (compatible; Bytespider; spider-feedback@bytedance.com)"',
+    '203.241.185.9 - - [09/Aug/2026:14:20:41 +0900] "GET /contact/ HTTP/1.1" 200 9912 "https://www.google.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/139.0 Safari/537.36"'
+  ].join('\n');
+
+  function run() { render(analyze(box.value)); }
+  box.value = SAMPLE;
+  box.addEventListener('input', run);
+  run();
+
+  /* ---- self-check: append ?selftest to the URL ---- */
+  if (location.search.indexOf('selftest') !== -1) {
+    var t = analyze(SAMPLE);
+    console.assert(t.parsed === 12 && t.skipped === 0, 'parsed 12', t);
+    console.assert(t.ai === 5, 'ai 5', t);
+    console.assert(t.human === 2, 'human 2', t);
+    console.assert(t.search === 2, 'search 2', t);
+    console.assert(t.junk === 2, 'junk 2', t);
+    console.assert(t.other === 1, 'other 1', t);
+    console.assert(analyze('rubbish line').parsed === 0, 'garbage rejected');
+    console.assert(classify('ClaudeBot/1.0', '').k === 'ai', 'ClaudeBot is ai');
+    /* Applebot-Extended must win over Applebot */
+    console.assert(classify('Applebot-Extended/1.0', '').k === 'ai', 'Applebot-Extended is ai');
+    console.log('selftest done');
+  }
+})();
+</script>
