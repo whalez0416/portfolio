@@ -2,7 +2,7 @@
 
 의료 마케팅 도메인에서 AEO(답변엔진 최적화) 측정 · 생산 · 감시 도구를 직접 개발해 운영한 기록.
 
-**https://whalez0416.github.io**
+**https://whalez0416.github.io/portfolio/**
 
 ## 구성
 
