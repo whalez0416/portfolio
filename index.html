@@ -5,12 +5,16 @@
 <title>최희준 — 의료 마케팅 × 소프트웨어</title>
 <meta name="description" content="마케터로 문제를 정의하고, 그 문제를 풀 도구를 직접 만들어 운영까지 붙입니다. AEO 측정·생산·감시 도구를 개발해 병원 위키 189페이지를 운영 중.">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0A0A0C">
 <meta property="og:title" content="최희준 — 의료 마케팅 × 소프트웨어">
 <meta property="og:description" content="측정되지 않던 것을 계측하고, 반복되던 것을 자동화합니다.">
 <meta property="og:type" content="profile">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Pretendard carries the Korean body text, so this host matters more than the
+     Google one — it was the only CDN here without a preconnect -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 
@@ -77,6 +81,18 @@
   }
 
   .wrap { width: min(100% - 2.5rem, 74rem); margin-inline: auto; position: relative; z-index: 1; }
+
+  /* the page opens with a canvas game; a keyboard user must not have to tab
+     through it to reach the writing */
+  .skip {
+    position: absolute; left: .6rem; top: .6rem; z-index: 40;
+    transform: translateY(-200%);
+    background: var(--sig); color: var(--void); text-decoration: none;
+    font-family: var(--mono); font-size: var(--f--1);
+    padding: .55rem 1rem;
+  }
+  .skip:focus { transform: none; }
+  #work { scroll-margin-top: 2rem; }
 
   /* ---------- the log line: shared structural device ---------- */
   .logline {
@@ -186,7 +202,9 @@
     font-family: var(--mono); font-size: .72rem; line-height: 1.85;
     padding: .9rem 1rem; white-space: pre; overflow: auto; tab-size: 2;
   }
-  #log:focus { outline: 0; box-shadow: inset 2px 0 0 var(--sig); }
+  /* keeps the global focus ring instead of removing it; the offset is pulled
+     inward so the ring sits inside the console frame rather than over its border */
+  #log:focus-visible { outline-offset: -2px; box-shadow: inset 2px 0 0 var(--sig); }
   .console__hint {
     padding: .65rem 1rem .85rem; border-top: 1px solid var(--line);
     font-family: var(--mono); font-size: var(--f--2); color: var(--dim); line-height: 1.7;
@@ -202,7 +220,14 @@
     font-variant-numeric: tabular-nums; color: var(--ink);
   }
   .bar__track { grid-column: 1/-1; height: 5px; background: #1B1B21; margin-top: .35rem; }
-  .bar__fill { height: 100%; width: 0; transition: width .5s cubic-bezier(.2,.7,.25,1); }
+  /* display:block is load-bearing — a <span> is an inline box, and width and
+     transform do not apply to non-replaced inline boxes. Without it these bars
+     measure 0x0 and have never actually drawn. */
+  .bar__fill {
+    display: block;
+    height: 100%; width: 100%; transform: scaleX(0); transform-origin: 0 50%;
+    transition: transform .5s cubic-bezier(.2,.7,.25,1);
+  }
   .bar[data-k="ai"]     .bar__fill { background: var(--sig); }
   .bar[data-k="human"]  .bar__fill { background: var(--ink2); }
   .bar[data-k="search"] .bar__fill { background: var(--cool); }
@@ -227,14 +252,53 @@
     image-rendering: pixelated; image-rendering: crisp-edges;
     touch-action: none;
   }
+
+  /* HUD — chapter on the left, live counters on the right */
   .jn__hud {
-    position: absolute; left: 0; right: 0; top: 0; display: flex;
-    gap: .9rem; align-items: baseline; flex-wrap: wrap; padding: .55rem .8rem;
-    pointer-events: none; font-family: var(--mono); font-size: var(--f--2);
-    color: var(--mute); text-shadow: 0 1px 0 #000;
+    position: absolute; left: 0; right: 0; top: 0;
+    display: flex; gap: .5rem 1rem; align-items: baseline; flex-wrap: wrap;
+    padding: .55rem .8rem; pointer-events: none;
+    font-family: var(--mono); font-size: var(--f--2);
+    color: var(--mute); text-shadow: 0 1px 2px #000;
   }
-  .jn__hud .ch { color: var(--sig); letter-spacing: .2em; }
-  .jn__hud .pg { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .jn__hud .ch { color: var(--sig); letter-spacing: .2em; font-weight: 700; }
+  .jn__hud .note { color: var(--ink2); }
+  .jn__hud .gauges { margin-left: auto; display: flex; gap: .95rem; font-variant-numeric: tabular-nums; }
+  .jn__hud .gauges b { color: var(--ink); font-weight: 700; }
+  .jn__hud .gauges span[hidden] { display: none; }
+
+  /* event ticker — what just happened, then it fades */
+  .jn__tick {
+    position: absolute; left: .8rem; top: 2.3rem; margin: 0; pointer-events: none;
+    font-family: var(--mono); font-size: var(--f--2); color: var(--sig);
+    text-shadow: 0 1px 2px #000; opacity: 0; transition: opacity .4s;
+  }
+  .jn__tick.on { opacity: 1; }
+
+  /* pickup banner — never pauses the walk */
+  .jn__banner {
+    position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none;
+    background: linear-gradient(to top, rgba(8,8,11,.96), rgba(8,8,11,0));
+    padding: 2rem .9rem .8rem;
+    transform: translateY(100%); transition: transform .35s cubic-bezier(.2,.7,.25,1);
+  }
+  .jn__banner.on { transform: none; }
+  .jn__banner b {
+    font-family: var(--mono); font-size: var(--f-0); color: var(--sig);
+    display: block; letter-spacing: -.01em;
+  }
+  .jn__banner i {
+    font-style: normal; color: var(--ink2); font-size: var(--f--1);
+    display: block; margin-top: .15rem; line-height: 1.6;
+  }
+  .jn__banner u {
+    text-decoration: none; color: var(--dim); font-family: var(--mono);
+    font-size: var(--f--2); display: block; margin-top: .3rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .jn__banner, .jn__tick { transition: none; }
+  }
+
   .jn__cue {
     position: absolute; left: 50%; bottom: .8rem; transform: translateX(-50%);
     font-family: var(--mono); font-size: var(--f--2); color: var(--void);
@@ -242,27 +306,65 @@
   }
   .jn__cue[hidden] { display: none; }
 
+  /* `safe center` so a tall end-screen on a short canvas scrolls instead of
+     clipping its own heading off the top */
   .jn__veil {
-    position: absolute; inset: 0; display: grid; place-content: center;
-    text-align: center; gap: 1rem; padding: 1.5rem; background: rgba(8,8,11,.93);
+    position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: safe center;
+    text-align: center; gap: 1rem; padding: 1.5rem; background: rgba(8,8,11,.94);
   }
+  .jn__veil > * { flex: 0 0 auto; max-width: 100%; }
   .jn__veil[hidden] { display: none; }
+  /* while a veil is up, the live HUD under it is noise — the ending screen was
+     showing its own scoreboard over a stale "Enter — 기록 읽기" cue */
+  .jn__stage:has(> .jn__veil:not([hidden])) :is(.jn__hud, .jn__tick, .jn__cue, .jn__banner) {
+    opacity: 0;
+  }
   .jn__veil h3 {
     font-family: var(--disp); font-size: var(--f-2); margin: 0;
     letter-spacing: -.03em; font-weight: 700;
   }
-  .jn__veil p { margin: 0; color: var(--mute); font-size: var(--f--1); max-width: 36rem; line-height: 1.8; }
+  .jn__veil p { margin: 0; color: var(--mute); font-size: var(--f--1); max-width: 38rem; line-height: 1.8; }
   .jn__veil b { color: var(--ink); font-weight: 600; }
+  .jn__veil .keys {
+    display: flex; gap: .4rem 1.1rem; justify-content: center; flex-wrap: wrap;
+    font-family: var(--mono); font-size: var(--f--2); color: var(--dim);
+  }
+  .jn__veil .keys kbd {
+    font: inherit; color: var(--ink2); background: var(--panel2);
+    border: 1px solid var(--line2); padding: .1rem .45rem;
+  }
   .btn {
     font-family: var(--mono); font-size: var(--f--1); letter-spacing: .06em;
     color: var(--void); background: var(--sig); border: 0;
     padding: .6rem 1.5rem; cursor: pointer; justify-self: center;
   }
   .btn:hover { filter: brightness(1.12); }
+  .btn--ghost { background: none; color: var(--mute); border: 1px solid var(--line2); }
+  .btn--ghost:hover { color: var(--ink); border-color: var(--mute); filter: none; }
+
+  /* end screen scoreboard + the eight records, now reachable as links */
+  .jn__score {
+    display: flex; justify-content: center; gap: 1.4rem; flex-wrap: wrap;
+    font-family: var(--mono); font-size: var(--f--2); color: var(--dim);
+  }
+  .jn__score b { display: block; font-size: var(--f-1); color: var(--sig); font-variant-numeric: tabular-nums; }
+  .jn__list {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: .3rem; max-width: 42rem; margin-inline: auto;
+  }
+  .jn__list button {
+    font-family: var(--mono); font-size: var(--f--2); text-align: left; cursor: pointer;
+    background: var(--panel2); color: var(--ink2); border: 1px solid var(--line);
+    padding: .4rem .6rem;
+  }
+  .jn__list button:hover { border-color: var(--sig); color: var(--ink); }
+  .jn__list button i { font-style: normal; color: var(--dim); display: block; }
 
   /* the station panel reuses the record markup that already exists below */
   .jn__panel {
-    position: absolute; inset: 0; overflow: auto; --rail: 0;
+    position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; --rail: 0;
     background: rgba(8,8,11,.98); padding: 1rem 1.2rem 1.6rem;
   }
   .jn__panel[hidden] { display: none; }
@@ -281,17 +383,29 @@
 
   .jn__pad { display: none; }
   @media (pointer: coarse) {
-    .jn__pad { display: flex; gap: .5rem; padding: .6rem .8rem; border-top: 1px solid var(--line); }
+    .jn__pad { display: grid; grid-template-columns: 1fr 1fr 1.3fr 1.3fr; gap: .4rem;
+      padding: .6rem .8rem; border-top: 1px solid var(--line); }
     .jn__pad button {
-      flex: 1; font-family: var(--mono); font-size: var(--f-1); padding: .55rem;
+      font-family: var(--mono); font-size: var(--f-0); padding: .7rem .2rem;
       background: var(--panel2); color: var(--ink2); border: 1px solid var(--line2);
+      -webkit-user-select: none; user-select: none;
+      /* a movement pad gets hammered — without this iOS reads fast repeats as
+         double-tap-to-zoom, and every press flashes the default highlight */
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
+    .jn__pad button:active { background: var(--sig); color: var(--void); }
+    .jn__pad button[disabled] { opacity: .3; }
   }
   .jn__legend {
     padding: .65rem 1rem .85rem; border-top: 1px solid var(--line);
     font-family: var(--mono); font-size: var(--f--2); color: var(--dim); line-height: 1.8;
   }
   .jn__legend b { color: var(--mute); font-weight: 400; }
+  .jn__legend kbd {
+    font: inherit; color: var(--ink2); background: var(--panel2);
+    border: 1px solid var(--line2); padding: 0 .35rem;
+  }
 
   /* ---------- sections ---------- */
   .band { padding-block: clamp(3.5rem, 7vw, 5.5rem); }
@@ -419,6 +533,7 @@
   :focus-visible { outline: 2px solid var(--sig); outline-offset: 2px; }
 </style>
 
+<a class="skip" href="#work">대표 프로젝트로 건너뛰기</a>
 <div class="scan" id="scan"></div>
 
 <header class="top">
@@ -458,10 +573,11 @@
     <div>
       <div class="band__head">
         <h2>읽지 말고, 걸어보세요</h2>
-        <p>검색이 죽는 지점에서 출발해 오른쪽으로 갑니다. 길 위의 정거장 8곳이 제가 만든 도구들이고,
-          <b>다가가면 그 자리에서 열립니다</b>. 순서는 제 주장 그대로입니다 —
-          위협을 확인하고, <b>측정</b>하고, <b>생산</b>하고, <b>감시</b>하고, 국경 밖으로 <b>확장</b>합니다.
-          전부 걷고 나면 이 페이지에 뭐가 있는지 다 본 셈입니다.</p>
+        <p>검색 순위를 팔던 사람들과 <b>같은 길에서</b> 출발합니다. 위에서 내려다보면 정수리는 다 똑같이 생겼습니다.
+          갈림길에서 혼자 내려서는 순간 시점이 옆으로 눕고, 거기서부터가 제가 만든 것들입니다.
+          길에서 줍는 도구 8개는 <b>줍는 순간 할 수 있는 일이 하나씩 늘어납니다</b> —
+          안 보이던 AI 크롤러가 보이고, 페이지를 심게 되고, 경쟁사가 드러나고, 국경이 열립니다.
+          조작법이 곧 제 주장입니다.</p>
       </div>
 
       <div class="jn">
@@ -470,20 +586,39 @@
           <span class="count" id="jn-stat">대기 중</span>
         </div>
         <div class="jn__stage">
-          <canvas id="jn" width="320" height="180"
-                  aria-label="횡스크롤 여정. 좌우 방향키로 걸으면 프로젝트 정거장이 열립니다. 같은 내용이 아래 '대표 프로젝트'에 글로도 있습니다."></canvas>
+          <canvas id="jn" width="384" height="216"
+                  aria-label="게임. 위에서 내려다보는 프롤로그에서 무리와 같은 길을 걷다가, 갈림길에서 아래로 벗어나면 횡스크롤로 바뀝니다. 좌우로 걷고 위로 점프하며, 도구를 주울 때마다 새 능력이 열립니다. 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
+
           <div class="jn__hud" aria-hidden="true">
             <span class="ch" id="jn-ch">위협</span>
-            <span id="jn-note">검색이 죽고 있다</span>
-            <span class="pg" id="jn-pg">0 / 8</span>
+            <span class="note" id="jn-note">팔던 상품이 죽는 걸 봤다</span>
+            <span class="gauges">
+              <span id="jn-g-lost">이탈 <b>0</b></span>
+              <span id="jn-g-crawl" hidden>계측 <b>0</b></span>
+              <span id="jn-g-page" hidden>발행 <b>0</b></span>
+              <span id="jn-g-cite" hidden>인용 <b>0</b></span>
+              <span id="jn-g-sov" hidden>점유 <b>0%</b></span>
+            </span>
           </div>
+          <p class="jn__tick" id="jn-tick" aria-hidden="true"></p>
           <p class="jn__cue" id="jn-cue" hidden></p>
 
+          <div class="jn__banner" id="jn-banner" aria-hidden="true">
+            <b id="jn-b-name" translate="no"></b>
+            <i id="jn-b-line"></i>
+            <u id="jn-b-verb"></u>
+          </div>
+
           <div class="jn__veil" id="jn-veil">
-            <h3>검색이 죽고 있습니다</h3>
-            <p>사람들이 검색 대신 AI에게 묻기 시작하면서, 제가 팔던 검색 순위 상품이 무력화되고 있었습니다.
-              그래서 무엇을 만들었는지, <b>걸어가며</b> 보여드리겠습니다.<br>
-              <b>← →</b> 또는 <b>A D</b>로 이동합니다. 정거장에 닿으면 자동으로 열립니다.</p>
+            <h3>다 같이 출발했습니다</h3>
+            <p>검색 순위를 파는 사람들 틈에서 저도 같은 것을 팔고 있었습니다.
+              그 검색이 죽기 시작했을 때 대부분은 하던 대로 갔고, 저는 길을 바꿨습니다.
+              <b>위에서 내려다보는 시점</b>으로 시작합니다 — 갈림길이 나올 때까지 같이 걸으세요.</p>
+            <p class="keys">
+              <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동</span>
+              <span>갈림길에서 <kbd>↓</kbd> 아래로</span>
+              <span><i>길을 벗어나면 시점이 옆으로 눕습니다</i></span>
+            </p>
             <button class="btn" id="jn-go" type="button">출발</button>
           </div>
 
@@ -492,13 +627,18 @@
             <div id="jn-body"></div>
           </div>
         </div>
-        <div class="jn__pad" aria-hidden="true">
-          <button type="button" data-dir="-1">◀</button>
-          <button type="button" data-dir="1">▶</button>
+        <!-- on touch this is the only way to play, so it must not be aria-hidden
+             (focusable controls inside aria-hidden is a WCAG 4.1.2 failure) -->
+        <div class="jn__pad">
+          <button type="button" data-key="l" aria-label="왼쪽으로 이동">◀</button>
+          <button type="button" data-key="r" aria-label="오른쪽으로 이동">▶</button>
+          <button type="button" data-key="u" id="jn-pad-up" aria-label="위로 이동 / 점프">▲ 위</button>
+          <button type="button" data-key="d" id="jn-pad-plant" aria-label="아래로 이동 / 페이지 발행">▼ 아래</button>
         </div>
         <div class="jn__legend">
-          <b>조작</b> ← → · A D · 터치는 아래 버튼 &nbsp;|&nbsp;
-          <b>정거장</b> 노란 기둥 8개 &nbsp;|&nbsp;
+          <b>프롤로그</b> <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동 · 갈림길에서 아래로 &nbsp;|&nbsp;
+          <b>본편</b> <kbd>←</kbd><kbd>→</kbd> 걷기 · <kbd>↑</kbd> 점프 · <kbd>↓</kbd> 발행 · <kbd>Enter</kbd> 기록 &nbsp;|&nbsp;
+          <b>도구</b> 길에 놓인 앰버 8개 &nbsp;|&nbsp;
           걷기 싫으시면 그냥 스크롤하세요 — 같은 내용이 아래에 전부 글로 있습니다.
         </div>
       </div>
@@ -539,6 +679,9 @@
             </p>
           </div>
           <div class="console__out" id="out"></div>
+          <!-- a live region on #out itself would re-read the whole panel on every
+               keystroke; this carries one debounced line instead -->
+          <p id="log-live" aria-live="polite" style="position:absolute;left:-9999px"></p>
         </div>
       </div>
     </div>
@@ -586,7 +729,7 @@
 </section>
 
 <!-- ===== records ===== -->
-<section class="band wrap sect-rule">
+<section class="band wrap sect-rule" id="work">
   <div class="logline reveal" style="border-top:0;padding-top:0">
     <div class="meta">
       <span class="id">WORK</span>
@@ -604,7 +747,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2025-12 → 2026-08</span><span>76 commits</span><span>Python</span></div>
-        <h3 class="rec__title"><b>aeo_sync</b><i>AEO 의료위키 생성 · 발행 파이프라인</i></h3>
+        <h3 class="rec__title"><b translate="no">aeo_sync</b><i>AEO 의료위키 생성 · 발행 파이프라인</i></h3>
         <div class="rec__tags"><span>LLM</span><span>MkDocs</span><span>JSON-LD</span><span>SFTP 배포</span><span>멀티테넌트</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -625,7 +768,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2026-07</span><span>14 commits</span><span>MIT · 공개</span></div>
-        <h3 class="rec__title"><b>aeo-log-analyzer</b><i>AI 크롤러 유입 계측 도구 — 위에서 직접 돌려본 그것</i></h3>
+        <h3 class="rec__title"><b translate="no">aeo-log-analyzer</b><i>AI 크롤러 유입 계측 도구 — 위에서 직접 돌려본 그것</i></h3>
         <div class="rec__tags"><span>표준 라이브러리만</span><span>역DNS 검증</span><span>tkinter GUI</span><span>Sheets 동기화</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -644,7 +787,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2025-12 → 2026-07</span><span>13 commits</span><span>Python</span></div>
-        <h3 class="rec__title"><b>MediSTT</b><i>의료 영상 STT · 자막 · SEO 자동화 웹앱</i></h3>
+        <h3 class="rec__title"><b translate="no">MediSTT</b><i>의료 영상 STT · 자막 · SEO 자동화 웹앱</i></h3>
         <div class="rec__tags"><span>Whisper</span><span>GPT</span><span>YouTube API</span><span>용어 사전</span><span>환각 필터</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -664,7 +807,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2026-05 → 2026-08</span><span>37 commits</span><span>Python</span></div>
-        <h3 class="rec__title"><b>MetaPorter</b><i>광고 성과 수집 · 리포팅 파이프라인</i></h3>
+        <h3 class="rec__title"><b translate="no">MetaPorter</b><i>광고 성과 수집 · 리포팅 파이프라인</i></h3>
         <div class="rec__tags"><span>Meta Graph API</span><span>Google Sheets</span><span>Slack</span><span>멱등성</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -684,7 +827,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2026-06 → 2026-08</span><span>4 commits</span><span>Python</span></div>
-        <h3 class="rec__title"><b>SERP Sentinel</b><i>경쟁 가시성(Share of Voice) 모니터링</i></h3>
+        <h3 class="rec__title"><b translate="no">SERP Sentinel</b><i>경쟁 가시성(Share of Voice) 모니터링</i></h3>
         <div class="rec__tags"><span>Playwright</span><span>Claude API</span><span>SQLite</span><span>로컬 Ollama</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -704,7 +847,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2026-07</span><span>Ollama</span><span>Python</span></div>
-        <h3 class="rec__title"><b>KPIY</b><i>병원 진료 · 매출 분석 에이전트</i></h3>
+        <h3 class="rec__title"><b translate="no">KPIY</b><i>병원 진료 · 매출 분석 에이전트</i></h3>
         <div class="rec__tags"><span>ReAct</span><span>pandas</span><span>익명화</span><span>Sheets</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -724,7 +867,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2026-08</span><span>54 commits</span><span>Python</span></div>
-        <h3 class="rec__title"><b>NetTier</b><i>다국어 홈페이지 제작 파이프라인 + 회선 적응형 배포</i></h3>
+        <h3 class="rec__title"><b translate="no">NetTier</b><i>다국어 홈페이지 제작 파이프라인 + 회선 적응형 배포</i></h3>
         <div class="rec__tags"><span>i18n</span><span>용어집</span><span>무인 야간 제작</span><span>3G 대응</span><span>라이브 무손상</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -746,7 +889,7 @@
     <article class="rec reveal">
       <div class="rec__head">
         <div class="rec__stamp"><span class="id">2026-08</span><span>19 commits</span><span>정적 · pSEO</span></div>
-        <h3 class="rec__title"><b>Hospify</b><i>해외환자 유치 매칭 웹 — 포지션을 두 번 갈아엎은 기록</i></h3>
+        <h3 class="rec__title"><b translate="no">Hospify</b><i>해외환자 유치 매칭 웹 — 포지션을 두 번 갈아엎은 기록</i></h3>
         <div class="rec__tags"><span>영문</span><span>3단계 문진</span><span>국가별 pSEO</span><span>신뢰 설계</span></div>
       </div>
       <div class="rec__body"><dl>
@@ -1022,7 +1165,7 @@
     return '<div class="bar" data-k="' + k + '">' +
       '<span class="bar__label">' + esc(label) + ' <i>' + esc(note) + '</i></span>' +
       '<span class="bar__n">' + n + '</span>' +
-      '<span class="bar__track"><span class="bar__fill" style="width:' + pct + '%"></span></span>' +
+      '<span class="bar__track"><span class="bar__fill" style="transform:scaleX(' + (pct / 100) + ')"></span></span>' +
       '</div>';
   }
 
@@ -1087,169 +1230,979 @@
     '203.241.185.9 - - [09/Aug/2026:14:20:41 +0900] "GET /contact/ HTTP/1.1" 200 9912 "https://www.google.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/139.0 Safari/537.36"'
   ].join('\n');
 
-  function run() { render(analyze(box.value)); }
+  /* one short summary, settled 700ms after you stop typing — announcing the
+     whole panel per keystroke is worse than announcing nothing */
+  var logLive = document.getElementById('log-live'), liveT = 0;
+  function announce(r) {
+    clearTimeout(liveT);
+    liveT = setTimeout(function () {
+      logLive.textContent = r.parsed
+        ? r.parsed + '줄 분석. AI 크롤러 ' + r.ai + ' · AI 경유 유입 ' + r.human +
+          ' · 검색봇 ' + r.search + ' · 차단 권장 ' + r.junk + '.'
+        : 'combined 형식의 로그 줄을 인식하지 못했습니다.';
+    }, 700);
+  }
+
+  function run() { var r = analyze(box.value); render(r); announce(r); }
   box.value = SAMPLE;
   box.addEventListener('input', run);
   run();
 
-  /* ================= JOURNEY — side-scrolling pixel walk =================
-     The walk is the table of contents. Every station opens the project record
-     that already exists further down this page, so the text has exactly one
-     home: edit the record and the walk follows. */
+  /* ================= JOURNEY — 횡스크롤 플랫포머 =================
+     The mechanic IS the argument. Every tool you pick up grants exactly one
+     verb, and the verb is the claim it makes: you cannot count what you cannot
+     see, so the first tool is a lantern. Act 1 takes your visitors away and
+     gives you nothing to do about it — that helplessness is the premise.
+
+     The eight records below this canvas stay the single source of truth; the
+     game only has to make you want to read them. */
 
   var jnc = document.getElementById('jn');
   if (jnc && jnc.getContext) (function () {
     var g = jnc.getContext('2d');
-    var W = 320, H = 180, FLOOR = 148, WORLD = 2460, REACH = 15;
 
-    /* the argument, laid out in walking order */
-    var CHAPTERS = [
-      { x:    0, name: '위협', note: '검색이 죽고 있다' },
-      { x:  190, name: '측정', note: '그럼 증명해봐라' },
-      { x:  760, name: '생산', note: '인용될 것을 만든다' },
-      { x: 1340, name: '감시', note: '경쟁 구도를 본다' },
-      { x: 1900, name: '확장', note: '국경 밖으로' }
-    ];
-    var STOPS = [
-      { x:  310, rec: 'aeo-log-analyzer' },
-      { x:  590, rec: 'MetaPorter' },
-      { x:  880, rec: 'aeo_sync' },
-      { x: 1170, rec: 'MediSTT' },
-      { x: 1450, rec: 'SERP Sentinel' },
-      { x: 1710, rec: 'KPIY' },
-      { x: 2050, rec: 'NetTier' },
-      { x: 2330, rec: 'Hospify' }
-    ];
-    var HILLS = [[770, 900, 10], [1350, 1500, 16], [1910, 2050, 8]];
+    var W = 384, H = 216, FLOOR = 178, WORLD = 3160, GATEX = 2790, CLINIC = 3114;
+    var GRAV = 560, JUMPV = -196, SPEED = 98, REACH = 20, HOVER = 40, RECRAWL = 3.5;
 
-    /* index the records that are already in the document */
+    /* --- five acts, in walking order --- */
+    var ACTS = [
+      { x:    0, name: '위협', note: '팔던 상품이 죽는 걸 봤다' },
+      { x:  470, name: '측정', note: '안 보이면 증명할 수 없다' },
+      { x: 1150, name: '생산', note: '인용될 것을 직접 만든다' },
+      { x: 1870, name: '감시', note: '상대가 어디 있는지 본다' },
+      { x: 2560, name: '확장', note: '국경 밖으로' }
+    ];
+
+    /* --- pickups. `grant` unlocks a verb, `rec` points at the record below --- */
+    var TOOLS = [
+      { x:  520, rec: 'aeo-log-analyzer', grant: 'lantern',
+        line: '설치 장벽이 진짜 병목이라고 봤습니다. 파이썬 표준 라이브러리만 씁니다.',
+        verb: '랜턴 — 안 보이던 AI 크롤러가 보입니다. 점프해서 계측하세요.' },
+      { x:  880, rec: 'MetaPorter', grant: 'idem',
+        line: '자동화가 깨지는 건 대부분 재실행입니다. 기능보다 멱등성을 먼저 설계했습니다.',
+        verb: '계측 범위 확대 — 같은 봇을 두 번 세지 않습니다.' },
+      { x: 1200, rec: 'aeo_sync', grant: 'plant',
+        line: '자동 생성 후에 검수하는 게 아니라, 검수를 파이프라인 안에 넣었습니다.',
+        verb: '↓ 발행 — 페이지를 심으면 AI가 찾아옵니다.' },
+      { x: 1530, rec: 'MediSTT', grant: 'sub',
+        line: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
+        verb: '자막 트랙 — 이후 발행하는 페이지에 자막이 붙습니다.' },
+      { x: 1920, rec: 'SERP Sentinel', grant: 'radar',
+        line: '수단과 목적을 분리해두지 않으면 기능만 늘어나는 도구가 됩니다.',
+        verb: '경쟁 레이더 — 회색 경쟁사 페이지와 점유율이 드러납니다.' },
+      { x: 2250, rec: 'KPIY', grant: 'kpi',
+        line: '정확도가 필요한 곳에는 검색이 아니라 실행을 붙여야 한다고 봤습니다.',
+        verb: 'KPI — 계측값이 그래프로 누적됩니다.' },
+      { x: 2670, rec: 'NetTier', grant: 'gate',
+        line: '회선을 국가로 추정하지 않고 실측했습니다. 추정은 틀리지만 실측은 안 틀립니다.',
+        verb: '국경 개방 — 앞을 막던 벽이 열립니다.' },
+      { x: 3080, rec: 'Hospify', grant: 'clinic',
+        line: '못 지킬 보증을 띄우는 것보다 그 자리를 비워두는 쪽이 신뢰에 낫다고 봤습니다.',
+        verb: '도착 — 1막에서 떠났던 사람들이 반대로 들어옵니다.' }
+    ];
+
+    var HILLS  = [[700, 860, 12], [1330, 1470, 18], [2080, 2210, 10], [2900, 3010, 14]];
+    /* ledges: the high crawler lane is out of reach from the ground on purpose */
+    var PLATS  = [
+      [630, 138, 46], [726, 116, 38], [980, 132, 52],
+      [1270, 128, 44], [1392, 106, 40], [1640, 134, 50],
+      [1990, 126, 46], [2108, 104, 42], [2380, 132, 54],
+      [2860, 128, 48], [2962, 106, 40]
+    ];
+    /* low = catchable on foot · mid = needs a jump · high = needs a ledge.
+       the numbers are load-bearing; ?selftest checks each lane's reachability. */
+    var LANES  = [166, 144, 106];
+    var AI_NAMES = ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'OAI-SearchBot',
+                    'Google-Extended', 'Applebot-Extended'];
+
+    /* one hit test, so the selftest checks the same maths the game runs */
+    function boxHit(bx, by, ax, ay, pad) {
+      return bx + 4 > ax - 6 - pad && bx - 4 < ax + 6 + pad &&
+             by + 6 > ay - 20 - pad && by     < ay -  2 + pad;
+    }
+
+    /* index the records that already live in the document */
     var RECS = {};
     [].forEach.call(document.querySelectorAll('.rec'), function (a) {
       var b = a.querySelector('.rec__title b');
       if (b) RECS[b.textContent.trim()] = a;
     });
 
-    function groundAt(x) {
-      for (var i = 0; i < HILLS.length; i++) {
-        if (x >= HILLS[i][0] && x <= HILLS[i][1]) return FLOOR - HILLS[i][2];
-      }
-      return FLOOR;
-    }
-    function chapterAt(x) {
-      var c = CHAPTERS[0];
-      for (var i = 1; i < CHAPTERS.length; i++) if (x >= CHAPTERS[i].x) c = CHAPTERS[i];
+    /* ---------- pixel sprites, baked once so nothing costs per-pixel work ---------- */
+    function bake(rows, pal) {
+      var c = document.createElement('canvas');
+      c.width = rows[0].length; c.height = rows.length;
+      var x = c.getContext('2d');
+      for (var r = 0; r < rows.length; r++)
+        for (var i = 0; i < rows[r].length; i++) {
+          var ch = rows[r][i];
+          if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, r, 1, 1); }
+        }
       return c;
     }
 
-    var stat   = document.getElementById('jn-stat');
-    var chEl   = document.getElementById('jn-ch');
-    var noteEl = document.getElementById('jn-note');
-    var pgEl   = document.getElementById('jn-pg');
-    var cue    = document.getElementById('jn-cue');
-    var veil   = document.getElementById('jn-veil');
-    var goBtn  = document.getElementById('jn-go');
-    var panel  = document.getElementById('jn-panel');
-    var body   = document.getElementById('jn-body');
-    var xBtn   = document.getElementById('jn-x');
-    var live   = document.getElementById('jn-live');
+    /* 최희준 — 안경(앰버) · 가방(블루) · 재킷(아이보리). 14 x 20 */
+    /* hair has to clear the near-black sky or the silhouette loses its head */
+    var PAL = { h:'#4E4E5C', f:'#E6D9C4', G:'#FFAE1A', j:'#DEDCD6',
+                b:'#6E8BB5', p:'#7E7C76', s:'#4C4A46' };
+    var BODY = [
+      '....hhhhhh....',
+      '...hhhhhhhh...',
+      '...hffffffh...',
+      '....GGfGGf....',
+      '....ffffff....',
+      '.....ffff.....',
+      '....jjjjjj....',
+      '..bjjjjjjjj...',
+      '..bbjjjjjjj...',
+      '..bbbjjjjjj...',
+      '..bbbjjjjjj...',
+      '...jjjjjjjj...',
+      '...jjjjjjjj...',
+      '...jjjjjjjj...',
+      '...pppppppp...'
+    ];
+    var LEGS = [
+      ['....pp..pp....','....pp..pp....','....pp..pp....','...sss..sss...','...sss..sss...'],
+      ['....pp..pp....','...pp....pp...','..pp......pp..','.sss......sss.','.sss......sss.'],
+      ['....pp..pp....','....pp..pp....','....pp..pp....','...sss..sss...','...sss..sss...'],
+      ['....pp..pp....','...pp....pp...','...pp....pp...','..sss....sss..','..sss....sss..']
+    ];
+    var HERO = LEGS.map(function (l) { return bake(BODY.concat(l), PAL); });
 
-    var p = { x: 30, y: FLOOR, face: 1, anim: 0 };
-    var keys = { l: false, r: false };
-    var cam = 0, seen = 0, running = false, ended = false, raf = 0, last = 0, tick = 0;
+    var BOT = bake([
+      '.X....X.',
+      '..XXXX..',
+      '.XXXXXX.',
+      'XX.XX.XX',
+      '.X.XX.X.',
+      'X..XX..X'
+    ], { X: '#FFAE1A' });
+    var BOT_D = bake([
+      '.X....X.',
+      '..XXXX..',
+      '.XXXXXX.',
+      'XX.XX.XX',
+      '.X.XX.X.',
+      'X..XX..X'
+    ], { X: '#4A4A58' });
 
-    /* decor is generated once so the skyline never shimmers between frames */
-    var STARS = [], FAR = [], MID = [];
-    (function () {
-      var i;
-      for (i = 0; i < 110; i++) STARS.push([Math.random() * WORLD, 6 + Math.random() * 74]);
-      for (i = 0; i < 70; i++)  FAR.push([Math.random() * WORLD, 22 + Math.random() * 34]);
-      for (i = 0; i < 90; i++)  MID.push([Math.random() * WORLD, 10 + Math.random() * 24]);
+    /* a sign on a post, not a tile on the floor — planted at your feet it would
+       sit entirely behind the walker and you would never see what you published */
+    function pageSprite(edge, fill) {
+      return bake([
+        'PPPPPPPP',
+        'PLLLLLLP',
+        'PLLLLLLP',
+        'PLLLLLLP',
+        'PLLLLLLP',
+        'PLLLLLLP',
+        'PLLLLLLP',
+        'PPPPPPPP',
+        '...PP...',
+        '...PP...',
+        '...PP...',
+        '...PP...',
+        '...PP...',
+        '...PP...'
+      ], { P: edge, L: fill });
+    }
+    var PAGE_H = 14;
+    var PAGE  = pageSprite('#FFAE1A', '#4A3407');
+    var PAGE_C= pageSprite('#F2F1ED', '#6B5310');
+    var PAGE_R= pageSprite('#55545C', '#1B1B21');
+
+    var VIS  = bake(['.vvv.','.vvv.','vvvvv','vvvvv','vvvvv','.v.v.','.v.v.','.v.v.'], { v:'#55545C' });
+    var VIS2 = bake(['.vvv.','.vvv.','vvvvv','vvvvv','vvvvv','.v.v.','.v.v.','.v.v.'], { v:'#6E8BB5' });
+
+    /* ---------- prologue: the crown-of-the-head view ----------
+       Seen from above you get heads, and in a crowd every head looks the same.
+       That is the whole point of opening here: identical crowns drifting one way
+       and a single one peeling off. A side view cannot show a fork in the road. */
+    var TDW = 1400, ROAD_Y = 84, ROAD_H = 32, FORK_X = 900, ROAD_END = 1320;
+    var TD_SPEED = 92, CROWD_SPEED = 80, TILT = 1.15;
+
+    /* Filled, not ringed: a dark crown inside a light rim reads as a washer at
+       9px, not a head. Keep the hair close in value to the coat so the shape
+       stays one mass and only the facing pip carries direction. */
+    function topSprite(coat, hair) {
+      return bake([
+        '...ccc...',
+        '.ccccccc.',
+        '.cchhhcc.',
+        'cchhhhhcc',
+        'cchhhhhcc',
+        'cchhhhhcc',
+        '.cchhhcc.',
+        '.ccccccc.',
+        '...ccc...'
+      ], { c: coat, h: hair });
+    }
+    var TD_ME   = topSprite('#DEDCD6', '#B4B0A7');
+    var TD_THEM = topSprite('#4A4A58', '#3A3A46');
+
+    /* the dirt track that branches down and away from the paved road */
+    function dirtY(x) {
+      if (x < FORK_X) return null;
+      if (x > FORK_X + 250) return 176;
+      return 116 + (x - FORK_X) / 250 * 60;
+    }
+    /* Leaving is deliberately generous: anywhere clear of the tarmac past the
+       fork counts. The track is drawn to pull your eye down, not to be a
+       tightrope — a 28px band means walking a bit too far down misses the turn
+       entirely and you just trudge to the dead end wondering what you did wrong. */
+    function offRoad(x, y) { return x > FORK_X + 140 && y > ROAD_Y + ROAD_H + 22; }
+
+    /* lantern falloff, baked — a fresh radial gradient every frame is wasteful */
+    var GLOW = (function () {
+      var c = document.createElement('canvas'); c.width = c.height = 168;
+      var x = c.getContext('2d');
+      var gr = x.createRadialGradient(84, 84, 3, 84, 84, 84);
+      gr.addColorStop(0,   'rgba(255,174,26,.22)');
+      gr.addColorStop(.5,  'rgba(255,174,26,.06)');
+      gr.addColorStop(1,   'rgba(255,174,26,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 168, 168);
+      return c;
     })();
 
+    /* ---------- world queries ---------- */
+    function groundAt(x) {
+      for (var i = 0; i < HILLS.length; i++)
+        if (x >= HILLS[i][0] && x <= HILLS[i][1]) return FLOOR - HILLS[i][2];
+      return FLOOR;
+    }
+    /* platforms only catch you on the way down; the ground always catches */
+    function landAt(x, prevB, nextB, vy) {
+      if (vy >= 0) {
+        for (var i = 0; i < PLATS.length; i++) {
+          var pl = PLATS[i];
+          if (x + 5 < pl[0] || x - 5 > pl[0] + pl[2]) continue;
+          if (prevB <= pl[1] + 1 && nextB >= pl[1]) return pl[1];
+        }
+      }
+      var gy = groundAt(x);
+      return nextB >= gy ? gy : null;
+    }
+    function actAt(x) {
+      var a = ACTS[0];
+      for (var i = 1; i < ACTS.length; i++) if (x >= ACTS[i].x) a = ACTS[i];
+      return a;
+    }
+
+    /* ---------- dom ---------- */
+    var stat  = document.getElementById('jn-stat');
+    var chEl  = document.getElementById('jn-ch');
+    var noteEl= document.getElementById('jn-note');
+    var cue   = document.getElementById('jn-cue');
+    var tickEl= document.getElementById('jn-tick');
+    var veil  = document.getElementById('jn-veil');
+    var goBtn = document.getElementById('jn-go');
+    var panel = document.getElementById('jn-panel');
+    var body  = document.getElementById('jn-body');
+    var xBtn  = document.getElementById('jn-x');
+    var live  = document.getElementById('jn-live');
+    var banner= document.getElementById('jn-banner');
+    var bName = document.getElementById('jn-b-name');
+    var bLine = document.getElementById('jn-b-line');
+    var bVerb = document.getElementById('jn-b-verb');
+    var padPlant = document.getElementById('jn-pad-plant');
+    var padUp    = document.getElementById('jn-pad-up');
+
+    /* the pad keys change meaning at the handover: in the prologue up/down are
+       movement (and DOWN is how you take the fork — disabling it there strands
+       every touch player on the road forever), afterwards they are verbs */
+    function padLabels() {
+      var side = mode === 'side';
+      if (padUp)    padUp.textContent    = side ? '▲ 점프' : '▲ 위';
+      if (padPlant) {
+        padPlant.textContent = side ? '▼ 발행' : '▼ 아래';
+        padPlant.disabled = side && !have.plant;
+      }
+    }
+    var GAUGE = {
+      lost:  document.getElementById('jn-g-lost'),
+      crawl: document.getElementById('jn-g-crawl'),
+      page:  document.getElementById('jn-g-page'),
+      cite:  document.getElementById('jn-g-cite'),
+      sov:   document.getElementById('jn-g-sov')
+    };
+
+    /* the crown view is frozen into this the moment you leave the road, then
+       squashed toward the horizon while the side view rises underneath */
+    var tdSnap = document.createElement('canvas');
+    tdSnap.width = W; tdSnap.height = H;
+    var tdCtx = tdSnap.getContext('2d');
+
+    /* ---------- state ---------- */
+    var p, have, stats, pages, bots, visitors, rivals, pops, spark, sparkAt, sparkLast;
+    var cam, running, ended, raf, last, clock, wallBump, plantCd, got;
+    var mode, td, tiltT;
+    var keys = { l: false, r: false, u: false, d: false };
+
+    function reset() {
+      p = { x: 26, y: FLOOR, vy: 0, face: 1, anim: 0, grounded: true };
+      have = {};
+      stats = { lost: 0, crawl: 0, pages: 0, cited: 0 };
+      pages = []; pops = []; spark = []; sparkAt = 0; sparkLast = 0;
+      cam = 0; running = false; ended = false; clock = 0;
+      wallBump = 0; plantCd = 0; got = 0;
+      keys.l = keys.r = keys.u = keys.d = false;
+
+      /* prologue: everyone on the same road, walking the same way */
+      mode = 'top'; tiltT = 0;
+      td = { x: 40, y: 100, face: 1, crowd: [], beat: 0, gate: 0 };
+      for (var ci2 = 0; ci2 < 7; ci2++)
+        td.crowd.push({ x: 4 + ci2 * 21, y: ROAD_Y + 7 + (ci2 * 11) % 19,
+                        sp: CROWD_SPEED - 4 + (ci2 % 5) * 2, gone: 0 });
+
+      bots = [];
+      for (var i = 0; i < 14; i++) bots.push(respawn({}, 40 + i * 120));
+
+      /* act 1: visitors walking the same road, who leave one by one */
+      visitors = [];
+      for (i = 0; i < 14; i++)
+        visitors.push({ x: 70 + i * 30, y: FLOOR, gone: 0, arrival: false });
+
+      /* act 5: the mirror — foreign visitors walking in toward the clinic */
+      for (i = 0; i < 10; i++)
+        visitors.push({ x: GATEX + 40 + i * 26, y: FLOOR, gone: 0, arrival: true });
+
+      /* competitors, invisible until the radar */
+      rivals = [];
+      for (i = 0; i < 16; i++) {
+        var rx = 1900 + i * 78;
+        rivals.push({ x: rx, y: groundAt(rx) });
+      }
+      TOOLS.forEach(function (t) { t.taken = false; });
+      for (var k in GAUGE) GAUGE[k].hidden = true;   /* nothing to count yet */
+      padLabels();
+    }
+
+    function respawn(b, x) {
+      /* keep the re-entry short: in act 3 crawlers are consumed by pages, and a
+         long off-screen spawn gap makes the traffic look like it stopped */
+      b.x = x !== undefined ? x : cam + W + 8 + Math.random() * 150;
+      b.lane = (Math.random() * LANES.length) | 0;
+      b.y = LANES[b.lane];
+      b.vx = -(26 + Math.random() * 30);
+      b.name = AI_NAMES[(Math.random() * AI_NAMES.length) | 0];
+      b.wob = Math.random() * 6.283;
+      b.dead = 0;
+      b.target = null;
+      return b;
+    }
+
+    /* ---------- feedback ---------- */
+    var tickT = 0;
+    function say(msg, announce) {
+      tickEl.textContent = msg;
+      tickEl.classList.add('on');
+      tickT = clock + 2.2;
+      if (announce) live.textContent = msg;
+    }
+    function pop(x, y, text) {
+      if (pops.length > 18) pops.shift();
+      pops.push({ x: x, y: y, t: 0, text: text });
+    }
+
+    var bannerT = 0;
+    function pickup(t) {
+      t.taken = true;
+      have[t.grant] = true;
+      got++;
+      bName.textContent = t.rec;
+      bLine.textContent = '“' + t.line + '”';
+      bVerb.textContent = t.verb;
+      banner.classList.add('on');
+      bannerT = clock + 4.2;
+
+      if (t.grant === 'lantern') { GAUGE.crawl.hidden = false; GAUGE.lost.hidden = true; }
+      if (t.grant === 'plant')   { GAUGE.page.hidden = false; GAUGE.cite.hidden = false;
+                                   padLabels(); }
+      if (t.grant === 'radar')   GAUGE.sov.hidden = false;
+      if (t.grant === 'clinic')  finish();
+      live.textContent = t.rec + ' 획득 — ' + t.verb;
+    }
+
+    /* ---------- verbs ---------- */
+    function jump() {
+      if (!running || !p.grounded) return;
+      p.vy = JUMPV; p.grounded = false;
+    }
+    function plant() {
+      if (!running) return;
+      if (!have.plant) { say('아직 발행할 수 없습니다 — 3막에서 aeo_sync를 줍습니다'); return; }
+      if (plantCd > 0 || pages.length >= 44) return;
+      /* in front of you, so you actually see it appear */
+      var nx = p.x + 12 * (p.face < 0 ? -1 : 1);
+      for (var qi = 0; qi < pages.length; qi++) {
+        if (Math.abs(pages[qi].x - nx) < 18) {
+          say('같은 자리에는 다시 발행할 수 없습니다 — 걸으면서 발행하세요');
+          return;
+        }
+      }
+      plantCd = .32;
+      pages.push({ x: nx, y: groundAt(nx), cited: 0, cool: 0, sub: !!have.sub });
+      stats.pages++;
+      pop(nx, groundAt(nx) - 22, '발행');
+      /* the quality gate is in the pipeline, not after it */
+      if (stats.pages % 4 === 0) say('감수 통과 — reviewedBy 주입', false);
+    }
+
+    /* ---------- simulation ---------- */
+    /* radius has to clear the spawn distance (bots enter ~240-420px ahead of the
+       player) or nothing ever locks on and no page is ever cited.
+       a page on re-crawl cooldown is skipped, so standing on six pages farms a
+       trickle while publishing more is what actually raises the number. */
+    function nearestPage(x) {
+      var best = null, bd = 1e9;
+      for (var i = 0; i < pages.length; i++) {
+        if (pages[i].cool > 0) continue;
+        var d = Math.abs(pages[i].x - x);
+        if (d < bd) { bd = d; best = pages[i]; }
+      }
+      return bd < 380 ? best : null;
+    }
+
+    /* ---------- prologue simulation ---------- */
+    function stepTop(dt) {
+      clock += dt;
+      var dx = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
+      var dy = (keys.d ? 1 : 0) - (keys.u ? 1 : 0);
+      if (dx || dy) {
+        var n = (dx && dy) ? .7071 : 1;
+        td.x += dx * TD_SPEED * n * dt;
+        td.y += dy * TD_SPEED * n * dt;
+        if (dx) td.face = dx;
+      }
+      td.x = Math.max(10, Math.min(ROAD_END + 30, td.x));
+      td.y = Math.max(12, Math.min(H - 14, td.y));
+
+      /* they keep going. past the end of the tarmac they simply are not there. */
+      for (var i = 0; i < td.crowd.length; i++) {
+        var c = td.crowd[i];
+        c.x += c.sp * dt;
+        if (c.x > ROAD_END && !c.gone) c.gone = clock;
+      }
+
+      cam = Math.max(0, Math.min(TDW - W, td.x - W * .42));
+
+      if (td.beat === 0) { say('다들 같은 것을 팔고 있었습니다 — 검색 순위.', true); td.beat = 1; }
+      else if (td.beat === 1 && td.x > 330) { say('그 검색에서 트래픽이 빠지기 시작했습니다.', true); td.beat = 2; }
+      else if (td.beat === 2 && td.x > 640) { say('다들 하던 대로 계속 갔습니다.', true); td.beat = 3; }
+      else if (td.beat === 3 && td.x > FORK_X - 80) { say('여기서 길이 갈립니다 — ↓ 아래로.', true); td.beat = 4; }
+
+      if (td.x > ROAD_END - 70 && !offRoad(td.x, td.y) && clock > td.gate) {
+        td.gate = clock + 4;
+        say('포장된 길은 여기까지입니다 — 아래로 갈라진 길을 보세요.', true);
+      }
+
+      if (offRoad(td.x, td.y)) { leaveTheRoad(); return; }
+      hud();
+    }
+
+    function leaveTheRoad() {
+      drawTop(tdCtx);                 /* freeze the crown view for the tilt */
+      mode = 'tilt'; tiltT = 0;
+      /* deliberately does NOT clear the held keys. The tilt reads no input, so
+         clearing bought nothing and cost a dead zone: the physical key is still
+         down, no fresh keydown arrives until OS auto-repeat (~0.5s), and the
+         walker stands still through the handover — right at the pivot of the
+         whole piece. Holding right now carries straight into the side view. */
+      live.textContent = '포장도로를 벗어났습니다. 시점이 옆으로 눕습니다.';
+    }
+
+    function stepTilt(dt) {
+      clock += dt;
+      tiltT += dt;
+      if (tiltT >= TILT) {
+        mode = 'side';
+        GAUGE.lost.hidden = false;
+        padLabels();
+        bName.textContent = '혼자';
+        bLine.textContent = '"같이 시작했지만, 같은 길로는 갈 수 없었습니다."';
+        bVerb.textContent = '이제 옆에서 봅니다 — ← → 걷기 · ↑ 점프';
+        banner.classList.add('on');
+        bannerT = clock + 4.5;
+      }
+      hud();
+    }
+
+    function step(dt) {
+      if (mode === 'top')  return stepTop(dt);
+      if (mode === 'tilt') return stepTilt(dt);
+      clock += dt;
+      if (plantCd > 0) plantCd -= dt;
+      for (var ci = 0; ci < pages.length; ci++)
+        if (pages[ci].cool > 0) pages[ci].cool -= dt;
+
+      /* --- walk --- */
+      var dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
+      if (dir) { p.x += dir * SPEED * dt; p.face = dir; p.anim += dt * 9; }
+      p.x = Math.max(8, Math.min(WORLD - 8, p.x));
+
+      /* --- the border holds until NetTier --- */
+      if (!have.gate && p.x > GATEX - 12) {
+        p.x = GATEX - 12;
+        if (clock > wallBump) {
+          wallBump = clock + 3;
+          say('국경 — 다국어 없이는 넘어갈 수 없습니다', true);
+        }
+      }
+
+      /* --- gravity, ledges --- */
+      var prevB = p.y;
+      p.vy += GRAV * dt;
+      var nextB = p.y + p.vy * dt;
+      var s = landAt(p.x, prevB, nextB, p.vy);
+      if (s !== null && p.vy >= 0) { p.y = s; p.vy = 0; p.grounded = true; }
+      else { p.y = nextB; p.grounded = false; }
+      if (p.grounded) {                       /* walking up a slope shouldn't drop you */
+        var up = landAt(p.x, p.y, p.y + 1, 1);
+        if (up !== null && up < p.y && p.y - up <= 16) p.y = up;
+      }
+      if (p.y > H + 40) { p.y = groundAt(p.x); p.vy = 0; }
+
+      cam = Math.max(0, Math.min(WORLD - W, p.x - W * .42));
+
+      /* --- act 1: they leave, and there is nothing you can do --- */
+      var i, v, b;
+      for (i = 0; i < visitors.length; i++) {
+        v = visitors[i];
+        if (v.arrival) {
+          if (have.gate && v.x < CLINIC - 6) v.x += 15 * dt;
+          continue;
+        }
+        if (!v.gone && p.x > v.x + 22) {
+          v.gone = clock;
+          stats.lost++;
+          if (!have.lantern) say('방문자 이탈 — 검색 대신 AI에게 물었습니다');
+        }
+      }
+
+      /* --- crawlers --- */
+      for (i = 0; i < bots.length; i++) {
+        b = bots[i];
+        if (b.dead) {
+          b.dead -= dt;
+          if (b.dead <= 0) respawn(b);
+          continue;
+        }
+        b.x += b.vx * dt;
+
+        /* once pages exist, the traffic comes to you instead. a bot commits to
+           its target so it still lands after the camera has moved on. */
+        var t = null;
+        if (have.plant) {
+          if (b.target && b.target.cool > 0) b.target = null;
+          if (!b.target) b.target = nearestPage(b.x);
+          t = b.target;
+        }
+        if (t) {
+          /* hover ABOVE the page, clear of a standing player's hitbox — else
+             every diving bot is intercepted by your own body and nothing is
+             ever cited. stand still and citations accrue; jump and you steal
+             them back as measurements. that trade is the act-3 game. */
+          b.x += (t.x - b.x) * 2.8 * dt;
+          b.y += (t.y - HOVER - b.y) * 3.2 * dt;
+          if (Math.abs(t.x - b.x) < 8 && Math.abs(t.y - HOVER - b.y) < 8) {
+            t.cited++; t.cool = RECRAWL; stats.cited++;
+            pop(t.x, t.y - 30, '인용 +1');
+            b.dead = .8; continue;
+          }
+        } else {
+          /* NOT an else-less assignment: writing b.y every frame would undo the
+             convergence above and no page would ever be cited */
+          b.y = LANES[b.lane] + Math.sin(clock * 2.2 + b.wob) * 3;
+        }
+        if (b.x < cam - 150 || b.x > cam + W + 340) { respawn(b); continue; }
+
+        /* --- measure: only possible once you carry the lantern --- */
+        if (have.lantern) {
+          if (boxHit(b.x, b.y, p.x, p.y, have.idem ? 5 : 0)) {
+            stats.crawl++;
+            pop(b.x, b.y - 4, '+1');
+            say(b.name + ' 계측 · GA에는 안 잡히는 트래픽', false);
+            b.dead = .6;
+          }
+        }
+      }
+
+      /* --- pickups --- */
+      for (i = 0; i < TOOLS.length; i++) {
+        if (!TOOLS[i].taken && Math.abs(TOOLS[i].x - p.x) < REACH &&
+            Math.abs(groundAt(TOOLS[i].x) - p.y) < 34) pickup(TOOLS[i]);
+      }
+
+      /* --- pops --- */
+      for (i = pops.length - 1; i >= 0; i--) {
+        pops[i].t += dt;
+        if (pops[i].t > 1) pops.splice(i, 1);
+      }
+
+      /* --- kpi trace: rate, not running total. a cumulative series only ever
+             rises, so every bar pins to max and the chart reads as a solid block */
+      if (have.kpi && clock > sparkAt) {
+        sparkAt = clock + .7;
+        var tot = stats.crawl + stats.cited;
+        spark.push(tot - sparkLast);
+        sparkLast = tot;
+        if (spark.length > 30) spark.shift();
+      }
+
+      if (!ended && p.x >= WORLD - 30) finish();
+      hud();
+    }
+
+    function sov() {
+      var mine = 0, theirs = 0, i;
+      for (i = 0; i < pages.length; i++)
+        if (pages[i].x > cam - 120 && pages[i].x < cam + W + 120) mine++;
+      for (i = 0; i < rivals.length; i++)
+        if (rivals[i].x > cam - 120 && rivals[i].x < cam + W + 120) theirs++;
+      return mine + theirs ? Math.round(mine / (mine + theirs) * 100) : 0;
+    }
+
+    /* ---------- render ---------- */
+    var STARS = [], FAR = [], MID = [], SCRUB = [];
+    (function () {
+      var i;
+      for (i = 0; i < 130; i++) STARS.push([Math.random() * WORLD, 6 + Math.random() * 92]);
+      for (i = 0; i < 80; i++)  FAR.push([Math.random() * WORLD, 26 + Math.random() * 40]);
+      for (i = 0; i < 100; i++) MID.push([Math.random() * WORLD, 12 + Math.random() * 28]);
+      for (i = 0; i < 260; i++) SCRUB.push([Math.random() * TDW, 8 + Math.random() * 200]);
+    })();
     function px(n) { return n | 0; }
 
+    /* ---------- prologue render (takes a context so the tilt can freeze it) ---------- */
+    function drawTop(c) {
+      var i, sx, wx;
+
+      c.fillStyle = '#0C0C11'; c.fillRect(0, 0, W, H);
+
+      c.fillStyle = '#1A1A23';
+      for (i = 0; i < SCRUB.length; i++) {
+        sx = SCRUB[i][0] - cam;
+        if (sx > -4 && sx < W) c.fillRect(px(sx), px(SCRUB[i][1]), 2 + (i % 2), 1);
+      }
+
+      /* the paved road */
+      for (sx = 0; sx < W; sx++) {
+        wx = (cam + sx) | 0;
+        if (wx > ROAD_END) continue;
+        c.fillStyle = '#1E1E27'; c.fillRect(sx, ROAD_Y, 1, ROAD_H);
+        c.fillStyle = '#33333E';
+        c.fillRect(sx, ROAD_Y, 1, 1);
+        c.fillRect(sx, ROAD_Y + ROAD_H - 1, 1, 1);
+        if (wx % 18 < 9) { c.fillStyle = '#4A4A58'; c.fillRect(sx, ROAD_Y + 15, 1, 1); }
+      }
+      /* breaking up past the fork. punched as scattered holes, not as skipped
+         columns — a skipped column is a full-height slit and reads as railings. */
+      for (var hx = FORK_X; hx < ROAD_END; hx += 6) {
+        if (((hx * 37) % 100) / 100 > (hx - FORK_X) / (ROAD_END - FORK_X) * .95) continue;
+        sx = hx - cam;
+        if (sx < -10 || sx > W + 10) continue;
+        c.fillStyle = '#0E0E13';
+        c.fillRect(px(sx), ROAD_Y + 2 + (hx * 53) % (ROAD_H - 8),
+                   3 + (hx * 29) % 5, 2 + (hx * 17) % 4);
+      }
+
+      /* the track that branches down */
+      for (sx = 0; sx < W; sx++) {
+        wx = (cam + sx) | 0;
+        var dy0 = dirtY(wx);
+        if (dy0 === null || wx > TDW) continue;
+        c.fillStyle = '#191721'; c.fillRect(sx, px(dy0) - 9, 1, 18);
+        if ((wx * 13) % 11 < 3) { c.fillStyle = '#2C2936'; c.fillRect(sx, px(dy0) - 6 + (wx % 9), 1, 1); }
+      }
+
+      /* the billboards everyone on this road is selling — dark past the fork */
+      for (var s0 = 130; s0 < ROAD_END; s0 += 145) {
+        sx = s0 - cam;
+        if (sx < -16 || sx > W + 16) continue;
+        var dead = s0 > FORK_X;
+        c.fillStyle = '#26262F'; c.fillRect(px(sx), ROAD_Y - 15, 1, 15);
+        c.fillStyle = dead ? '#1B1B23' : '#2E2E39'; c.fillRect(px(sx) - 7, ROAD_Y - 26, 15, 12);
+        c.fillStyle = dead ? '#2A2A34' : '#7E7C76';
+        c.fillRect(px(sx) - 5, ROAD_Y - 23, 11, 1);
+        c.fillRect(px(sx) - 5, ROAD_Y - 21, 7, 1);
+        c.fillRect(px(sx) - 5, ROAD_Y - 19, 10, 1);
+        /* a kerbstone on the far side, so the lower half is not blank */
+        c.fillStyle = '#1C1C25';
+        c.fillRect(px(sx) - 2, ROAD_Y + ROAD_H + 12, 5, 3);
+      }
+
+      /* the fork itself, marked in the one colour that means "mine" */
+      sx = FORK_X - cam;
+      if (sx > -30 && sx < W + 30) {
+        c.fillStyle = '#FFAE1A';
+        c.fillRect(px(sx), ROAD_Y + ROAD_H, 1, 10);
+        c.fillRect(px(sx) - 3, ROAD_Y + ROAD_H + 8, 7, 1);
+        c.fillRect(px(sx) - 2, ROAD_Y + ROAD_H + 9, 5, 1);
+        c.fillRect(px(sx) - 1, ROAD_Y + ROAD_H + 10, 3, 1);
+      }
+
+      /* the others */
+      for (i = 0; i < td.crowd.length; i++) {
+        var cr = td.crowd[i];
+        sx = cr.x - cam;
+        if (sx < -10 || sx > W + 10) continue;
+        var a = 1;
+        if (cr.gone) { a = Math.max(0, 1 - (clock - cr.gone) / 1.3); if (a <= 0) continue; }
+        c.globalAlpha = a;
+        c.drawImage(TD_THEM, px(sx) - 4, px(cr.y) - 4);
+        c.fillStyle = '#63626C'; c.fillRect(px(sx) + 5, px(cr.y) - 1, 3, 2);
+        c.globalAlpha = 1;
+      }
+
+      /* me */
+      sx = td.x - cam;
+      c.drawImage(TD_ME, px(sx) - 4, px(td.y) - 4);
+      c.fillStyle = '#FFAE1A';
+      c.fillRect(px(sx) + (td.face < 0 ? -8 : 5), px(td.y) - 1, 3, 2);
+    }
+
     function draw() {
+      if (mode === 'top') { drawTop(g); return; }
+      drawSide();
+      if (mode === 'tilt') {
+        /* the frozen crown view folds down onto the horizon */
+        var t = Math.min(1, tiltT / TILT);
+        g.globalAlpha = 1 - t * t;
+        g.drawImage(tdSnap, 0, 0, W, H, 0, (FLOOR - 34) * t, W, Math.max(1, H * (1 - t)));
+        g.globalAlpha = 1;
+      }
+    }
+
+    function drawSide() {
+      var i, sx, y;
+
       g.fillStyle = '#0B0B10'; g.fillRect(0, 0, W, H);
 
-      var i, sx;
       g.fillStyle = '#1C1C26';
       for (i = 0; i < STARS.length; i++) {
         sx = STARS[i][0] - cam * .12;
         if (sx > -2 && sx < W) g.fillRect(px(sx), px(STARS[i][1]), 1, 1);
       }
-      g.fillStyle = '#121218';
+      g.fillStyle = '#15151D';
       for (i = 0; i < FAR.length; i++) {
-        sx = FAR[i][0] - cam * .35;
-        if (sx > -20 && sx < W) g.fillRect(px(sx), FLOOR - px(FAR[i][1]), 13, px(FAR[i][1]));
+        sx = FAR[i][0] - cam * .34;
+        if (sx > -20 && sx < W) g.fillRect(px(sx), FLOOR - px(FAR[i][1]), 14, px(FAR[i][1]));
       }
-      g.fillStyle = '#181820';
+      g.fillStyle = '#1D1D27';
       for (i = 0; i < MID.length; i++) {
-        sx = MID[i][0] - cam * .62;
+        sx = MID[i][0] - cam * .60;
         if (sx > -16 && sx < W) g.fillRect(px(sx), FLOOR - px(MID[i][1]), 9, px(MID[i][1]));
       }
 
-      /* terrain, one screen column at a time */
+      /* terrain, with strata so the soil band reads as ground and not as a slab */
       for (sx = 0; sx < W; sx++) {
-        var gy = groundAt(cam + sx);
-        g.fillStyle = '#20202A'; g.fillRect(sx, gy, 1, H - gy);
-        g.fillStyle = '#3A3A48'; g.fillRect(sx, gy, 1, 1);
+        y = groundAt(cam + sx);
+        var wx0 = (cam + sx) | 0;
+        g.fillStyle = '#20202A'; g.fillRect(sx, y, 1, H - y);
+        g.fillStyle = '#3A3A48'; g.fillRect(sx, y, 1, 1);
+        g.fillStyle = '#1A1A22'; g.fillRect(sx, y + 7, 1, 1);
+        if (wx0 % 9 < 4) g.fillRect(sx, y + 15, 1, 1);
+        if (wx0 % 23 < 2) g.fillRect(sx, y + 24, 1, 2);
+      }
+      /* ledges */
+      for (i = 0; i < PLATS.length; i++) {
+        sx = PLATS[i][0] - cam;
+        if (sx > W || sx + PLATS[i][2] < 0) continue;
+        g.fillStyle = '#20202A'; g.fillRect(px(sx), PLATS[i][1], PLATS[i][2], 4);
+        g.fillStyle = '#3A3A48'; g.fillRect(px(sx), PLATS[i][1], PLATS[i][2], 1);
       }
 
-      /* chapter posts */
-      for (i = 0; i < CHAPTERS.length; i++) {
-        sx = CHAPTERS[i].x - cam;
-        if (sx < -8 || sx > W + 8) continue;
-        var cy = groundAt(CHAPTERS[i].x);
+      /* act markers */
+      for (i = 0; i < ACTS.length; i++) {
+        sx = ACTS[i].x - cam;
+        if (sx < -10 || sx > W + 10) continue;
+        y = groundAt(ACTS[i].x);
         g.fillStyle = '#6E8BB5';
-        g.fillRect(px(sx), cy - 16, 1, 16);
-        g.fillRect(px(sx), cy - 16, 7, 4);
+        g.fillRect(px(sx), y - 20, 1, 20);
+        g.fillRect(px(sx), y - 20, 8, 4);
       }
 
-      /* stations */
-      for (i = 0; i < STOPS.length; i++) {
-        var s = STOPS[i];
-        sx = s.x - cam;
-        if (sx < -24 || sx > W + 24) continue;
-        var y = groundAt(s.x), col = s.seen ? '#4A4A58' : '#FFAE1A';
-        g.fillStyle = '#14141B'; g.fillRect(px(sx) - 5, y - 24, 11, 24);
-        g.fillStyle = col;
-        g.fillRect(px(sx) - 5, y - 24, 11, 2);
-        g.fillRect(px(sx) - 1, y - 21, 3, 19);
-        if (!s.seen) {
-          g.globalAlpha = .18 + .16 * Math.sin(tick * 3 + i);
-          g.fillRect(px(sx) - 1, 0, 3, y - 24);
-          g.globalAlpha = 1;
+      /* the border wall */
+      sx = GATEX - cam;
+      if (sx > -30 && sx < W + 30) {
+        y = groundAt(GATEX);
+        g.fillStyle = '#2B2B36'; g.fillRect(px(sx) - 6, 40, 12, y - 40);
+        g.fillStyle = '#3A3A48'; g.fillRect(px(sx) - 6, 40, 12, 2);
+        if (have.gate) {                       /* opened: an amber doorway */
+          g.fillStyle = '#0B0B10'; g.fillRect(px(sx) - 5, y - 40, 10, 40);
+          g.fillStyle = '#FFAE1A';
+          g.fillRect(px(sx) - 5, y - 40, 10, 2);
+          g.fillRect(px(sx) - 5, y - 40, 1, 40);
+          g.fillRect(px(sx) + 4, y - 40, 1, 40);
         }
       }
 
-      /* walker */
-      var wx = px(p.x - cam), wy = px(p.y), f = (p.anim | 0) % 2;
-      g.fillStyle = '#F2F1ED';
-      g.fillRect(wx - 3, wy - 16, 6, 5);
-      g.fillRect(wx - 3, wy - 11, 6, 7);
-      g.fillStyle = '#FFAE1A';
-      g.fillRect(wx - 3, wy - 12, 6, 2);
-      g.fillStyle = '#F2F1ED';
-      if (f) { g.fillRect(wx - 3, wy - 4, 2, 4); g.fillRect(wx + 1, wy - 4, 2, 4); }
-      else   { g.fillRect(wx - 2, wy - 4, 2, 4); g.fillRect(wx,     wy - 4, 2, 4); }
-    }
-
-    function hud() {
-      var c = chapterAt(p.x);
-      if (chEl.textContent !== c.name) {
-        chEl.textContent = c.name;
-        noteEl.textContent = c.note;
-        live.textContent = c.name + ' — ' + c.note;
+      /* the clinic at the far end — the mirror of act 1: people walking in */
+      sx = CLINIC - cam;
+      if (sx > -60 && sx < W + 60) {
+        y = groundAt(CLINIC);
+        var lit = have.gate ? '#FFAE1A' : '#33333E';
+        g.fillStyle = '#14141B'; g.fillRect(px(sx) - 22, y - 42, 44, 42);
+        g.fillStyle = '#2B2B36'; g.fillRect(px(sx) - 25, y - 46, 50, 4);
+        g.fillStyle = lit;
+        for (var wi = 0; wi < 3; wi++)
+          for (var wj = 0; wj < 2; wj++)
+            g.fillRect(px(sx) - 16 + wi * 12, y - 37 + wj * 11, 6, 6);
+        g.fillStyle = '#0B0B10'; g.fillRect(px(sx) - 5, y - 14, 10, 14);
+        g.fillStyle = lit; g.fillRect(px(sx) - 5, y - 14, 10, 1);
       }
-      pgEl.textContent = seen + ' / ' + STOPS.length;
-      stat.textContent = seen + ' / ' + STOPS.length + ' 정거장 · ' +
-        Math.round(p.x / WORLD * 100) + '%';
+
+      /* rivals — only once the radar exists */
+      if (have.radar) {
+        for (i = 0; i < rivals.length; i++) {
+          sx = rivals[i].x - cam;
+          if (sx < -12 || sx > W + 12) continue;
+          g.drawImage(PAGE_R, px(sx) - 4, rivals[i].y - PAGE_H);
+        }
+      }
+
+      /* your pages */
+      for (i = 0; i < pages.length; i++) {
+        sx = pages[i].x - cam;
+        if (sx < -12 || sx > W + 12) continue;
+        g.drawImage(pages[i].cited ? PAGE_C : PAGE, px(sx) - 4, pages[i].y - PAGE_H);
+        if (pages[i].sub) { g.fillStyle = '#6E8BB5'; g.fillRect(px(sx) - 3, pages[i].y - 8, 6, 1); }
+      }
+
+      /* visitors */
+      for (i = 0; i < visitors.length; i++) {
+        var v = visitors[i];
+        sx = v.x - cam;
+        if (sx < -10 || sx > W + 10) continue;
+        if (v.arrival) {
+          if (have.gate) g.drawImage(VIS2, px(sx) - 2, groundAt(v.x) - 8);
+          continue;
+        }
+        if (!v.gone) { g.drawImage(VIS, px(sx) - 2, FLOOR - 8); continue; }
+        var age = clock - v.gone;
+        if (age > 1.6) continue;               /* pulled upward, out of the funnel */
+        g.globalAlpha = Math.max(0, 1 - age / 1.6);
+        g.drawImage(VIS, px(sx) - 2, px(FLOOR - 8 - age * 44));
+        g.globalAlpha = 1;
+      }
+
+      /* tools still on the ground */
+      for (i = 0; i < TOOLS.length; i++) {
+        var t = TOOLS[i];
+        sx = t.x - cam;
+        if (sx < -16 || sx > W + 16) continue;
+        y = groundAt(t.x);
+        if (t.taken) { g.fillStyle = '#2B2B36'; g.fillRect(px(sx) - 4, y - 3, 9, 3); continue; }
+        var bob = Math.sin(clock * 3 + i) * 2;
+        g.globalAlpha = .16 + .12 * Math.sin(clock * 3 + i);
+        g.fillStyle = '#FFAE1A'; g.fillRect(px(sx) - 1, 0, 3, y);
+        g.globalAlpha = 1;
+        g.fillStyle = '#FFAE1A';
+        g.fillRect(px(sx) - 5, px(y - 20 + bob), 11, 2);
+        g.fillRect(px(sx) - 5, px(y - 20 + bob), 2, 11);
+        g.fillRect(px(sx) + 4, px(y - 20 + bob), 2, 11);
+        g.fillRect(px(sx) - 5, px(y - 11 + bob), 11, 2);
+        g.fillStyle = '#4A3407'; g.fillRect(px(sx) - 3, px(y - 18 + bob), 7, 7);
+      }
+
+      /* crawlers — invisible until the lantern. that is the whole point. */
+      g.globalAlpha = have.lantern ? 1 : .07;
+      for (i = 0; i < bots.length; i++) {
+        var b = bots[i];
+        if (b.dead) continue;
+        sx = b.x - cam;
+        if (sx < -12 || sx > W + 12) continue;
+        g.drawImage(have.lantern ? BOT : BOT_D, px(sx) - 4, px(b.y));
+      }
+      g.globalAlpha = 1;
+
+      /* night: heaviest when the visitors are leaving, lifting with every tool */
+      var dark = Math.max(.04, .14 + .30 * (stats.lost / 14) - .055 * got);
+      g.fillStyle = 'rgba(0,0,0,' + dark.toFixed(3) + ')';
+      g.fillRect(0, 0, W, H);
+
+      var wx = px(p.x - cam), wy = px(p.y);
+      if (have.lantern) g.drawImage(GLOW, wx - 84, wy - 96);
+
+      /* 최희준 */
+      var f = p.grounded ? ((keys.l || keys.r) ? (p.anim | 0) % 4 : 0) : 1;
+      g.save();
+      g.translate(wx, wy - 20);
+      if (p.face < 0) g.scale(-1, 1);
+      g.drawImage(HERO[f], -7, 0);
+      g.restore();
+      if (have.lantern) {                      /* the lamp he is carrying */
+        g.fillStyle = '#FFAE1A';
+        g.fillRect(wx + (p.face < 0 ? -10 : 7), wy - 12, 3, 3);
+      }
+
+      /* floating numbers */
+      g.font = '7px monospace'; g.textAlign = 'center';
+      for (i = 0; i < pops.length; i++) {
+        g.globalAlpha = Math.max(0, 1 - pops[i].t);
+        g.fillStyle = '#FFAE1A';
+        g.fillText(pops[i].text, px(pops[i].x - cam), px(pops[i].y - pops[i].t * 18));
+      }
+      g.globalAlpha = 1; g.textAlign = 'left';
+
+      /* kpi trace — down in the soil band, which is otherwise dead space. it used
+         to sit at y=164 where it collided with terrain and buildings. */
+      if (have.kpi && spark.length > 1) {
+        var mx = Math.max.apply(null, spark) || 1, base = 208, n = spark.length;
+        g.fillStyle = '#33333E'; g.fillRect(6, base + 1, n * 3 + 2, 1);
+        for (i = 0; i < n; i++) {
+          var hgt = Math.max(1, Math.round(spark[i] / mx * 20));
+          g.fillStyle = '#4A3407'; g.fillRect(8 + i * 3, base - 20, 2, 20);
+          g.fillStyle = '#FFAE1A'; g.fillRect(8 + i * 3, base - hgt, 2, hgt);
+        }
+      }
     }
 
-    function open(s) {
-      var rec = RECS[s.rec];
+    /* ---------- hud ---------- */
+    function setG(el, v) { if (el.lastChild.textContent !== v) el.lastChild.textContent = v; }
+    function hud() {
+      if (mode !== 'side') {
+        if (chEl.textContent !== '출발') {
+          chEl.textContent = '출발';
+          noteEl.textContent = '다 같은 것을 팔고 있었다';
+        }
+        stat.textContent = mode === 'tilt' ? '시점 전환…'
+          : '포장도로 · ' + Math.round(Math.min(1, td.x / ROAD_END) * 100) + '%';
+        if (tickT && clock > tickT) { tickEl.classList.remove('on'); tickT = 0; }
+        cue.hidden = true;
+        return;
+      }
+      var a = actAt(p.x);
+      if (chEl.textContent !== a.name) {
+        chEl.textContent = a.name;
+        noteEl.textContent = a.note;
+        live.textContent = a.name + ' — ' + a.note;
+      }
+      setG(GAUGE.lost,  String(stats.lost));
+      setG(GAUGE.crawl, String(stats.crawl));
+      setG(GAUGE.page,  String(stats.pages));
+      setG(GAUGE.cite,  String(stats.cited));
+      setG(GAUGE.sov,   sov() + '%');
+      stat.textContent = got + ' / 8 도구 · ' + Math.round(p.x / WORLD * 100) + '%';
+
+      if (tickT && clock > tickT) { tickEl.classList.remove('on'); tickT = 0; }
+      if (bannerT && clock > bannerT) { banner.classList.remove('on'); bannerT = 0; }
+
+      var n = nearTool();
+      if (n && n.taken) { cue.textContent = 'Enter — ' + n.rec + ' 기록 읽기'; cue.hidden = false; }
+      else cue.hidden = true;
+    }
+    function nearTool() {
+      for (var i = 0; i < TOOLS.length; i++)
+        if (Math.abs(TOOLS[i].x - p.x) < REACH + 12) return TOOLS[i];
+      return null;
+    }
+
+    /* ---------- record panel (on demand — the game never forces it) ---------- */
+    function openRec(name) {
+      var rec = RECS[name];
       if (!rec) return;
-      if (!s.seen) { s.seen = true; seen++; }
       body.innerHTML = '<div class="rec">' + rec.innerHTML + '</div>';
       panel.hidden = false;
       panel.scrollTop = 0;
@@ -1257,62 +2210,67 @@
       keys.l = keys.r = false;
       cue.hidden = true;
       xBtn.focus();
-      live.textContent = s.rec + ' 도착. ' + seen + ' / ' + STOPS.length + ' 확인.';
-      hud();
+      live.textContent = name + ' 기록을 열었습니다.';
     }
-
-    function close() {
+    function closeRec() {
       panel.hidden = true;
-      if (seen >= STOPS.length && !ended) { ended = true; finish(); return; }
+      if (!veil.hidden) return;
       running = true; last = 0; jnc.focus();
     }
 
+    /* ---------- ending ---------- */
     function finish() {
+      if (ended) return;
+      ended = true; running = false;
+      keys.l = keys.r = false;
+      banner.classList.remove('on');
+
+      var list = TOOLS.map(function (t) {
+        return '<button type="button" data-rec="' + esc(t.rec) + '">' +
+               esc(t.rec) + '<i>' + (t.taken ? '획득' : '놓침') + '</i></button>';
+      }).join('');
+
       veil.innerHTML =
-        '<h3>여기까지가 제가 만든 것들입니다</h3>' +
-        '<p>정거장 <b>8곳</b>을 전부 지나오셨습니다. 흩어진 도구가 아니라 한 줄기입니다 — ' +
+        '<h3>여기까지가 최희준입니다</h3>' +
+        '<div class="jn__score">' +
+          '<span>이탈<b>' + stats.lost + '</b></span>' +
+          '<span>계측<b>' + stats.crawl + '</b></span>' +
+          '<span>발행<b>' + stats.pages + '</b></span>' +
+          '<span>인용<b>' + stats.cited + '</b></span>' +
+          '<span>도구<b>' + got + '/8</b></span>' +
+        '</div>' +
+        '<p>1막에서는 아무것도 못 하고 사람들이 떠나는 걸 보기만 했습니다. ' +
         '검색이 죽어서 <b>측정</b>할 방법을 만들었고, 측정되니 <b>생산</b>할 이유가 생겼고, ' +
-        '생산하니 <b>감시</b>할 대상이 생겼고, 그래서 국경 밖으로 <b>확장</b>했습니다.<br>' +
-        '아래로 내려가면 방금 본 기록이 글로 다시 있고, 실제 서버 로그를 넣어볼 수 있는 도구가 있습니다.</p>' +
+        '생산하니 <b>감시</b>할 대상이 생겼고, 그래서 국경 밖으로 <b>확장</b>했습니다. ' +
+        '마지막에 들어오던 사람들은 1막에서 떠났던 그 사람들입니다.</p>' +
+        '<div class="jn__list">' + list + '</div>' +
+        '<p style="font-size:var(--f--2)">아래로 내려가면 같은 기록이 글로 다시 있고, ' +
+        '실제 서버 로그를 넣어볼 수 있는 도구가 있습니다.</p>' +
         '<button class="btn" id="jn-again" type="button">다시 걷기</button>';
       veil.hidden = false;
+
       document.getElementById('jn-again').addEventListener('click', function () {
-        for (var i = 0; i < STOPS.length; i++) STOPS[i].seen = false;
-        seen = 0; ended = false; p.x = 30; start();
+        reset(); veil.innerHTML = ''; start();
       });
-      live.textContent = '여정 완주. 8개 정거장 전부 확인했습니다.';
+      [].forEach.call(veil.querySelectorAll('.jn__list button'), function (btn) {
+        btn.addEventListener('click', function () {
+          var rec = RECS[btn.getAttribute('data-rec')];
+          if (rec) rec.scrollIntoView({ block: 'center' });
+        });
+      });
+      live.textContent = '여정 완주. 도구 ' + got + '개 · 계측 ' + stats.crawl +
+                         ' · 발행 ' + stats.pages + ' · 인용 ' + stats.cited + '.';
     }
 
-    function nearStop() {
-      for (var i = 0; i < STOPS.length; i++) {
-        if (Math.abs(STOPS[i].x - p.x) < REACH) return STOPS[i];
-      }
-      return null;
-    }
-
-    function step(dt) {
-      var dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
-      if (dir) { p.x += dir * 68 * dt; p.face = dir; p.anim += dt * 8; }
-      p.x = Math.max(10, Math.min(WORLD - 10, p.x));
-      p.y = groundAt(p.x);
-      cam = Math.max(0, Math.min(WORLD - W, p.x - W / 2));
-
-      var n = nearStop();
-      if (n && !n.seen) { open(n); return; }
-      if (n) { cue.textContent = 'Enter — ' + n.rec + ' 다시 열기'; cue.hidden = false; }
-      else cue.hidden = true;
-      hud();
-    }
-
+    /* ---------- loop ---------- */
     function frame(t) {
       if (!last) last = t;
       var dt = Math.min(.05, (t - last) / 1000);
-      last = t; tick += dt;
-      if (running) step(dt);
+      last = t;
+      if (running) step(dt); else clock += dt;
       draw();
       raf = requestAnimationFrame(frame);
     }
-
     function start() {
       veil.hidden = true;
       panel.hidden = true;
@@ -1322,34 +2280,55 @@
       hud();
     }
 
+    /* ---------- input ---------- */
     goBtn.addEventListener('click', start);
-    xBtn.addEventListener('click', close);
+    xBtn.addEventListener('click', closeRec);
 
     function key(e, down) {
       var k = e.key;
-      if (k === 'ArrowLeft' || k === 'a' || k === 'A') keys.l = down;
+      if (k === 'ArrowLeft'  || k === 'a' || k === 'A') keys.l = down;
       else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = down;
-      else if (down && k === 'Escape' && !panel.hidden) close();
-      else if (down && (k === 'Enter' || k === ' ')) {
-        var n = nearStop(); if (n) open(n); else return;
+      /* up/down are held directions in the prologue and one-shot verbs after it */
+      else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === ' ') {
+        keys.u = down;
+        if (down && mode === 'side') jump();
+      }
+      else if (k === 'ArrowDown' || k === 's' || k === 'S') {
+        keys.d = down;
+        if (down && !e.repeat && mode === 'side') plant();
+      }
+      else if (down && k === 'Escape' && !panel.hidden) closeRec();
+      else if (down && k === 'Enter') {
+        var n = nearTool();
+        if (n && n.taken) openRec(n.rec); else return;
       } else return;
       e.preventDefault();
     }
     jnc.tabIndex = 0;
     jnc.addEventListener('keydown', function (e) { key(e, true); });
-    jnc.addEventListener('keyup', function (e) { key(e, false); });
-    jnc.addEventListener('blur', function () { keys.l = keys.r = false; });
+    jnc.addEventListener('keyup',   function (e) { key(e, false); });
+    /* openRec() moves focus to the close button, which is a sibling of the
+       canvas — Escape bound on the canvas alone never fires while reading */
+    panel.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeRec(); }
+    });
+    jnc.addEventListener('blur', function () { keys.l = keys.r = keys.u = keys.d = false; });
 
-    [].forEach.call(document.querySelectorAll('.jn__pad button'), function (b) {
-      var d = +b.getAttribute('data-dir');
-      function set(v) { return function (e) { e.preventDefault(); keys[d < 0 ? 'l' : 'r'] = v; }; }
-      b.addEventListener('pointerdown', set(true));
-      b.addEventListener('pointerup', set(false));
-      b.addEventListener('pointerleave', set(false));
-      b.addEventListener('pointercancel', set(false));
+    [].forEach.call(document.querySelectorAll('.jn__pad button'), function (btn) {
+      var k = btn.getAttribute('data-key');
+      btn.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        keys[k] = true;
+        if (k === 'u' && mode === 'side') jump();
+        else if (k === 'd' && mode === 'side') plant();
+      });
+      function up(e) { e.preventDefault(); keys[k] = false; }
+      btn.addEventListener('pointerup', up);
+      btn.addEventListener('pointerleave', up);
+      btn.addEventListener('pointercancel', up);
     });
 
-    /* the loop is unbounded, so stop it whenever the section is off-screen */
+    /* the loop is unbounded, so stop it whenever the canvas is off-screen */
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (es) {
         if (es[0].isIntersecting) {
@@ -1358,20 +2337,88 @@
       }, { threshold: 0 }).observe(jnc);
     }
 
+    reset();
     draw();
     hud();
 
+    /* ---- self-check ---- */
     if (location.search.indexOf('selftest') !== -1) {
-      STOPS.forEach(function (s) {
-        console.assert(!!RECS[s.rec], 'station has a record: ' + s.rec);
+      TOOLS.forEach(function (t) {
+        console.assert(!!RECS[t.rec], 'tool has a record: ' + t.rec);
+        console.assert(t.x > 0 && t.x < WORLD, 'tool inside world: ' + t.rec);
       });
-      console.assert(STOPS.length === 8, 'eight stations');
-      console.assert(chapterAt(0).name === '위협', 'chapter at start');
-      console.assert(chapterAt(900).name === '생산', 'chapter mid');
-      console.assert(chapterAt(WORLD).name === '확장', 'chapter end');
+      console.assert(TOOLS.length === 8, 'eight tools');
+
+      /* prologue: the fork has to exist, be reachable, and not be the road */
+      console.assert(TD_ME.width === 9 && TD_ME.height === 9, 'crown sprite is 9x9');
+      console.assert(TD_ME.width === TD_THEM.width, 'in a crowd every crown is the same size');
+      console.assert(dirtY(FORK_X - 1) === null, 'no track before the fork');
+      console.assert(dirtY(FORK_X) === ROAD_Y + ROAD_H, 'track leaves from the road edge');
+      console.assert(dirtY(FORK_X + 250) === 176, 'track levels out well below the road');
+      console.assert(!offRoad(FORK_X + 200, 100), 'staying on the tarmac is not leaving');
+      console.assert(!offRoad(FORK_X - 100, 190), 'wandering off before the fork is not leaving');
+      console.assert(offRoad(FORK_X + 200, dirtY(FORK_X + 200)), 'following the track does turn you off');
+      console.assert(offRoad(FORK_X + 200, H - 14), 'so does overshooting below it');
+      console.assert(FORK_X + 140 < ROAD_END, 'the turn-off commits before the tarmac ends');
+      console.assert(dirtY(FORK_X + 250) < H - 14, 'the track stays inside the frame');
+      console.assert(BODY.every(function (r) { return r.length === 14; }), 'body rows are 14 wide');
+      LEGS.forEach(function (l, i) {
+        console.assert(l.every(function (r) { return r.length === 14; }), 'leg frame ' + i + ' is 14 wide');
+        console.assert(l.length === 5, 'leg frame ' + i + ' is 5 tall');
+      });
+      console.assert(HERO[0].height === 20, 'hero is 20 tall');
+      console.assert(actAt(0).name === '위협', 'act at start');
+      console.assert(actAt(1200).name === '생산', 'act mid');
+      console.assert(actAt(WORLD).name === '확장', 'act end');
       console.assert(groundAt(50) === FLOOR, 'flat ground');
-      console.assert(groundAt(800) < FLOOR, 'hill raises ground');
-      console.assert(STOPS.every(function (s) { return s.x > 0 && s.x < WORLD; }), 'stations inside world');
+      console.assert(groundAt(760) < FLOOR, 'hill raises ground');
+      /* NetTier must be reachable before the wall it opens */
+      console.assert(TOOLS[6].x < GATEX && GATEX < TOOLS[7].x, 'gate sits between NetTier and Hospify');
+
+      /* ledges */
+      console.assert(landAt(640, 130, 140, 60) === 138, 'ledge catches a falling player');
+      console.assert(landAt(640, 174, 180, 60) === FLOOR, 'ledge ignored from below');
+      console.assert(landAt(640, 130, 134, -60) === null, 'ledge ignored while rising');
+
+      /* the three lanes have to stay a real difficulty gradient */
+      var apex = FLOOR - (JUMPV * JUMPV) / (2 * GRAV);   /* highest a flat-ground jump reaches */
+      console.assert(boxHit(500, LANES[0], 500, FLOOR, 0), 'low lane catchable on foot');
+      console.assert(!boxHit(500, LANES[1], 500, FLOOR, 0), 'mid lane not catchable on foot');
+      console.assert(boxHit(500, LANES[1], 500, FLOOR - 24, 0), 'mid lane catchable mid-jump');
+      console.assert(!boxHit(500, LANES[2], 500, apex, 0), 'top lane unreachable from flat ground');
+      console.assert(boxHit(500, LANES[2], 500, 116, 0), 'top lane catchable from a 116 ledge');
+      console.assert(PLATS.some(function (pl) { return pl[1] <= 116; }), 'a ledge that low exists');
+
+      /* a bot reading one of your pages must clear a standing player, or the
+         citation loop starves — but stay stealable by jumping */
+      console.assert(!boxHit(500, FLOOR - HOVER, 500, FLOOR, 5), 'reading bot clears a standing player');
+      console.assert(boxHit(500, FLOOR - HOVER, 500, apex, 0), 'reading bot is stealable mid-jump');
+
+      /* the re-crawl cooldown is what stops six pages farming citations forever */
+      pages.push({ x: 100, y: FLOOR, cited: 0, cool: 0 });
+      console.assert(nearestPage(100) !== null, 'a fresh page attracts crawlers');
+      pages[0].cool = RECRAWL;
+      console.assert(nearestPage(100) === null, 'a page on re-crawl cooldown is skipped');
+      pages.length = 0;
+
+      /* publishing must put a visible sign in front of you and make you walk on:
+         stacked pages hide behind the walker and farm citations for free */
+      (function () {
+        var sx0 = p.x, sf = p.face, sr = running;
+        pages.length = 0; stats.pages = 0; have.plant = true; running = true;
+        p.x = 500; p.face = 1; plantCd = 0;
+        plant();
+        console.assert(pages.length === 1, 'first publish lands');
+        console.assert(pages[0].x > p.x, 'page is planted in front of the walker');
+        plantCd = 0; plant();
+        console.assert(pages.length === 1, 'no second page on the same spot');
+        p.x = 540; plantCd = 0; plant();
+        console.assert(pages.length === 2, 'walking on lets you publish again');
+        console.assert(PAGE.height === PAGE_H && PAGE_H > 20 - 8,
+                       'the page sign is tall enough to clear the walker');
+        pages.length = 0; stats.pages = 0; have.plant = false;
+        plantCd = 0; p.x = sx0; p.face = sf; running = sr;
+      })();
       console.log('journey selftest done');
     }
   })();
