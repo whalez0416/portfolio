@@ -375,6 +375,12 @@
   .jn__panel .rec__stamp { flex-direction: row; flex-wrap: wrap; gap: .2rem .9rem; margin-bottom: .6rem; }
   .jn__panel .row { grid-template-columns: 4.6rem 1fr; }
   @media (max-width: 46rem) { .jn__panel .row { grid-template-columns: 1fr; gap: .25rem; } }
+  /* the one line the door adds on top of the record: why it got built */
+  .jn__why {
+    margin: 0 0 1.1rem; padding: 0 0 1rem; border-bottom: 1px solid var(--line);
+    font-family: var(--disp); font-size: var(--f-0); line-height: 1.6;
+    color: var(--ink); letter-spacing: -.015em; max-width: 34rem;
+  }
   .jn__x {
     position: sticky; top: 0; float: right; z-index: 2; cursor: pointer;
     font-family: var(--mono); font-size: var(--f--2); color: var(--void);
@@ -405,6 +411,67 @@
   .jn__legend kbd {
     font: inherit; color: var(--ink2); background: var(--panel2);
     border: 1px solid var(--line2); padding: 0 .35rem;
+  }
+
+  /* scene card — the one line of the current scene, in DOM so the type is real
+     type (canvas text at 384px logical would be a smear) and screen readers get it */
+  .jn__card {
+    position: absolute; left: 0; right: 0; top: 36%; pointer-events: none;
+    padding: 0 clamp(1rem, 6vw, 4rem); text-align: center;
+    opacity: 0; transform: translateY(.5rem);
+    transition: opacity .6s, transform .6s cubic-bezier(.2,.7,.25,1);
+  }
+  .jn__card.on { opacity: 1; transform: none; }
+  .jn__card b {
+    font-family: var(--disp); font-weight: 700; letter-spacing: -.035em;
+    font-size: clamp(1.1rem, 3.6vw, 2.1rem); line-height: 1.25;
+    color: var(--ink); display: block;
+    text-shadow: 0 2px 14px #000, 0 0 3px #000;
+  }
+  .jn__card i {
+    font-style: normal; display: block; margin-top: .5rem;
+    font-family: var(--mono); font-size: var(--f--2); color: var(--sig);
+    letter-spacing: .18em; text-shadow: 0 1px 3px #000;
+  }
+  /* the reveal: one white-hot frame when the lantern finally lights */
+  .jn__flash {
+    position: absolute; inset: 0; pointer-events: none; background: var(--sig);
+    opacity: 0; transition: opacity .5s ease-out;
+  }
+  .jn__flash.on { opacity: .5; transition: none; }
+
+  /* sound is off-by-default everywhere else on the web for good reason, but the
+     walk starts on a click, so the context is allowed to open right there */
+  .jn__snd {
+    position: absolute; right: .55rem; bottom: .55rem; z-index: 3; cursor: pointer;
+    font-family: var(--mono); font-size: var(--f--2); line-height: 1;
+    color: var(--mute); background: rgba(8,8,11,.7);
+    border: 1px solid var(--line2); padding: .32rem .5rem;
+  }
+  .jn__snd:hover { color: var(--ink); border-color: var(--mute); }
+  .jn__snd[aria-pressed="true"] { color: var(--sig); border-color: var(--sig); }
+
+  /* ending: three doors, because three kinds of people read this */
+  .jn__doors {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    gap: .5rem; max-width: 34rem; margin-inline: auto; width: 100%;
+  }
+  .jn__doors button {
+    display: block; text-align: left; cursor: pointer; padding: .7rem .85rem;
+    background: var(--panel2); color: var(--ink); border: 1px solid var(--line2);
+    font-family: var(--mono); font-size: var(--f--1);
+  }
+  .jn__doors button:hover { border-color: var(--sig); }
+  .jn__doors button i {
+    font-style: normal; display: block; margin-top: .25rem;
+    color: var(--dim); font-size: var(--f--2); line-height: 1.6;
+  }
+  .jn__veil .lede {
+    font-family: var(--disp); font-size: var(--f-0); color: var(--ink2);
+    max-width: 34rem; line-height: 1.7; letter-spacing: -.01em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .jn__card, .jn__flash { transition: none; }
   }
 
   /* ---------- sections ---------- */
@@ -568,16 +635,16 @@
     <div class="meta">
       <span class="id">WALK</span>
       <span>journey</span>
-      <span class="st">8 stops</span>
+      <span class="st">10 scenes · 8 doors</span>
     </div>
     <div>
       <div class="band__head">
         <h2>읽지 말고, 걸어보세요</h2>
-        <p>검색 순위를 팔던 사람들과 <b>같은 길에서</b> 출발합니다. 위에서 내려다보면 정수리는 다 똑같이 생겼습니다.
+        <p><b>길은 제 이력이고, 길가의 문은 제가 만든 것들입니다.</b>
+          노출을 팔던 무리와 같은 길에서 출발합니다 — 위에서 내려다보면 정수리는 다 똑같이 생겼습니다.
           갈림길에서 혼자 내려서는 순간 시점이 옆으로 눕고, 거기서부터가 제가 만든 것들입니다.
-          길에서 줍는 도구 8개는 <b>줍는 순간 할 수 있는 일이 하나씩 늘어납니다</b> —
-          안 보이던 AI 크롤러가 보이고, 페이지를 심게 되고, 경쟁사가 드러나고, 국경이 열립니다.
-          조작법이 곧 제 주장입니다.</p>
+          도구는 주운 순서가 곧 만든 순서라, <b>크롤러는 여섯 번째 도구를 줍기 전까지 보이지 않습니다</b> —
+          7개월을 그렇게 만들었습니다. 문은 안 열고 끝까지 걸어도 됩니다.</p>
       </div>
 
       <div class="jn">
@@ -587,21 +654,27 @@
         </div>
         <div class="jn__stage">
           <canvas id="jn" width="384" height="216"
-                  aria-label="게임. 위에서 내려다보는 프롤로그에서 무리와 같은 길을 걷다가, 갈림길에서 아래로 벗어나면 횡스크롤로 바뀝니다. 좌우로 걷고 위로 점프하며, 도구를 주울 때마다 새 능력이 열립니다. 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
+                  aria-label="열 장면짜리 이력 게임. 1~5장은 위에서 내려다보는 시점으로 무리와 같은 길을 걷고, 갈림길에서 아래로 벗어나면 6~10장은 옆에서 보는 횡스크롤이 됩니다. 좌우로 걷고 위로 점프하고 아래로 페이지를 발행하며, 길가의 문 여덟 개는 Enter로 열 수 있는 선택 사항입니다. 진행 상황은 소리 없이 화면 아래 안내 영역으로 읽어 드리고, 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
 
           <div class="jn__hud" aria-hidden="true">
-            <span class="ch" id="jn-ch">위협</span>
-            <span class="note" id="jn-note">팔던 상품이 죽는 걸 봤다</span>
+            <span class="ch" id="jn-ch">1 / 10</span>
+            <span class="note" id="jn-note">저는 노출을 팔았습니다</span>
             <span class="gauges">
-              <span id="jn-g-lost">이탈 <b>0</b></span>
-              <span id="jn-g-crawl" hidden>계측 <b>0</b></span>
+              <span id="jn-g-year">연도 <b>2014</b></span>
               <span id="jn-g-page" hidden>발행 <b>0</b></span>
-              <span id="jn-g-cite" hidden>인용 <b>0</b></span>
+              <span id="jn-g-cite" hidden>인용 <b>?</b></span>
               <span id="jn-g-sov" hidden>점유 <b>0%</b></span>
+              <span id="jn-g-crawl" hidden>계측 <b>0</b></span>
             </span>
           </div>
           <p class="jn__tick" id="jn-tick" aria-hidden="true"></p>
           <p class="jn__cue" id="jn-cue" hidden></p>
+
+          <div class="jn__card" id="jn-card" aria-hidden="true">
+            <b id="jn-card-line"></b>
+            <i id="jn-card-tag"></i>
+          </div>
+          <div class="jn__flash" id="jn-flash" aria-hidden="true"></div>
 
           <div class="jn__banner" id="jn-banner" aria-hidden="true">
             <b id="jn-b-name" translate="no"></b>
@@ -609,17 +682,22 @@
             <u id="jn-b-verb"></u>
           </div>
 
+          <button class="jn__snd" id="jn-snd" type="button"
+                  aria-pressed="false" aria-label="소리 켜기">♪ 소리</button>
+
           <div class="jn__veil" id="jn-veil">
-            <h3>다 같이 출발했습니다</h3>
-            <p>검색 순위를 파는 사람들 틈에서 저도 같은 것을 팔고 있었습니다.
-              그 검색이 죽기 시작했을 때 대부분은 하던 대로 갔고, 저는 길을 바꿨습니다.
-              <b>위에서 내려다보는 시점</b>으로 시작합니다 — 갈림길이 나올 때까지 같이 걸으세요.</p>
+            <h3>여기까지가 최희준입니다</h3>
+            <p class="lede">저는 노출을 팔다가, 환자를 세겠다고 자리를 옮겼습니다.
+              10년이 넘었고 지금도 같은 일을 합니다 — 세는 대상만 바뀌었습니다.</p>
+            <p>열 장면을 걸어서 지나갑니다. 앞의 다섯 장면은 <b>위에서 내려다보는 시점</b>이고,
+              갈림길에서 혼자 내려서면 시점이 옆으로 눕습니다.
+              길가의 문 여덟 개는 제가 만든 것들인데, <b>하나도 안 열고 끝까지 걸어도 됩니다.</b></p>
             <p class="keys">
               <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동</span>
               <span>갈림길에서 <kbd>↓</kbd> 아래로</span>
-              <span><i>길을 벗어나면 시점이 옆으로 눕습니다</i></span>
+              <span><kbd>Enter</kbd> 문 열기</span>
             </p>
-            <button class="btn" id="jn-go" type="button">출발</button>
+            <button class="btn" id="jn-go" type="button">걷기 시작</button>
           </div>
 
           <div class="jn__panel" id="jn-panel" hidden>
@@ -636,9 +714,9 @@
           <button type="button" data-key="d" id="jn-pad-plant" aria-label="아래로 이동 / 페이지 발행">▼ 아래</button>
         </div>
         <div class="jn__legend">
-          <b>프롤로그</b> <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동 · 갈림길에서 아래로 &nbsp;|&nbsp;
-          <b>본편</b> <kbd>←</kbd><kbd>→</kbd> 걷기 · <kbd>↑</kbd> 점프 · <kbd>↓</kbd> 발행 · <kbd>Enter</kbd> 기록 &nbsp;|&nbsp;
-          <b>도구</b> 길에 놓인 앰버 8개 &nbsp;|&nbsp;
+          <b>1–5장</b> <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동 · 갈림길에서 아래로 &nbsp;|&nbsp;
+          <b>6–10장</b> <kbd>←</kbd><kbd>→</kbd> 걷기 · <kbd>↑</kbd> 점프 · <kbd>↓</kbd> 발행 &nbsp;|&nbsp;
+          <b>문</b> <kbd>Enter</kbd> — 선택입니다. 안 열어도 끝까지 갑니다 &nbsp;|&nbsp;
           걷기 싫으시면 그냥 스크롤하세요 — 같은 내용이 아래에 전부 글로 있습니다.
         </div>
       </div>
@@ -689,7 +767,7 @@
 </section>
 
 <!-- ===== definition ===== -->
-<section class="band wrap sect-rule reveal">
+<section class="band wrap sect-rule reveal" id="who">
   <div class="logline" style="border-top:0;padding-top:0">
     <div class="meta">
       <span class="id">DEF-00</span>
@@ -915,7 +993,7 @@
 </section>
 
 <!-- ===== business ===== -->
-<section class="band wrap sect-rule reveal">
+<section class="band wrap sect-rule reveal" id="biz">
   <div class="logline" style="border-top:0;padding-top:0">
     <div class="meta">
       <span class="id">BIZ</span>
@@ -1265,42 +1343,77 @@
     var W = 384, H = 216, FLOOR = 178, WORLD = 3160, GATEX = 2790, CLINIC = 3114;
     var GRAV = 560, JUMPV = -196, SPEED = 98, REACH = 20, HOVER = 40, RECRAWL = 3.5;
 
-    /* --- five acts, in walking order --- */
-    var ACTS = [
-      { x:    0, name: '위협', note: '팔던 상품이 죽는 걸 봤다' },
-      { x:  470, name: '측정', note: '안 보이면 증명할 수 없다' },
-      { x: 1150, name: '생산', note: '인용될 것을 직접 만든다' },
-      { x: 1870, name: '감시', note: '상대가 어디 있는지 본다' },
-      { x: 2560, name: '확장', note: '국경 밖으로' }
+    /* --- ten scenes, the same ten in docs/narrative.md. the road IS the CV, so
+           each scene carries the year it happened and the one line it gets. --- */
+    var SCENES = [
+      { n:  1, side: false, x:   0, year: '2014',
+        line: '저는 노출을 팔았습니다',                       tag: '종합광고대행사' },
+      { n:  2, side: false, x: 250, year: '2015~',
+        line: '환자를 늘린다길래, 자리를 옮겼습니다',           tag: '의료 컨설팅 · 10년 넘게' },
+      { n:  3, side: false, x: 520, year: '2020',
+        line: '잘 되고 있을 때, 그만 배우기로 했습니다',        tag: 'AI 독학 6개월 · ChatGPT 2년 전' },
+      { n:  4, side: false, x: 720, year: '2025',
+        line: '5년 뒤, 팔던 것이 죽기 시작했습니다',            tag: '검색이 AI 답변으로' },
+      { n:  5, side: false, x: 830, year: '2025',
+        line: '굳이? 왜? — 다들 그렇게 물었습니다',            tag: '갈림길에서 ↓ 아래로' },
+      { n:  6, side: true,  x:   0, year: '2025-12',
+        line: '제일 먼저 만든 게, 제일 모호한 것이었습니다',     tag: 'aeo_sync' },
+      { n:  7, side: true,  x: 840, year: '2026-05',
+        line: '손으로 하던 것을 하나씩 떼어냈습니다',           tag: '자막 · 리포트 · 감시 · 분석' },
+      { n:  8, side: true,  x:2040, year: '2026-07',
+        line: '7개월을 만들고 나서야, 증명할 방법이 없다는 걸 알았습니다', tag: '여섯 번째 도구' },
+      { n:  9, side: true,  x:2470, year: '2026-08',
+        line: '제가 없어도 돌아가야 도구입니다',               tag: '무인 야간 제작 · 국경' },
+      { n: 10, side: true,  x:2960, year: '2026-08',
+        line: '안 만든 것도 저입니다',                        tag: '못 지킬 약속은 자리를 비웁니다' }
     ];
 
-    /* --- pickups. `grant` unlocks a verb, `rec` points at the record below --- */
+    /* --- the doors. order is COMMIT ORDER, not the order that would be tidy.
+           the lantern is sixth because it was built sixth: you publish for most
+           of the walk with the crawlers invisible and the citation gauge stuck
+           on "?", exactly as it happened. picking it up is the turn of the piece.
+           `grant` unlocks a verb · `rec` names the record · `door` is what the
+           door says when you open it (docs/programs.md). --- */
     var TOOLS = [
-      { x:  520, rec: 'aeo-log-analyzer', grant: 'lantern',
-        line: '설치 장벽이 진짜 병목이라고 봤습니다. 파이썬 표준 라이브러리만 씁니다.',
-        verb: '랜턴 — 안 보이던 AI 크롤러가 보입니다. 점프해서 계측하세요.' },
-      { x:  880, rec: 'MetaPorter', grant: 'idem',
-        line: '메타는 병원이 운영하기 까다로운 매체입니다. 성과를 읽는 일 자체가 매주 일이 됐습니다.',
-        verb: '계측 범위 확대 — 같은 봇을 두 번 세지 않습니다.' },
-      { x: 1200, rec: 'aeo_sync', grant: 'plant',
-        line: '자동 생성 후에 검수하는 게 아니라, 검수를 파이프라인 안에 넣었습니다.',
-        verb: '↓ 발행 — 페이지를 심으면 AI가 찾아옵니다.' },
-      { x: 1530, rec: 'MediSTT', grant: 'sub',
+      { x:  260, rec: 'aeo_sync', grant: 'plant',
+        line: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
+        verb: '↓ 발행 — 페이지를 심습니다. 읽히는지는 아직 모릅니다.',
+        door: '표준화와 고유함은 반대말인데, 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.' },
+      { x:  620, rec: 'MediSTT', grant: 'sub',
         line: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
-        verb: '자막 트랙 — 이후 발행하는 페이지에 자막이 붙습니다.' },
-      { x: 1920, rec: 'SERP Sentinel', grant: 'radar',
-        line: '수단과 목적을 분리해두지 않으면 기능만 늘어나는 도구가 됩니다.',
-        verb: '경쟁 레이더 — 회색 경쟁사 페이지와 점유율이 드러납니다.' },
-      { x: 2250, rec: 'KPIY', grant: 'kpi',
-        line: '정확도가 필요한 곳에는 검색이 아니라 실행을 붙여야 한다고 봤습니다.',
-        verb: 'KPI — 계측값이 그래프로 누적됩니다.' },
-      { x: 2670, rec: 'NetTier', grant: 'gate',
-        line: '회선을 국가로 추정하지 않고 실측했습니다. 추정은 틀리지만 실측은 안 틀립니다.',
-        verb: '국경 개방 — 앞을 막던 벽이 열립니다.' },
+        verb: '자막 — 이후 발행하는 페이지가 더 자주 읽힙니다.',
+        door: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
+      { x: 1000, rec: 'MetaPorter', grant: 'ledger',
+        line: '메타는 병원이 운영하기에 까다로운 매체입니다.',
+        verb: '인용 계기판 — 켜졌는데 눈금이 ? 입니다. 아직 셀 방법이 없습니다.',
+        door: '제한이 많아 캠페인이 자주 튕기고, 목표가 제각각이라 한 장으로 읽기 어렵습니다.' },
+      { x: 1360, rec: 'SERP Sentinel', grant: 'radar',
+        line: '순위 변동은 산출물이 아니라 수단입니다.',
+        verb: '경쟁 레이더 — 회색 경쟁사 페이지와 점유율이 드러납니다.',
+        door: '설계서 첫 장에 목적을 못박고 시작했습니다. 안 그러면 기능만 늘어납니다.' },
+      { x: 1700, rec: 'KPIY', grant: 'kpi',
+        line: '정확해야 하는 곳에는 검색이 아니라 실행을 붙였습니다.',
+        verb: 'KPI — 관측값이 그래프로 쌓입니다.',
+        door: 'LLM이 숫자를 지어내면 경영 보고서로 쓸 수 없습니다. 계산은 pandas가 합니다.' },
+      { x: 2100, rec: 'aeo-log-analyzer', grant: 'lantern',
+        line: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
+        verb: '랜턴 — 안 보이던 것이 전부 켜집니다. ? 가 숫자가 됩니다.',
+        door: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.' },
+      { x: 2560, rec: 'NetTier', grant: 'gate',
+        line: '추정은 틀리지만 실측은 안 틀립니다.',
+        verb: '국경 개방 — 앞을 막던 벽이 열립니다.',
+        door: '되돌릴 수 없는 작업은 사람 손에 남겼습니다 — 업로드 자동화 금지.' },
       { x: 3080, rec: 'Hospify', grant: 'clinic',
-        line: '못 지킬 보증을 띄우는 것보다 그 자리를 비워두는 쪽이 신뢰에 낫다고 봤습니다.',
-        verb: '도착 — 1막에서 떠났던 사람들이 반대로 들어옵니다.' }
+        line: '못 지킬 약속은, 자리를 비워둡니다.',
+        verb: '도착 — 만들어 놓고 지운 자리가 여기 있습니다.',
+        door: '가격 보증을 다 만들어 놓고 폐기했습니다. 병원이 지킬 수 없는 약속이라서.' }
     ];
+
+    /* the ninth door, which is not a door. Price Lock was built and then deleted,
+       so scene 10 gets a frame with nothing behind it that never lights and never
+       opens. You walk past it on the way to the last record. It is the only thing
+       in the game you cannot interact with, and that is the point. */
+    var VOID_X = 2965;
 
     var HILLS  = [[700, 860, 12], [1330, 1470, 18], [2080, 2210, 10], [2900, 3010, 14]];
     /* ledges: the high crawler lane is out of reach from the ground on purpose */
@@ -1484,10 +1597,13 @@
       var gy = groundAt(x);
       return nextB >= gy ? gy : null;
     }
-    function actAt(x) {
-      var a = ACTS[0];
-      for (var i = 1; i < ACTS.length; i++) if (x >= ACTS[i].x) a = ACTS[i];
-      return a;
+    /* one scene lookup for both halves of the walk: the prologue reads the
+       top-down x, the side view reads the platformer x, and they never mix */
+    function sceneAt(x, side) {
+      var s = null;
+      for (var i = 0; i < SCENES.length; i++)
+        if (!!SCENES[i].side === !!side && x >= SCENES[i].x) s = SCENES[i];
+      return s || SCENES[side ? 5 : 0];
     }
 
     /* ---------- dom ---------- */
@@ -1521,12 +1637,86 @@
       }
     }
     var GAUGE = {
-      lost:  document.getElementById('jn-g-lost'),
+      year:  document.getElementById('jn-g-year'),
       crawl: document.getElementById('jn-g-crawl'),
       page:  document.getElementById('jn-g-page'),
       cite:  document.getElementById('jn-g-cite'),
       sov:   document.getElementById('jn-g-sov')
     };
+    var card     = document.getElementById('jn-card');
+    var cardLine = document.getElementById('jn-card-line');
+    var cardTag  = document.getElementById('jn-card-tag');
+    var flash    = document.getElementById('jn-flash');
+    var sndBtn   = document.getElementById('jn-snd');
+
+    /* ---------- sound ----------
+       Six oscillator blips, no files. The context is opened on the first click
+       (the 걷기 시작 button), which is the only moment a browser will allow it.
+       Off until asked: a CV that makes noise unannounced is a bad first move. */
+    var actx = null, sndOn = false;
+    function beep(freq, len, type, gain) {
+      if (!sndOn) return;
+      try {
+        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+        if (actx.state === 'suspended') actx.resume();
+        var o = actx.createOscillator(), a = actx.createGain(), t0 = actx.currentTime;
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(freq, t0);
+        a.gain.setValueAtTime(gain || .05, t0);
+        a.gain.exponentialRampToValueAtTime(.0001, t0 + len);
+        o.connect(a); a.connect(actx.destination);
+        o.start(t0); o.stop(t0 + len + .02);
+      } catch (e) { sndOn = false; }         /* never let audio break the walk */
+    }
+    var SFX = {
+      jump:   function () { beep(420, .09, 'square', .035); },
+      land:   function () { beep(150, .05, 'sine',   .03); },
+      plant:  function () { beep(520, .07, 'triangle', .04); beep(780, .09, 'triangle', .025); },
+      cite:   function () { beep(940, .07, 'sine',   .03); },
+      pick:   function () { beep(660, .10, 'square', .045); beep(990, .16, 'square', .03); },
+      reveal: function () { beep(220, .5, 'sawtooth', .05); beep(660, .7, 'sine', .04); },
+      door:   function () { beep(300, .12, 'triangle', .04); },
+      end:    function () { beep(392, .25, 'sine', .05); beep(587, .45, 'sine', .04); }
+    };
+    sndBtn.addEventListener('click', function () {
+      sndOn = !sndOn;
+      sndBtn.setAttribute('aria-pressed', sndOn ? 'true' : 'false');
+      sndBtn.setAttribute('aria-label', sndOn ? '소리 끄기' : '소리 켜기');
+      sndBtn.textContent = sndOn ? '♪ 소리 켬' : '♪ 소리';
+      if (sndOn) SFX.door();
+    });
+
+    /* ---------- scene cards ----------
+       The line lives in the DOM, not on the canvas: at 384px logical the canvas
+       would render Korean type as a smear, and a screen reader would get none
+       of it. Same reason the reveal flash is a div. */
+    var shownScene = 0, cardT = 0;
+    function showScene(s) {
+      if (!s || s.n === shownScene) return;
+      shownScene = s.n;
+      cardLine.textContent = s.line;
+      cardTag.textContent  = s.year + ' · ' + s.tag;
+      card.classList.add('on');
+      cardT = clock + 3.6;
+      live.textContent = s.n + '장. ' + s.line;
+    }
+
+    /* ---------- juice ----------
+       Shake and dust are the two things that make a pixel walk feel physical, and
+       the two things that make motion-sensitive people close the tab. Honour the
+       OS setting rather than shipping a toggle nobody finds. */
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var shake = 0, dust = [];
+    function kick(n) { if (!calm) shake = Math.max(shake, n); }
+    function puff(x, y, n, col, spread) {
+      if (calm) return;
+      for (var i = 0; i < n; i++)
+        dust.push({ x: x, y: y, t: 0,
+                    vx: (Math.random() - .5) * (spread || 40),
+                    vy: -Math.random() * (spread || 40) * .8,
+                    c: col || '#7E7C76' });
+      if (dust.length > 140) dust.splice(0, dust.length - 140);
+    }
 
     /* the crown view is frozen into this the moment you leave the road, then
        squashed toward the horizon while the side view rises underneath */
@@ -1543,28 +1733,28 @@
     function reset() {
       p = { x: 26, y: FLOOR, vy: 0, face: 1, anim: 0, grounded: true };
       have = {};
-      stats = { lost: 0, crawl: 0, pages: 0, cited: 0 };
+      stats = { crawl: 0, pages: 0, cited: 0, doors: 0 };
       pages = []; pops = []; spark = []; sparkAt = 0; sparkLast = 0;
       cam = 0; running = false; ended = false; clock = 0;
       wallBump = 0; plantCd = 0; got = 0;
+      shake = 0; dust = []; shownScene = 0; cardT = 0;
+      card.classList.remove('on'); flash.classList.remove('on');
       keys.l = keys.r = keys.u = keys.d = false;
 
       /* prologue: everyone on the same road, walking the same way */
       mode = 'top'; tiltT = 0;
-      td = { x: 40, y: 100, face: 1, crowd: [], beat: 0, gate: 0 };
-      for (var ci2 = 0; ci2 < 7; ci2++)
-        td.crowd.push({ x: 4 + ci2 * 21, y: ROAD_Y + 7 + (ci2 * 11) % 19,
-                        sp: CROWD_SPEED - 4 + (ci2 % 5) * 2, gone: 0 });
+      td = { x: 40, y: 100, face: 1, crowd: [], gate: 0 };
+      for (var ci2 = 0; ci2 < 11; ci2++)
+        td.crowd.push({ x: 4 + ci2 * 17, y: ROAD_Y + 6 + (ci2 * 11) % 20,
+                        sp: CROWD_SPEED - 5 + (ci2 % 5) * 3, gone: 0 });
 
       bots = [];
       for (var i = 0; i < 14; i++) bots.push(respawn({}, 40 + i * 120));
 
-      /* act 1: visitors walking the same road, who leave one by one */
+      /* the mirror of scene 1: at the far end people walk IN, toward the clinic.
+         nobody walks away in the side view — the leaving happened in the
+         prologue, back when there was nothing to be done about it. */
       visitors = [];
-      for (i = 0; i < 14; i++)
-        visitors.push({ x: 70 + i * 30, y: FLOOR, gone: 0, arrival: false });
-
-      /* act 5: the mirror — foreign visitors walking in toward the clinic */
       for (i = 0; i < 10; i++)
         visitors.push({ x: GATEX + 40 + i * 26, y: FLOOR, gone: 0, arrival: true });
 
@@ -1574,8 +1764,9 @@
         var rx = 1900 + i * 78;
         rivals.push({ x: rx, y: groundAt(rx) });
       }
-      TOOLS.forEach(function (t) { t.taken = false; });
+      TOOLS.forEach(function (t) { t.taken = false; t.read = false; });
       for (var k in GAUGE) GAUGE[k].hidden = true;   /* nothing to count yet */
+      GAUGE.year.hidden = false;                     /* except the year: it always runs */
       padLabels();
     }
 
@@ -1617,22 +1808,50 @@
       banner.classList.add('on');
       bannerT = clock + 4.2;
 
-      if (t.grant === 'lantern') { GAUGE.crawl.hidden = false; GAUGE.lost.hidden = true; }
-      if (t.grant === 'plant')   { GAUGE.page.hidden = false; GAUGE.cite.hidden = false;
-                                   padLabels(); }
-      if (t.grant === 'radar')   GAUGE.sov.hidden = false;
-      if (t.grant === 'clinic')  finish();
+      puff(t.x, groundAt(t.x) - 14, 14, '#FFAE1A', 60);
+      kick(3);
+      SFX.pick();
+
+      /* announced BEFORE the grants: reveal() and finish() both write their own
+         line here, and this one used to land after them and wipe the ending */
       live.textContent = t.rec + ' 획득 — ' + t.verb;
+
+      if (t.grant === 'plant')  { GAUGE.page.hidden = false; padLabels(); }
+      /* MetaPorter builds the reporting layer, so the dial appears — but the
+         needle reads "?" because nothing is measuring it yet. That gap is the
+         seven months, and it is the single most honest thing in the game. */
+      if (t.grant === 'ledger')  GAUGE.cite.hidden = false;
+      if (t.grant === 'radar')   GAUGE.sov.hidden = false;
+      if (t.grant === 'lantern') reveal();
+      if (t.grant === 'clinic')  finish();
+    }
+
+    /* the turn of the whole piece: everything that was already happening becomes
+       visible at once, and the citation dial stops reading "?" */
+    function reveal() {
+      GAUGE.crawl.hidden = false;
+      GAUGE.cite.hidden = false;
+      flash.classList.add('on');
+      setTimeout(function () { flash.classList.remove('on'); }, 40);
+      kick(7);
+      SFX.reveal();
+      for (var i = 0; i < bots.length; i++)
+        if (!bots[i].dead) puff(bots[i].x, bots[i].y + 3, 3, '#FFAE1A', 26);
+      say(stats.cited > 0
+        ? '그동안 ' + stats.cited + '번 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다'
+        : '크롤러가 보입니다 — 계속 지나다니고 있었습니다', true);
     }
 
     /* ---------- verbs ---------- */
     function jump() {
       if (!running || !p.grounded) return;
       p.vy = JUMPV; p.grounded = false;
+      puff(p.x, p.y, 3, '#4C4A46', 22);
+      SFX.jump();
     }
     function plant() {
       if (!running) return;
-      if (!have.plant) { say('아직 발행할 수 없습니다 — 3막에서 aeo_sync를 줍습니다'); return; }
+      if (!have.plant) { say('아직 발행할 수 없습니다 — 길에 놓인 aeo_sync를 먼저 주우세요'); return; }
       if (plantCd > 0 || pages.length >= 44) return;
       /* in front of you, so you actually see it appear */
       var nx = p.x + 12 * (p.face < 0 ? -1 : 1);
@@ -1646,6 +1865,8 @@
       pages.push({ x: nx, y: groundAt(nx), cited: 0, cool: 0, sub: !!have.sub });
       stats.pages++;
       pop(nx, groundAt(nx) - 22, '발행');
+      puff(nx, groundAt(nx), 5, '#FFAE1A', 26);
+      SFX.plant();
       /* the quality gate is in the pipeline, not after it */
       if (stats.pages % 4 === 0) say('감수 통과 — reviewedBy 주입', false);
     }
@@ -1688,10 +1909,11 @@
 
       cam = Math.max(0, Math.min(TDW - W, td.x - W * .42));
 
-      if (td.beat === 0) { say('다들 같은 것을 팔고 있었습니다 — 검색 순위.', true); td.beat = 1; }
-      else if (td.beat === 1 && td.x > 330) { say('그 검색에서 트래픽이 빠지기 시작했습니다.', true); td.beat = 2; }
-      else if (td.beat === 2 && td.x > 640) { say('다들 하던 대로 계속 갔습니다.', true); td.beat = 3; }
-      else if (td.beat === 3 && td.x > FORK_X - 80) { say('여기서 길이 갈립니다 — ↓ 아래로.', true); td.beat = 4; }
+      showScene(sceneAt(td.x, false));
+      if (shownScene === 5 && clock > td.gate && !offRoad(td.x, td.y)) {
+        td.gate = clock + 6;
+        say('여기서 길이 갈립니다 — ↓ 아래로 내려서세요', true);
+      }
 
       if (td.x > ROAD_END - 70 && !offRoad(td.x, td.y) && clock > td.gate) {
         td.gate = clock + 4;
@@ -1718,11 +1940,11 @@
       tiltT += dt;
       if (tiltT >= TILT) {
         mode = 'side';
-        GAUGE.lost.hidden = false;
         padLabels();
-        bName.textContent = '혼자';
-        bLine.textContent = '"같이 시작했지만, 같은 길로는 갈 수 없었습니다."';
-        bVerb.textContent = '이제 옆에서 봅니다 — ← → 걷기 · ↑ 점프';
+        kick(4);
+        bName.textContent = '6장';
+        bLine.textContent = '"개발자에게 부탁하는 대신, 직접 만들었습니다."';
+        bVerb.textContent = '← → 걷기 · ↑ 점프 · 길에 놓인 것을 주우세요';
         banner.classList.add('on');
         bannerT = clock + 4.5;
       }
@@ -1752,11 +1974,14 @@
       }
 
       /* --- gravity, ledges --- */
-      var prevB = p.y;
+      var prevB = p.y, wasAir = !p.grounded, fell = p.vy;
       p.vy += GRAV * dt;
       var nextB = p.y + p.vy * dt;
       var s = landAt(p.x, prevB, nextB, p.vy);
-      if (s !== null && p.vy >= 0) { p.y = s; p.vy = 0; p.grounded = true; }
+      if (s !== null && p.vy >= 0) {
+        p.y = s; p.vy = 0; p.grounded = true;
+        if (wasAir && fell > 60) { puff(p.x, p.y, 4, '#4C4A46', 30); SFX.land(); }
+      }
       else { p.y = nextB; p.grounded = false; }
       if (p.grounded) {                       /* walking up a slope shouldn't drop you */
         var up = landAt(p.x, p.y, p.y + 1, 1);
@@ -1766,19 +1991,11 @@
 
       cam = Math.max(0, Math.min(WORLD - W, p.x - W * .42));
 
-      /* --- act 1: they leave, and there is nothing you can do --- */
+      /* --- the mirror: once the border opens they walk in --- */
       var i, v, b;
       for (i = 0; i < visitors.length; i++) {
         v = visitors[i];
-        if (v.arrival) {
-          if (have.gate && v.x < CLINIC - 6) v.x += 15 * dt;
-          continue;
-        }
-        if (!v.gone && p.x > v.x + 22) {
-          v.gone = clock;
-          stats.lost++;
-          if (!have.lantern) say('방문자 이탈 — 검색 대신 AI에게 물었습니다');
-        }
+        if (have.gate && v.x < CLINIC - 6) v.x += 15 * dt;
       }
 
       /* --- crawlers --- */
@@ -1807,8 +2024,10 @@
           b.x += (t.x - b.x) * 2.8 * dt;
           b.y += (t.y - HOVER - b.y) * 3.2 * dt;
           if (Math.abs(t.x - b.x) < 8 && Math.abs(t.y - HOVER - b.y) < 8) {
-            t.cited++; t.cool = RECRAWL; stats.cited++;
-            pop(t.x, t.y - 30, '인용 +1');
+            /* a page with subtitles is re-read sooner — MediSTT's whole claim */
+            t.cited++; t.cool = t.sub ? RECRAWL * .6 : RECRAWL; stats.cited++;
+            if (have.lantern) { pop(t.x, t.y - 30, '인용 +1'); SFX.cite(); }
+            else pop(t.x, t.y - 30, '?');   /* something happened; you cannot count it */
             b.dead = .8; continue;
           }
         } else {
@@ -1820,9 +2039,11 @@
 
         /* --- measure: only possible once you carry the lantern --- */
         if (have.lantern) {
-          if (boxHit(b.x, b.y, p.x, p.y, have.idem ? 5 : 0)) {
+          if (boxHit(b.x, b.y, p.x, p.y, 0)) {
             stats.crawl++;
             pop(b.x, b.y - 4, '+1');
+            puff(b.x, b.y + 3, 3, '#FFAE1A', 24);
+            SFX.cite();
             say(b.name + ' 계측 · GA에는 안 잡히는 트래픽', false);
             b.dead = .6;
           }
@@ -1835,11 +2056,19 @@
             Math.abs(groundAt(TOOLS[i].x) - p.y) < 34) pickup(TOOLS[i]);
       }
 
-      /* --- pops --- */
+      /* --- pops, dust, shake --- */
       for (i = pops.length - 1; i >= 0; i--) {
         pops[i].t += dt;
         if (pops[i].t > 1) pops.splice(i, 1);
       }
+      for (i = dust.length - 1; i >= 0; i--) {
+        var d = dust[i];
+        d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 120 * dt;
+        if (d.t > .7) dust.splice(i, 1);
+      }
+      if (shake > 0) shake = Math.max(0, shake - dt * 22);
+
+      showScene(sceneAt(p.x, true));
 
       /* --- kpi trace: rate, not running total. a cumulative series only ever
              rises, so every bar pins to max and the chart reads as a solid block */
@@ -1964,7 +2193,17 @@
     }
 
     function draw() {
-      if (mode === 'top') { drawTop(g); return; }
+      /* the shake translates the whole frame, so paint the void underneath it
+         first or the offset shows through as a black rim on two edges */
+      g.fillStyle = '#0B0B10'; g.fillRect(0, 0, W, H);
+      var ox = 0, oy = 0;
+      if (shake > .4) {
+        ox = ((Math.random() - .5) * shake) | 0;
+        oy = ((Math.random() - .5) * shake) | 0;
+      }
+      g.save();
+      if (ox || oy) g.translate(ox, oy);
+      if (mode === 'top') { drawTop(g); g.restore(); return; }
       drawSide();
       if (mode === 'tilt') {
         /* the frozen crown view folds down onto the horizon */
@@ -1973,6 +2212,7 @@
         g.drawImage(tdSnap, 0, 0, W, H, 0, (FLOOR - 34) * t, W, Math.max(1, H * (1 - t)));
         g.globalAlpha = 1;
       }
+      g.restore();
     }
 
     function drawSide() {
@@ -1985,6 +2225,14 @@
         sx = STARS[i][0] - cam * .12;
         if (sx > -2 && sx < W) g.fillRect(px(sx), px(STARS[i][1]), 1, 1);
       }
+      /* the amber horizon — one line, the whole width, behind everything built.
+         docs/design fixed this as the signature of the piece: it is the only warm
+         thing above ground, and the skyline stands in front of it. */
+      g.fillStyle = '#2A1E08'; g.fillRect(0, FLOOR - 62, W, 8);
+      g.fillStyle = '#3A2A0B'; g.fillRect(0, FLOOR - 55, W, 1);
+      g.globalAlpha = .55; g.fillStyle = '#FFAE1A'; g.fillRect(0, FLOOR - 56, W, 1);
+      g.globalAlpha = 1;
+
       g.fillStyle = '#15151D';
       for (i = 0; i < FAR.length; i++) {
         sx = FAR[i][0] - cam * .34;
@@ -2006,6 +2254,24 @@
         if (wx0 % 9 < 4) g.fillRect(sx, y + 15, 1, 1);
         if (wx0 % 23 < 2) g.fillRect(sx, y + 24, 1, 2);
       }
+
+      /* the measuring surface. you are not running on a road, you are running on
+         an instrument — ticks every 16 world px, a taller one every 80, and the
+         reading is the distance walked. this is the argument, drawn. */
+      for (var tx = (cam - cam % 16) | 0; tx < cam + W + 16; tx += 16) {
+        sx = tx - cam;
+        if (sx < 0 || sx >= W) continue;
+        y = groundAt(tx);
+        var major = tx % 80 === 0;
+        g.globalAlpha = major ? .34 : .16;
+        g.fillStyle = '#FFAE1A';
+        g.fillRect(px(sx), y - (major ? 7 : 3), 1, major ? 7 : 3);
+        if (major) {
+          g.globalAlpha = .09;
+          g.fillRect(px(sx), FLOOR - 55, 1, y - (FLOOR - 55));
+        }
+        g.globalAlpha = 1;
+      }
       /* ledges */
       for (i = 0; i < PLATS.length; i++) {
         sx = PLATS[i][0] - cam;
@@ -2014,14 +2280,15 @@
         g.fillStyle = '#3A3A48'; g.fillRect(px(sx), PLATS[i][1], PLATS[i][2], 1);
       }
 
-      /* act markers */
-      for (i = 0; i < ACTS.length; i++) {
-        sx = ACTS[i].x - cam;
+      /* scene markers — a milepost per scene, so the road reads as a timeline */
+      for (i = 0; i < SCENES.length; i++) {
+        if (!SCENES[i].side) continue;
+        sx = SCENES[i].x - cam;
         if (sx < -10 || sx > W + 10) continue;
-        y = groundAt(ACTS[i].x);
+        y = groundAt(SCENES[i].x);
         g.fillStyle = '#6E8BB5';
-        g.fillRect(px(sx), y - 20, 1, 20);
-        g.fillRect(px(sx), y - 20, 8, 4);
+        g.fillRect(px(sx), y - 22, 1, 22);
+        g.fillRect(px(sx), y - 22, 8, 4);
       }
 
       /* the border wall */
@@ -2088,23 +2355,60 @@
         g.globalAlpha = 1;
       }
 
-      /* tools still on the ground */
+      /* the door that was built and then deleted. drawn as a frame with the
+         lintel missing, so it reads as unfinished rather than merely unlit. */
+      sx = VOID_X - cam;
+      if (sx > -26 && sx < W + 26) {
+        y = groundAt(VOID_X);
+        g.fillStyle = '#101016'; g.fillRect(px(sx) - 9, y - 30, 18, 30);
+        g.fillStyle = '#2B2B36';
+        g.fillRect(px(sx) - 11, y - 30, 2, 30);
+        g.fillRect(px(sx) + 9,  y - 30, 2, 30);
+        g.fillRect(px(sx) - 11, y - 33, 5, 3);      /* lintel, broken in the middle */
+        g.fillRect(px(sx) + 6,  y - 33, 5, 3);
+      }
+
+      /* the eight doors. the door is the programme; the amber block in front of
+         it is the verb you have not picked up yet. once taken the frame lights,
+         and it stays lit for the rest of the walk so you can come back to read. */
       for (i = 0; i < TOOLS.length; i++) {
         var t = TOOLS[i];
         sx = t.x - cam;
-        if (sx < -16 || sx > W + 16) continue;
+        if (sx < -26 || sx > W + 26) continue;
         y = groundAt(t.x);
-        if (t.taken) { g.fillStyle = '#2B2B36'; g.fillRect(px(sx) - 4, y - 3, 9, 3); continue; }
-        var bob = Math.sin(clock * 3 + i) * 2;
-        g.globalAlpha = .16 + .12 * Math.sin(clock * 3 + i);
-        g.fillStyle = '#FFAE1A'; g.fillRect(px(sx) - 1, 0, 3, y);
-        g.globalAlpha = 1;
-        g.fillStyle = '#FFAE1A';
-        g.fillRect(px(sx) - 5, px(y - 20 + bob), 11, 2);
-        g.fillRect(px(sx) - 5, px(y - 20 + bob), 2, 11);
-        g.fillRect(px(sx) + 4, px(y - 20 + bob), 2, 11);
-        g.fillRect(px(sx) - 5, px(y - 11 + bob), 11, 2);
-        g.fillStyle = '#4A3407'; g.fillRect(px(sx) - 3, px(y - 18 + bob), 7, 7);
+        var lit = t.taken, dh = 30, dw = 18;
+
+        g.fillStyle = '#15151D';                          /* recess */
+        g.fillRect(px(sx) - dw / 2, y - dh, dw, dh);
+        g.fillStyle = lit ? '#FFAE1A' : '#33333E';        /* frame */
+        g.fillRect(px(sx) - dw / 2 - 2, y - dh - 3, dw + 4, 3);
+        g.fillRect(px(sx) - dw / 2 - 2, y - dh, 2, dh);
+        g.fillRect(px(sx) + dw / 2,     y - dh, 2, dh);
+        if (lit) {
+          /* light spilling out of an opened door, pulsing very slightly */
+          g.globalAlpha = .10 + .05 * Math.sin(clock * 1.7 + i);
+          g.fillStyle = '#FFAE1A';
+          g.fillRect(px(sx) - dw / 2, y - dh + 2, dw, dh - 2);
+          g.globalAlpha = 1;
+          g.fillStyle = '#FFAE1A';
+          g.fillRect(px(sx) - dw / 2, y - 1, dw, 1);
+          if (t.read) {                                   /* already read: a tick */
+            g.fillRect(px(sx) - 2, y - dh - 8, 1, 3);
+            g.fillRect(px(sx) - 1, y - dh - 6, 1, 2);
+            g.fillRect(px(sx),     y - dh - 8, 1, 3);
+          }
+        } else {
+          var bob = Math.sin(clock * 3 + i) * 2;
+          g.globalAlpha = .16 + .12 * Math.sin(clock * 3 + i);
+          g.fillStyle = '#FFAE1A'; g.fillRect(px(sx) - 1, 0, 3, y - dh);
+          g.globalAlpha = 1;
+          g.fillStyle = '#FFAE1A';
+          g.fillRect(px(sx) - 5, px(y - 20 + bob), 11, 2);
+          g.fillRect(px(sx) - 5, px(y - 20 + bob), 2, 11);
+          g.fillRect(px(sx) + 4, px(y - 20 + bob), 2, 11);
+          g.fillRect(px(sx) - 5, px(y - 11 + bob), 11, 2);
+          g.fillStyle = '#4A3407'; g.fillRect(px(sx) - 3, px(y - 18 + bob), 7, 7);
+        }
       }
 
       /* crawlers — invisible until the lantern. that is the whole point. */
@@ -2118,8 +2422,9 @@
       }
       g.globalAlpha = 1;
 
-      /* night: heaviest when the visitors are leaving, lifting with every tool */
-      var dark = Math.max(.04, .14 + .30 * (stats.lost / 14) - .055 * got);
+      /* night: heaviest at the start, lifting with every tool — and lifting
+         hardest at the lantern, because that is when you could finally see */
+      var dark = Math.max(.03, .34 - .035 * got - (have.lantern ? .10 : 0));
       g.fillStyle = 'rgba(0,0,0,' + dark.toFixed(3) + ')';
       g.fillRect(0, 0, W, H);
 
@@ -2137,6 +2442,17 @@
         g.fillStyle = '#FFAE1A';
         g.fillRect(wx + (p.face < 0 ? -10 : 7), wy - 12, 3, 3);
       }
+
+      /* dust and sparks */
+      for (i = 0; i < dust.length; i++) {
+        var dp = dust[i];
+        sx = dp.x - cam;
+        if (sx < -4 || sx > W + 4) continue;
+        g.globalAlpha = Math.max(0, 1 - dp.t / .7);
+        g.fillStyle = dp.c;
+        g.fillRect(px(sx), px(dp.y), 1, 1);
+      }
+      g.globalAlpha = 1;
 
       /* floating numbers */
       g.font = '7px monospace'; g.textAlign = 'center';
@@ -2163,36 +2479,40 @@
     /* ---------- hud ---------- */
     function setG(el, v) { if (el.lastChild.textContent !== v) el.lastChild.textContent = v; }
     function hud() {
+      if (tickT && clock > tickT) { tickEl.classList.remove('on'); tickT = 0; }
+      if (bannerT && clock > bannerT) { banner.classList.remove('on'); bannerT = 0; }
+      if (cardT && clock > cardT) { card.classList.remove('on'); cardT = 0; }
+
+      var s = sceneAt(mode === 'side' ? p.x : td.x, mode === 'side');
+      var label = s.n + ' / 10';
+      if (chEl.textContent !== label) {
+        chEl.textContent = label;
+        noteEl.textContent = s.line;
+      }
+      setG(GAUGE.year, s.year);
+
       if (mode !== 'side') {
-        if (chEl.textContent !== '출발') {
-          chEl.textContent = '출발';
-          noteEl.textContent = '다 같은 것을 팔고 있었다';
-        }
         stat.textContent = mode === 'tilt' ? '시점 전환…'
-          : '포장도로 · ' + Math.round(Math.min(1, td.x / ROAD_END) * 100) + '%';
-        if (tickT && clock > tickT) { tickEl.classList.remove('on'); tickT = 0; }
+          : '1–5장 · ' + Math.round(Math.min(1, td.x / ROAD_END) * 100) + '%';
         cue.hidden = true;
         return;
       }
-      var a = actAt(p.x);
-      if (chEl.textContent !== a.name) {
-        chEl.textContent = a.name;
-        noteEl.textContent = a.note;
-        live.textContent = a.name + ' — ' + a.note;
-      }
-      setG(GAUGE.lost,  String(stats.lost));
+
       setG(GAUGE.crawl, String(stats.crawl));
       setG(GAUGE.page,  String(stats.pages));
-      setG(GAUGE.cite,  String(stats.cited));
+      /* the whole point of the middle of the walk: the dial exists and reads "?" */
+      setG(GAUGE.cite,  have.lantern ? String(stats.cited) : '?');
       setG(GAUGE.sov,   sov() + '%');
-      stat.textContent = got + ' / 8 도구 · ' + Math.round(p.x / WORLD * 100) + '%';
-
-      if (tickT && clock > tickT) { tickEl.classList.remove('on'); tickT = 0; }
-      if (bannerT && clock > bannerT) { banner.classList.remove('on'); bannerT = 0; }
+      stat.textContent = got + ' / 8 문 · ' + Math.round(p.x / WORLD * 100) + '%';
 
       var n = nearTool();
-      if (n && n.taken) { cue.textContent = 'Enter — ' + n.rec + ' 기록 읽기'; cue.hidden = false; }
-      else cue.hidden = true;
+      if (n && n.taken) {
+        cue.textContent = 'Enter — ' + n.rec + (n.read ? ' 다시 읽기' : ' 문 열기');
+        cue.hidden = false;
+      } else if (Math.abs(VOID_X - p.x) < REACH + 14) {
+        cue.textContent = '이 문은 열리지 않습니다 — 만들어 놓고 지웠습니다';
+        cue.hidden = false;
+      } else cue.hidden = true;
     }
     function nearTool() {
       for (var i = 0; i < TOOLS.length; i++)
@@ -2201,17 +2521,26 @@
     }
 
     /* ---------- record panel (on demand — the game never forces it) ---------- */
-    function openRec(name) {
+    /* A door is a reading room, not a puzzle: the walk stops, nothing is asked of
+       you, and the body is the record markup that already exists further down the
+       page. The only thing the game adds is the one line about why it was built —
+       everything factual has exactly one copy, in the .rec below. */
+    function openRec(tool) {
+      var name = typeof tool === 'string' ? tool : tool.rec;
       var rec = RECS[name];
       if (!rec) return;
-      body.innerHTML = '<div class="rec">' + rec.innerHTML + '</div>';
+      var why = (typeof tool === 'object' && tool.door)
+        ? '<p class="jn__why">' + esc(tool.door) + '</p>' : '';
+      body.innerHTML = why + '<div class="rec">' + rec.innerHTML + '</div>';
+      if (typeof tool === 'object' && !tool.read) { tool.read = true; stats.doors++; }
       panel.hidden = false;
       panel.scrollTop = 0;
       running = false;
       keys.l = keys.r = false;
       cue.hidden = true;
       xBtn.focus();
-      live.textContent = name + ' 기록을 열었습니다.';
+      SFX.door();
+      live.textContent = name + ' 문을 열었습니다.';
     }
     function closeRec() {
       panel.hidden = true;
@@ -2225,28 +2554,37 @@
       ended = true; running = false;
       keys.l = keys.r = false;
       banner.classList.remove('on');
+      card.classList.remove('on');
+      SFX.end();
 
       var list = TOOLS.map(function (t) {
         return '<button type="button" data-rec="' + esc(t.rec) + '">' +
-               esc(t.rec) + '<i>' + (t.taken ? '획득' : '놓침') + '</i></button>';
+               esc(t.rec) + '<i>' + (t.read ? '열어봄' : t.taken ? '지나침' : '못 지남') +
+               '</i></button>';
       }).join('');
 
+      /* three doors, because three kinds of people read a CV and the last line
+         is not the same for them. the evidence behind all three is identical. */
       veil.innerHTML =
-        '<h3>여기까지가 최희준입니다</h3>' +
+        '<h3>저는 여전히 마케터입니다</h3>' +
+        '<p class="lede">다만 이제, 팔 것을 직접 만듭니다.</p>' +
         '<div class="jn__score">' +
-          '<span>이탈<b>' + stats.lost + '</b></span>' +
-          '<span>계측<b>' + stats.crawl + '</b></span>' +
           '<span>발행<b>' + stats.pages + '</b></span>' +
           '<span>인용<b>' + stats.cited + '</b></span>' +
-          '<span>도구<b>' + got + '/8</b></span>' +
+          '<span>계측<b>' + stats.crawl + '</b></span>' +
+          '<span>문<b>' + stats.doors + '/8</b></span>' +
         '</div>' +
-        '<p>1막에서는 아무것도 못 하고 사람들이 떠나는 걸 보기만 했습니다. ' +
-        '검색이 죽어서 <b>측정</b>할 방법을 만들었고, 측정되니 <b>생산</b>할 이유가 생겼고, ' +
-        '생산하니 <b>감시</b>할 대상이 생겼고, 그래서 국경 밖으로 <b>확장</b>했습니다. ' +
-        '마지막에 들어오던 사람들은 1막에서 떠났던 그 사람들입니다.</p>' +
+        '<p>노출 말고 환자를 세겠다고 자리를 옮긴 게 10년 전입니다. 지금도 같은 일을 합니다 — ' +
+        '세는 대상이 환자에서 <b>인용</b>으로 바뀌었을 뿐입니다. ' +
+        '중간에 계기판이 <b>?</b>였던 구간이 실제로 7개월입니다. ' +
+        '만든 게 쌓였는데 설명할 방법이 없어서 이 페이지를 만들었습니다 — ' +
+        '<b>저를 재는 계측기</b>입니다.</p>' +
+        '<div class="jn__doors">' +
+          '<button type="button" data-go="#who">채용<i>이런 걸 만드는 사람이 필요하시면</i></button>' +
+          '<button type="button" data-go="#work">영업<i>병원에 맞춰 만든 것들입니다</i></button>' +
+          '<button type="button" data-go="#biz">창업 · 투자<i>이 밸류체인을 제품으로 만든다면</i></button>' +
+        '</div>' +
         '<div class="jn__list">' + list + '</div>' +
-        '<p style="font-size:var(--f--2)">아래로 내려가면 같은 기록이 글로 다시 있고, ' +
-        '실제 서버 로그를 넣어볼 수 있는 도구가 있습니다.</p>' +
         '<button class="btn" id="jn-again" type="button">다시 걷기</button>';
       veil.hidden = false;
 
@@ -2259,8 +2597,14 @@
           if (rec) rec.scrollIntoView({ block: 'center' });
         });
       });
-      live.textContent = '여정 완주. 도구 ' + got + '개 · 계측 ' + stats.crawl +
-                         ' · 발행 ' + stats.pages + ' · 인용 ' + stats.cited + '.';
+      [].forEach.call(veil.querySelectorAll('.jn__doors button'), function (btn) {
+        btn.addEventListener('click', function () {
+          var el = document.querySelector(btn.getAttribute('data-go'));
+          if (el) el.scrollIntoView({ block: 'start' });
+        });
+      });
+      live.textContent = '완주. 발행 ' + stats.pages + ' · 인용 ' + stats.cited +
+                         ' · 계측 ' + stats.crawl + ' · 문 ' + stats.doors + '개.';
     }
 
     /* ---------- loop ---------- */
@@ -2287,6 +2631,10 @@
 
     function key(e, down) {
       var k = e.key;
+      /* once the end screen is up the canvas is covered but still focused, so a
+         stray Enter used to open a door behind it and overwrite the ending's
+         announcement. Nothing on the canvas takes input while a veil is showing. */
+      if (!veil.hidden) return;
       if (k === 'ArrowLeft'  || k === 'a' || k === 'A') keys.l = down;
       else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = down;
       /* up/down are held directions in the prologue and one-shot verbs after it */
@@ -2301,7 +2649,7 @@
       else if (down && k === 'Escape' && !panel.hidden) closeRec();
       else if (down && k === 'Enter') {
         var n = nearTool();
-        if (n && n.taken) openRec(n.rec); else return;
+        if (n && n.taken) openRec(n); else return;
       } else return;
       e.preventDefault();
     }
@@ -2327,6 +2675,12 @@
       btn.addEventListener('pointerup', up);
       btn.addEventListener('pointerleave', up);
       btn.addEventListener('pointercancel', up);
+    });
+
+    /* switching tabs mid-walk and coming back should not resume with the keys
+       still held down from before — that reads as the walker running off alone */
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { keys.l = keys.r = keys.u = keys.d = false; last = 0; }
     });
 
     /* the loop is unbounded, so stop it whenever the canvas is off-screen */
@@ -2368,9 +2722,39 @@
         console.assert(l.length === 5, 'leg frame ' + i + ' is 5 tall');
       });
       console.assert(HERO[0].height === 20, 'hero is 20 tall');
-      console.assert(actAt(0).name === '위협', 'act at start');
-      console.assert(actAt(1200).name === '생산', 'act mid');
-      console.assert(actAt(WORLD).name === '확장', 'act end');
+      /* ten scenes, five on each side of the tilt, in the order docs/narrative.md
+         fixes them. a renamed or reordered scene fails here, not in review. */
+      console.assert(SCENES.length === 10, 'ten scenes');
+      console.assert(SCENES.filter(function (s) { return !s.side; }).length === 5,
+                     'five scenes before the tilt');
+      console.assert(sceneAt(0, false).n === 1, 'prologue opens on scene 1');
+      console.assert(sceneAt(FORK_X, false).n === 5, 'the fork is scene 5');
+      console.assert(sceneAt(0, true).n === 6, 'the side view opens on scene 6');
+      console.assert(sceneAt(WORLD, true).n === 10, 'the walk ends on scene 10');
+      SCENES.forEach(function (s, i) {
+        console.assert(s.n === i + 1, 'scenes are numbered in order');
+        console.assert(!!s.line && !!s.year, 'scene ' + s.n + ' has a line and a year');
+      });
+
+      /* the order of the doors is the order the things were actually built.
+         the lantern being sixth is the whole argument — if a tidy-up ever moves
+         it to the front, the seven blind months disappear and so does scene 8. */
+      console.assert(TOOLS[0].rec === 'aeo_sync', 'aeo_sync was built first');
+      console.assert(TOOLS[5].grant === 'lantern', 'the lantern is the sixth door');
+      console.assert(TOOLS[5].rec === 'aeo-log-analyzer', 'and it is the log analyzer');
+      console.assert(TOOLS[0].x < TOOLS[5].x, 'you publish long before you can measure');
+      TOOLS.forEach(function (t) {
+        console.assert(!!t.door, 'door ' + t.rec + ' says why it was built');
+        console.assert(!!t.verb && !!t.line, 'door ' + t.rec + ' has a line and a verb');
+      });
+
+      /* the empty frame belongs to scene 10 and must be passed BEFORE the last
+         record, or you never see the thing that was deleted */
+      console.assert(sceneAt(VOID_X, true).n === 10, 'the empty frame is in scene 10');
+      console.assert(VOID_X < TOOLS[7].x, 'you walk past it before the last door');
+      console.assert(!TOOLS.some(function (t) { return Math.abs(t.x - VOID_X) < 40; }),
+                     'nothing real stands where the deleted thing was');
+
       console.assert(groundAt(50) === FLOOR, 'flat ground');
       console.assert(groundAt(760) < FLOOR, 'hill raises ground');
       /* NetTier must be reachable before the wall it opens */
@@ -2420,6 +2804,24 @@
         pages.length = 0; stats.pages = 0; have.plant = false;
         plantCd = 0; p.x = sx0; p.face = sf; running = sr;
       })();
+
+      /* the citation dial must read "?" until the lantern and a number after —
+         that gap IS the seven months, so it is worth a test of its own */
+      (function () {
+        var wasL = have.lantern, wasC = stats.cited, wasMode = mode;
+        mode = 'side'; stats.cited = 17;
+        have.lantern = false; hud();
+        console.assert(GAUGE.cite.lastChild.textContent === '?',
+                       'citations read ? before the lantern');
+        have.lantern = true; hud();
+        console.assert(GAUGE.cite.lastChild.textContent === '17',
+                       'and read the real number after it');
+        have.lantern = wasL; stats.cited = wasC; mode = wasMode; hud();
+      })();
+
+      /* a page with subtitles has to come back round sooner, or MediSTT grants
+         a verb that changes nothing */
+      console.assert(RECRAWL * .6 < RECRAWL, 'subtitled pages are re-read sooner');
       console.log('journey selftest done');
     }
   })();
