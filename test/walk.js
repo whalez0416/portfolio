@@ -123,7 +123,7 @@ notes.push('전환 후 장면 = ' + chEl.textContent);
 /* 6~10장 — 발행하고 점프하며 끝까지, 문은 한 번씩만 */
 key('ArrowRight', true);
 const opened = new Set();
-let citeWasQuestion = false, lanternFrame = -1, voidSeen = false, f = 0, done = false;
+let citeWasQuestion = false, lanternFrame = -1, voidSeen = false, f = 0, done = false, tapped = 0;
 for (let i = 0; i < 4000; i++) {
   f++; tick(1);
   scenes.add(chEl.textContent);
@@ -137,7 +137,10 @@ for (let i = 0; i < 4000; i++) {
     const name = cue.textContent.replace(/^Enter — /, '').replace(/ (문 열기|다시 읽기)$/, '');
     if (!opened.has(name)) {
       opened.add(name);
-      key('Enter', true); key('Enter', false);
+      /* alternate between the key and tapping the cue, so the touch path — the
+         only way to open a door on a phone — is exercised too */
+      if (opened.size % 2) { key('Enter', true); key('Enter', false); }
+      else { tapped++; fire(cue, 'click'); }
       if (!panel.hidden) {
         const bodyHtml = id('jn-body').innerHTML;
         if (!/record body/.test(bodyHtml)) notes.push('문 본문 없음: ' + name);
@@ -165,6 +168,7 @@ ok(lanternFrame > 0, '랜턴을 여섯 번째로 줍는다 (' + lanternFrame + '
 ok(!crawl.hidden, '랜턴 이후 계측 계기판이 살아 있다');
 ok(cite.lastChild.textContent !== '?', '랜턴 이후 인용이 숫자가 된다');
 ok(opened.size >= 7, '문을 열고 닫을 수 있다 (' + opened.size + '개)');
+ok(tapped > 0, '키보드 없이 탭으로도 문이 열린다 (' + tapped + '회)');
 ok(voidSeen, '열리지 않는 아홉 번째 문을 지난다');
 ok(/완주/.test(id('jn-live').textContent), '완주가 aria-live로 안내된다');
 ok(/여전히 마케터/.test(veil.innerHTML), '엔딩 문구가 docs/narrative.md와 같다');

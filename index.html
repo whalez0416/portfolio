@@ -302,8 +302,13 @@
   .jn__cue {
     position: absolute; left: 50%; bottom: .8rem; transform: translateX(-50%);
     font-family: var(--mono); font-size: var(--f--2); color: var(--void);
-    background: var(--sig); padding: .22rem .7rem; white-space: nowrap;
+    background: var(--sig); padding: .3rem .8rem; white-space: nowrap;
+    border: 0; cursor: pointer; max-width: calc(100% - 1.6rem); overflow: hidden;
+    text-overflow: ellipsis; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
+  .jn__cue:hover { filter: brightness(1.1); }
+  .jn__cue:disabled { background: var(--panel2); color: var(--mute); cursor: default; }
   .jn__cue[hidden] { display: none; }
 
   /* `safe center` so a tall end-screen on a short canvas scrolls instead of
@@ -318,8 +323,10 @@
   .jn__veil[hidden] { display: none; }
   /* while a veil is up, the live HUD under it is noise — the ending screen was
      showing its own scoreboard over a stale "Enter — 기록 읽기" cue */
+  /* pointer-events too, not just opacity: the cue is a real button now, and an
+     invisible button that still takes clicks is worse than a visible one */
   .jn__stage:has(> .jn__veil:not([hidden])) :is(.jn__hud, .jn__tick, .jn__cue, .jn__banner) {
-    opacity: 0;
+    opacity: 0; pointer-events: none;
   }
   .jn__veil h3 {
     font-family: var(--disp); font-size: var(--f-2); margin: 0;
@@ -668,7 +675,9 @@
             </span>
           </div>
           <p class="jn__tick" id="jn-tick" aria-hidden="true"></p>
-          <p class="jn__cue" id="jn-cue" hidden></p>
+          <!-- a button, not a caption: on touch there is no Enter key, and this
+               is the only thing on screen that offers to open a door -->
+          <button class="jn__cue" id="jn-cue" type="button" hidden></button>
 
           <div class="jn__card" id="jn-card" aria-hidden="true">
             <b id="jn-card-line"></b>
@@ -716,7 +725,7 @@
         <div class="jn__legend">
           <b>1–5장</b> <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동 · 갈림길에서 아래로 &nbsp;|&nbsp;
           <b>6–10장</b> <kbd>←</kbd><kbd>→</kbd> 걷기 · <kbd>↑</kbd> 점프 · <kbd>↓</kbd> 발행 &nbsp;|&nbsp;
-          <b>문</b> <kbd>Enter</kbd> — 선택입니다. 안 열어도 끝까지 갑니다 &nbsp;|&nbsp;
+          <b>문</b> <kbd>Enter</kbd> 또는 화면 아래 앰버 버튼 탭 — 선택입니다. 안 열어도 끝까지 갑니다 &nbsp;|&nbsp;
           걷기 싫으시면 그냥 스크롤하세요 — 같은 내용이 아래에 전부 글로 있습니다.
         </div>
       </div>
@@ -2508,10 +2517,10 @@
       var n = nearTool();
       if (n && n.taken) {
         cue.textContent = 'Enter — ' + n.rec + (n.read ? ' 다시 읽기' : ' 문 열기');
-        cue.hidden = false;
+        cue.disabled = false; cue.hidden = false;
       } else if (Math.abs(VOID_X - p.x) < REACH + 14) {
         cue.textContent = '이 문은 열리지 않습니다 — 만들어 놓고 지웠습니다';
-        cue.hidden = false;
+        cue.disabled = true; cue.hidden = false;
       } else cue.hidden = true;
     }
     function nearTool() {
@@ -2628,6 +2637,16 @@
     /* ---------- input ---------- */
     goBtn.addEventListener('click', start);
     xBtn.addEventListener('click', closeRec);
+    /* the cue is the touch equivalent of Enter — without it a phone can walk the
+       whole road and never open a single door */
+    cue.addEventListener('click', function () {
+      /* CSS hides this behind a veil with pointer-events, but :has() is not
+         everywhere yet and a tap that opens a door under the end screen is the
+         same bug the Enter key had */
+      if (!veil.hidden || !panel.hidden) return;
+      var n = nearTool();
+      if (n && n.taken) openRec(n);
+    });
 
     function key(e, down) {
       var k = e.key;
