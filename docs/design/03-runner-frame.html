@@ -1,0 +1,212 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  body { margin: 0; background: #0a0a0d; display: flex; flex-direction: column; gap: 22px; padding: 22px; }
+  .stage { position: relative; width: 1600px; height: 900px; }
+  canvas { display: block; width: 1600px; height: 900px; }
+
+  /* big line: one short sentence at a time, readable at a glance */
+  .say {
+    position: absolute; left: 0; right: 0; bottom: 9%;
+    text-align: center; pointer-events: none;
+    font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  }
+  .say .who {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 26px; letter-spacing: .16em; color: #FFAE1A;
+    margin-bottom: 18px; text-shadow: 0 2px 18px rgba(0,0,0,.9);
+  }
+  .say::before{content:'';position:absolute;left:0;right:0;bottom:-9%;height:300%;background:linear-gradient(to top,rgba(6,8,12,.92),rgba(6,8,12,.55) 45%,rgba(6,8,12,0));z-index:-1}
+  .say .line {
+    font-size: 88px; font-weight: 800; letter-spacing: -.045em; line-height: 1.15;
+    color: #F5F3EE; text-shadow: 0 4px 40px rgba(0,0,0,.95), 0 0 90px rgba(0,0,0,.7);
+  }
+  .say .line em { font-style: normal; color: #FFAE1A; }
+
+  /* the whole HUD is two numbers, nothing else */
+  .hud {
+    position: absolute; top: 34px; left: 0; right: 0; padding: 0 44px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: ui-monospace, Consolas, monospace; pointer-events: none;
+  }
+  .hud .act { font-size: 26px; letter-spacing: .22em; color: #FFAE1A; text-shadow: 0 2px 14px #000; }
+  .hud .n   { font-size: 40px; color: #F5F3EE; font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px #000; }
+  .hud .n small { font-size: 22px; color: #8B8982; letter-spacing: .14em; margin-right: 12px; }
+</style>
+
+<div class="stage">
+  <canvas id="s1" width="1600" height="900"></canvas>
+  <div class="hud"><span class="act">측정</span><span class="n"><small>계측</small>12</span></div>
+  <div class="say"><div class="who">aeo-log-analyzer</div><div class="line">안 보이면 <em>증명할 수 없다</em></div></div>
+</div>
+
+<div class="stage">
+  <canvas id="s2" width="1600" height="900"></canvas>
+  <div class="hud"><span class="act">출발</span><span class="n"><small>유입</small>14</span></div>
+  <div class="say"><div class="line">다들 <em>같은 걸</em> 팔고 있었다</div></div>
+</div>
+
+<script>
+const W = 1600, H = 900, HORIZON = H * 0.42, F = 950, CAM_H = 1.85, ROAD_HW = 3.6;
+const NEAR = 1.7;   // near plane: road must spill past the bottom edge, not stop short
+const TAU = Math.PI * 2;
+const proj = z => { const s = F / z; return { y: HORIZON + CAM_H * s, hw: ROAD_HW * s, s }; };
+
+/* ---- runner (same rig as the approved figure pass) ---- */
+const L = { ground:0, hip:.5, waist:.61, shoulder:.8, crown:.945, hipHW:.05, shHW:.105,
+            headRX:.055, headRY:.067, thigh:.24, thighW:.062, shinW:.046, upperW:.045,
+            foreW:.033, upperArm:.15 };
+function footPath(u){u-=Math.floor(u);
+  if(u<.42){const k=u/.42;return{y:.010+.085*Math.max(0,k-.72)/.28,lift:0,squash:.03*Math.sin(k*Math.PI)};}
+  const k=(u-.42)/.58,arc=Math.sin(k*Math.PI),hard=Math.pow(arc,.72);
+  return{y:.015+.415*hard,lift:hard,squash:0};}
+function seg(g,x0,y0,x1,y1,w,h,baseY,cx){g.lineWidth=Math.max(.8,w*h);g.beginPath();
+  g.moveTo(cx+x0*h,baseY-y0*h);g.lineTo(cx+x1*h,baseY-y1*h);g.stroke();}
+function runner(g,cx,baseY,h,t,fill,opts){opts=opts||{};
+  const u=t-Math.floor(t),p=u*TAU;
+  const bob=-.026*Math.cos(2*p)-.01, shTilt=.055*Math.cos(p), hipTilt=-.03*Math.cos(p), sway=.012*Math.cos(p);
+  g.save(); if(opts.blur)g.filter='blur('+opts.blur+'px)';
+  g.fillStyle=fill; g.strokeStyle=fill; g.lineCap='round'; g.lineJoin='round';
+  const P=(x,y)=>[cx+(x+sway)*h, baseY-(y+bob)*h];
+  const legs=[];
+  for(const side of [-1,1]){
+    const f=footPath(u+(side<0?0:.5));
+    const hipX=side*L.hipHW+sway, hipY=L.hip+bob+hipTilt*side*.3;
+    const kx=hipX+side*(.008+.03*f.lift), ky=hipY-L.thigh*(1-.46*f.lift)+f.squash;
+    legs.push({hipX,hipY,kx,ky,ankX:kx+side*(.004+.014*f.lift),ankY:L.ground+f.y+bob,lift:f.lift,side});
+  }
+  legs.sort((a,b)=>b.lift-a.lift);
+  for(const lg of legs){
+    seg(g,lg.hipX,lg.hipY-bob,lg.kx,lg.ky-bob,L.thighW,h,baseY,cx);
+    seg(g,lg.kx,lg.ky-bob,lg.ankX,lg.ankY-bob,L.shinW,h,baseY,cx);
+    seg(g,lg.ankX,lg.ankY-bob,lg.ankX+lg.side*(.024-.014*lg.lift),lg.ankY-bob+.03*lg.lift-.004,L.shinW*.85,h,baseY,cx);
+  }
+  const shLy=L.shoulder+shTilt, shRy=L.shoulder-shTilt, hpLy=L.hip+hipTilt, hpRy=L.hip-hipTilt;
+  g.beginPath(); g.moveTo(...P(-L.shHW,shLy));
+  g.quadraticCurveTo(...P(-L.shHW*.86,L.waist),...P(-L.hipHW-.01,hpLy));
+  g.lineTo(...P(L.hipHW+.01,hpRy));
+  g.quadraticCurveTo(...P(L.shHW*.86,L.waist),...P(L.shHW,shRy));
+  g.quadraticCurveTo(...P(0,L.shoulder+.042),...P(-L.shHW,shLy)); g.closePath(); g.fill();
+  for(const side of [-1,1]){
+    const q=p+(side<0?Math.PI:0), sw=Math.cos(q);
+    const shX=side*L.shHW*.88+sway, shY=(side<0?shLy:shRy)-.012;
+    const elbX=shX+side*(.052+.03*Math.max(0,-sw)), elbY=shY-L.upperArm+.03*sw;
+    seg(g,shX,shY,elbX,elbY,L.upperW,h,baseY,cx);
+    seg(g,elbX,elbY,elbX-side*(.04+.03*Math.max(0,sw)),elbY+.038+.115*sw,L.foreW,h,baseY,cx);
+  }
+  seg(g,sway,L.shoulder,sway+shTilt*.3,L.shoulder+.055,.055,h,baseY,cx);
+  const hx=cx+(sway+shTilt*.45)*h, hy=baseY-(L.crown-L.headRY+bob)*h;
+  g.beginPath(); g.ellipse(hx,hy,L.headRX*h,L.headRY*h,shTilt*1.4,0,TAU); g.fill();
+  g.filter='none';
+  if(opts.rim){const s=opts.rimSide||-1; g.strokeStyle=opts.rim; g.lineWidth=Math.max(1,h*.013);
+    g.beginPath(); g.ellipse(hx,hy,L.headRX*h,L.headRY*h,shTilt*1.4,
+      s<0?Math.PI*.6:Math.PI*1.4, s<0?Math.PI*1.32:Math.PI*2.12); g.stroke();
+    g.beginPath(); g.moveTo(...P(s*L.shHW,(s<0?shLy:shRy)-.015));
+    g.quadraticCurveTo(...P(s*L.shHW*.88,L.waist),...P(s*(L.hipHW+.008),s<0?hpLy:hpRy)); g.stroke();
+    const planted=legs.reduce((a,b)=>a.lift<=b.lift?a:b);
+    if(planted.side===s&&planted.lift<.35){g.beginPath();
+      g.moveTo(...P(planted.hipX+s*L.thighW*.42,planted.hipY-bob));
+      g.lineTo(...P(planted.kx+s*L.thighW*.38,planted.ky-bob)); g.stroke();}
+  }
+  g.restore();
+}
+
+/* ---------- the world, lifted a couple of stops so it survives daylight ---------- */
+function world(g, opt) {
+  g.fillStyle = '#0D0F15'; g.fillRect(0, 0, W, H);
+  let sk = g.createLinearGradient(0, 0, 0, HORIZON);
+  sk.addColorStop(0, '#0A0C12'); sk.addColorStop(.62, '#141824'); sk.addColorStop(1, '#242A3A');
+  g.fillStyle = sk; g.fillRect(0, 0, W, HORIZON);
+  let gr = g.createLinearGradient(0, HORIZON, 0, H);
+  gr.addColorStop(0, '#171B26'); gr.addColorStop(1, '#0A0C12');
+  g.fillStyle = gr; g.fillRect(0, HORIZON, W, H - HORIZON);
+
+  const hg = g.createLinearGradient(0, HORIZON - 150, 0, HORIZON + 4);
+  hg.addColorStop(0, 'rgba(255,174,26,0)'); hg.addColorStop(1, 'rgba(255,174,26,.34)');
+  g.fillStyle = hg; g.fillRect(0, HORIZON - 150, W, 154);
+  g.fillStyle = 'rgba(255,200,110,.85)'; g.fillRect(0, HORIZON - 1.5, W, 2.5);
+
+  /* three lanes, not fourteen grid lines — the road must read instantly */
+  g.lineWidth = 1.6;
+  for (const t of [-1, -1/3, 1/3, 1]) {
+    g.strokeStyle = Math.abs(t) === 1 ? 'rgba(150,178,220,.55)' : 'rgba(255,174,26,.30)';
+    g.beginPath();
+    let first = true;
+    for (let z = NEAR; z < 260; z *= 1.045) { const p = proj(z), x = W/2 + t*p.hw; first ? (g.moveTo(x,p.y), first=false) : g.lineTo(x,p.y); }
+    g.stroke();
+  }
+  for (let z = NEAR; z < 200; z += 2.2) {
+    const p = proj(z);
+    g.strokeStyle = 'rgba(255,174,26,' + Math.max(.05, .34 - z/230) + ')';
+    g.lineWidth = Math.max(.7, 3.2 * p.s / F);
+    g.beginPath(); g.moveTo(W/2 - p.hw, p.y); g.lineTo(W/2 + p.hw, p.y); g.stroke();
+  }
+
+  /* roadside lamps = 유입. Sized in world units — the old formula was
+     280/z, which made the nearest lamp a beach ball. */
+  for (let i = 1; i < 26; i++) {
+    const z = 3 + i * 6.5;
+    const p = proj(z), off = p.hw * 1.18;
+    const lit = z < (opt.lampsLit === undefined ? 999 : opt.lampsLit);
+    const r = Math.max(0.8, 0.085 * p.s);
+    const postH = 0.95 * p.s;
+    for (const side of [-1, 1]) {
+      const x = W/2 + side * off, y = p.y;
+      g.strokeStyle = 'rgba(120,132,158,.40)';
+      g.lineWidth = Math.max(.7, 0.03 * p.s);
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - postH); g.stroke();
+      if (lit) {
+        const gl = g.createRadialGradient(x, y - postH, 0, x, y - postH, r * 9);
+        gl.addColorStop(0, 'rgba(255,190,110,.40)'); gl.addColorStop(1, 'rgba(255,190,110,0)');
+        g.fillStyle = gl; g.beginPath(); g.arc(x, y - postH, r * 9, 0, TAU); g.fill();
+      }
+      g.fillStyle = lit ? 'rgba(255,200,130,.95)' : 'rgba(86,92,108,.45)';
+      g.beginPath(); g.arc(x, y - postH, r, 0, TAU); g.fill();
+    }
+  }
+
+  const CROWD = opt.crowd;
+  for (const c of CROWD) {
+    const p = proj(c.z);
+    g.globalAlpha = Math.max(.20, 1 - c.z/110);
+    runner(g, W/2 + c.lane*p.hw, p.y, 1.75*p.s, c.t, '#1C2230');
+    g.globalAlpha = 1;
+  }
+
+  if (opt.bots) for (const b of opt.bots) {
+    const p = proj(b.z), s = 0.13 * p.s;
+    const x = W/2 + b.lane * p.hw, y = p.y - 0.95 * p.s;
+    const gl = g.createRadialGradient(x, y, 0, x, y, s*3.2);
+    gl.addColorStop(0,'rgba(255,174,26,.5)'); gl.addColorStop(1,'rgba(255,174,26,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(x,y,s*3.2,0,TAU); g.fill();
+    g.fillStyle = '#FFC246';
+    g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
+    g.fillStyle = '#0D0F15';
+    g.beginPath(); g.arc(x, y, s*.42, 0, TAU); g.fill();
+  }
+
+  const PZ = 7.0, pp = proj(PZ);
+  runner(g, W/2 + opt.playerLane * pp.hw, pp.y, 1.75*pp.s, opt.t, '#080A10',
+         { rim:'rgba(255,190,90,1)', rimSide:-1 });
+
+  const v = g.createRadialGradient(W/2, H*.54, H*.30, W/2, H*.54, W*.75);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.60)');
+  g.fillStyle = v; g.fillRect(0,0,W,H);
+}
+
+world(document.getElementById('s1').getContext('2d'), {
+  playerLane: -0.33, t: 0.30, lampsLit: 999,
+  crowd: [ {z:16,lane:.35,t:.6},{z:24,lane:-.34,t:.2},{z:38,lane:.34,t:.8},{z:60,lane:0,t:.4} ],
+  bots: [ {z:11,lane:-.33},{z:17,lane:.33},{z:26,lane:0},{z:40,lane:-.33} ]
+});
+world(document.getElementById('s2').getContext('2d'), {
+  playerLane: 0, t: 0.62, lampsLit: 999,
+  crowd: [ {z:9.5,lane:-.34,t:.15},{z:12,lane:.34,t:.62},{z:15,lane:0,t:.38},
+           {z:19,lane:.34,t:.87},{z:24,lane:-.34,t:.05},{z:31,lane:0,t:.51},
+           {z:41,lane:.34,t:.74},{z:55,lane:-.34,t:.28},{z:74,lane:0,t:.93} ]
+});
+
+document.fonts.ready.then(() => { document.title = 'ready'; });
+</script>
