@@ -273,7 +273,11 @@
     text-align: center; white-space: pre-line;
     font-weight: 300; font-size: clamp(.9rem, 2vw, 1.55rem); line-height: 1.6;
     letter-spacing: .04em; color: #FFF6E6;
-    text-shadow: 0 2px 40px rgba(0,0,0,.85), 0 0 90px rgba(0,0,0,.6);
+    /* 밝은 모래 위 흰 글씨는 대비가 아슬합니다. 그림자만으로는 모자라서
+       글자 뒤에만 아주 옅은 어둠을 깝니다 — 화풍을 안 깨는 선에서. */
+    background: radial-gradient(58% 26% at 50% 50%,
+                rgba(12,8,6,.52) 0%, rgba(12,8,6,.28) 55%, rgba(12,8,6,0) 100%);
+    text-shadow: 0 2px 14px rgba(0,0,0,.95), 0 2px 40px rgba(0,0,0,.85);
     opacity: 0; transition: opacity 2.2s ease;
   }
   .jn__tick.on { opacity: 1; }
@@ -475,6 +479,18 @@
   }
   .jn__snd:hover { color: var(--ink); border-color: var(--mute); }
   .jn__snd[aria-pressed="true"] { color: var(--sig); border-color: var(--sig); }
+
+  .jn__full {
+    position: absolute; right: .55rem; bottom: 2.3rem; z-index: 3; cursor: pointer;
+    font-family: var(--mono); font-size: var(--f--2); line-height: 1;
+    color: var(--mute); background: rgba(8,8,11,.7);
+    border: 1px solid var(--line2); padding: .32rem .5rem;
+  }
+  .jn__full:hover { color: var(--ink); border-color: var(--mute); }
+  .jn__full[aria-pressed="true"] { color: var(--sig); border-color: var(--sig); }
+  /* 전체화면일 때는 스테이지가 화면 전체가 됩니다 */
+  .jn__stage:fullscreen { background: #14100E; display: grid; place-items: center; }
+  .jn__stage:fullscreen #jn { width: 100%; height: 100%; object-fit: cover; }
 
   /* ending: three doors, because three kinds of people read this */
   .jn__doors {
@@ -683,7 +699,9 @@
 
           <div class="jn__hud" aria-hidden="true">
             <span class="ch" id="jn-ch">1 / 10</span>
-            <span class="note" id="jn-note">저는 노출을 팔았습니다</span>
+            <!-- 여기 장면 문장을 한 번 더 띄우고 있었는데, 화면 가운데 자막과
+                 글자까지 똑같아서 같은 말이 두 번 보였습니다. 저니의 힘은 UI가
+                 없다는 것이라 지웠습니다. 남는 건 장면 수와 연도뿐입니다. -->
             <!-- 발행/인용/계측/점유 카운터를 뗐습니다. 보는 사람에게 "발행 21"은
                  아무 뜻이 없고, 이력서 위에서는 실제 실적처럼 읽힐 위험까지 있었습니다.
                  세는 이야기는 숫자가 아니라 화면으로 합니다 — 7개월 동안 크롤러가
@@ -713,11 +731,17 @@
 
           <button class="jn__snd" id="jn-snd" type="button"
                   aria-pressed="false" aria-label="소리 켜기">♪ 소리</button>
+          <!-- 이력서 안의 작은 상자에서 사막을 걷고 있으면 몰입이 안 됩니다.
+               전체화면은 이 게임에서 비용 대비 효과가 제일 큰 한 줄입니다. -->
+          <button class="jn__full" id="jn-full" type="button"
+                  aria-pressed="false" aria-label="전체화면">⛶ 전체화면</button>
 
           <div class="jn__veil" id="jn-veil">
-            <h3>여기까지가 최희준입니다</h3>
-            <p class="lede">저는 노출을 팔다가, 환자를 세겠다고 자리를 옮겼습니다.
-              10년이 넘었고 지금도 같은 일을 합니다 — 세는 대상만 바뀌었습니다.</p>
+            <!-- 여는 말은 훅이어야 합니다. "여기까지가 최희준입니다"로 열고 있었는데
+                 그건 끝나는 말이라 아무 일도 하지 않았습니다. -->
+            <h3>제가 팔던 것이 죽기 시작했습니다</h3>
+            <p class="lede">저는 파는 사람이었습니다.
+              팔던 것이 죽는 걸 보고, 팔 것을 직접 만들기 시작했습니다.</p>
             <p>열 장면을 걸어서 지나갑니다. <b>등 뒤에서 보는 시점 하나</b>로 끝까지 갑니다 —
               중간에 바뀌지 않습니다. 정해진 길은 없고, 방향은 지평선의 <b>산</b>이 줍니다.
               모래에 반쯤 묻힌 <b>유적 여덟</b>이 제가 만든 것들인데,
@@ -2283,6 +2307,41 @@ const crowd = [];
 for (let i = 0; i < 11; i++)
   crowd.push({ x: (Math.random()-0.5)*14, z: 12 + i*6 + Math.random()*4,
                yaw: (Math.random()-0.5)*0.10, veer: 0, t: Math.random()*6 });
+
+/* ── 돌무지 — 유적으로 흘려 놓은 표식 ──
+   산만 보고 곧장 걸으면 여덟 중 셋만 안내 범위(16) 안에 들어옵니다. 나머지 다섯은
+   본길에서 21~34 단위 옆이라 존재조차 모르고 끝납니다. 문이 선택인 것과
+   못 찾는 것은 다릅니다 — 이력서로서는 그냥 손실입니다.
+
+   그렇다고 길을 깔면 사막이 아니게 됩니다("정해진 길이 없다"가 이 게임의 전제).
+   그래서 길 대신 표식만 놓습니다: 본길 쪽에서 문간 쪽으로 돌이 네 개 놓여 있고,
+   유적에 가까울수록 커집니다. 보고 따라갈지는 여전히 각자의 선택입니다. */
+const MAIN_X = (z) => MOUNTAIN.x * z / MOUNTAIN.z;   /* 산까지의 직선 */
+const cairns = (() => {
+  const v = [];
+  for (const t of TEMPLES) {
+    /* 길 위에 이미 있는 것에는 표식이 필요 없습니다 — 걷다 보면 만납니다.
+       처음엔 여덟 개 전부에 놓았더니, 길 위 유적은 시작점과 문이 거의 같은
+       자리라 돌무지가 문 앞에 쌓여 시야를 막았습니다. 표식이 장애물이 됐습니다. */
+    if (Math.abs(t.x - MAIN_X(t.z)) < 16) continue;
+    const dx = -Math.sin(t.yaw), dz = -Math.cos(t.yaw);   /* 문간은 로컬 -z */
+    const M = { x: t.x + dx * 22, z: t.z + dz * 22 };     /* 문에서 한참 앞 */
+    const S = { x: MAIN_X(t.z - 30), z: t.z - 30 };       /* 본길 쪽 시작점 */
+    for (let i = 0; i < 4; i++) {
+      const u = 0.12 + i * 0.26;
+      const x = S.x + (M.x - S.x) * u, z = S.z + (M.z - S.z) * u;
+      const k = 0.85 + u * 0.6;                           /* 유적 쪽일수록 조금 크게 */
+      const g = height(x, z);
+      /* 세 덩이를 쌓습니다. 하나짜리 상자는 돌이 아니라 상자로 보입니다.
+         낮게 놓았더니 30 단위 밖에서 모래에 묻혀 점으로만 보였습니다 —
+         능선 실루엣을 끊을 만큼은 서 있어야 "저기 뭔가 있다"가 됩니다. */
+      box(v, x,           g + 0.34 * k, z,           0.44*k, 0.34*k, 0.38*k);
+      box(v, x + 0.07*k,  g + 0.92 * k, z - 0.06*k,  0.31*k, 0.26*k, 0.27*k);
+      box(v, x - 0.05*k,  g + 1.40 * k, z + 0.05*k,  0.18*k, 0.22*k, 0.16*k);
+    }
+  }
+  return mesh(new Float32Array(v));
+})();
 /* ── 열 장면 대본 — docs/narrative.md 전편 ──
    진행도는 시간도 걸음 수도 아니라 "산 쪽으로 얼마나 나아갔는가"(z 최고점)입니다.
    길이 정해져 있지 않은 사막이라 거리(moved)로 재면 옆으로 헤맨 것까지
@@ -2294,29 +2353,34 @@ for (let i = 0; i < 11; i++)
    그래서 비트마다 2~3줄이 연쇄로 이어집니다: 상황 → 그래서 → 결과.
    그리고 이 사막이 무엇인지, 유적이 무엇인지를 게임이 직접 말해 줍니다.
    문장은 전부 narrative.md 에 있는 내용입니다 — 새로 지어낸 사실은 없습니다. */
+/* 순서는 연대기가 아닙니다 — docs/narrative.md 의 「화면 대본」입니다.
+   연대기로 뒀더니 "무슨 얘기를 하고 싶은 건지 모르겠다"가 됐습니다. 맞는 말이었고,
+   이유는 분명합니다: 위기가 3분 뒤에 오면 그때까지 화면을 볼 이유가 없습니다.
+   그래서 죽는 장면으로 열고, '세는 사람'을 관통선으로 놓습니다 —
+   272 비트에서 "못 세고 있었습니다"를 심어야 여섯 번째 유적의 전환이 회수됩니다. */
 const SCRIPT = [
-  { z: 0.5, year: '',        lines: ['최희준 — 의료 마케팅 12년',
-                                     '걸어서 읽는 이력서입니다. 저 산까지 갑니다.'] },
-  { z:  12, year: '2014',    lines: ['2014년, 광고대행사에서 시작했습니다',
-                                     '제가 팔던 것은 ‘노출’이었습니다 — 얼마나 많이 보였는가',
-                                     '모두가 같은 것을 팔며, 같은 길을 걸었습니다'] },
-  { z:  28, year: '2015~',   lines: ['어느 날 들었습니다 — “노출이 아니라, 실제 환자를 늘린다”',
-                                     '그 한 문장에 끌려 의료로 자리를 옮겼습니다'] },
-  { z:  44, year: '2020',    lines: ['2020년, 일은 잘되고 있었습니다',
-                                     '그런데 이 방식에는 다음이 없다고 봤습니다',
-                                     '회사를 쉬며 AI와 코딩을 독학했습니다 — 아직 쓸 데도 없이'] },
-  { z:  58, year: '2025',    lines: ['5년 뒤, 검색이 AI의 답변으로 바뀌기 시작했습니다',
-                                     '제가 팔던 상품이, 죽기 시작한 겁니다'] },
-  { z:  70, year: '2025',    lines: ['업계는 가던 길을 계속 갔습니다',
-                                     '대체할 것을 만들 사람이 저밖에 없어서, 혼자 내려섰습니다',
+  { z: 0.5, year: '2025',    lines: ['제가 팔던 것이 죽기 시작했습니다',
+                                     '2025년, 검색이 AI의 답변으로 바뀌면서'] },
+  { z:  12, year: '',        lines: ['그래서 팔 것을 직접 만들기 시작했습니다',
+                                     '여기서 저 산까지가 그 기록입니다'] },
+  { z:  28, year: '2014',    lines: ['저는 파는 사람이었습니다 — 2014년부터',
+                                     '광고대행사에서 판 것은 ‘노출’이었습니다. 얼마나 많이 보였는가'] },
+  { z:  44, year: '2015~',   lines: ['한 번은 이미 바꿨습니다',
+                                     '“노출이 아니라 실제 환자를 늘린다”는 말에 끌려 의료로 옮겼습니다',
+                                     '그때부터 저는 노출이 아니라 환자를 셌습니다'] },
+  { z:  58, year: '2020',    lines: ['2020년, 일은 잘되고 있었습니다',
+                                     '그런데 이 방식에 다음이 없다고 봤습니다',
+                                     '회사를 쉬고, 쓸 데도 없이 AI를 배웠습니다'] },
+  { z:  70, year: '2025',    lines: ['5년 뒤에 그 다음이 왔습니다',
+                                     '업계는 가던 길을 계속 갔고, 저는 여기서 내려왔습니다',
                                      '다들 물었습니다 — 굳이? 왜?'] },
-  { z:  82, year: '2025-12', lines: ['여기서부터 모래에 묻힌 유적들은, 제가 만든 도구들입니다',
-                                     '문으로 들어가면 왜 만들었는지가 있습니다. 지나쳐도 됩니다'] },
-  { z: 128, year: '2026-05', lines: ['여덟 달 동안, 손으로 하던 일을 하나씩 도구로 바꿨습니다',
+  { z:  82, year: '2025-12', lines: ['여기부터 모래에 묻힌 것들이 제가 만든 도구입니다',
+                                     '들어가면 왜 만들었는지가 있습니다. 지나쳐도 됩니다'] },
+  { z: 128, year: '2026-05', lines: ['여덟 달 동안, 손으로 하던 일을 하나씩 떼어냈습니다',
                                      '자막 · 광고 리포트 · 경쟁 감시 · 매출 분석'] },
-  { z: 272, year: '2026-07', lines: ['그런데 일곱 달을 만들고 나서야 알았습니다',
-                                     '이게 읽히고 있는지, 증명할 방법이 없다는 것을',
-                                     'AI 봇은 어떤 분석기에도 잡히지 않았습니다'] },
+  { z: 272, year: '2026-07', lines: ['그런데 일곱 달째에 알았습니다',
+                                     '세는 걸로 먹고사는 사람이,',
+                                     '정작 제 것이 읽히는지는 못 세고 있었습니다'] },
   { z: 322, year: '2026-08', lines: ['만든 사람이 병목이 되면 그건 도구가 아니라 일감입니다',
                                      '제가 없어도 돌아가게 만듭니다'] },
   { z: 358, year: '2026-08', lines: ['만들 줄 알면서, 안 만든 것도 있습니다'] }
@@ -2327,7 +2391,6 @@ const lineQueue = [];
        프로토타입은 화면 전체를 쓰는 한 장이었고, 여기서는 이력서 안의 상자입니다.
        큰 글자(저니식 자막)는 .jn__tick 이 맡고, 신전 안은 .jn__panel 이 맡습니다. */
     const chEl   = document.getElementById('jn-ch');
-    const noteEl = document.getElementById('jn-note');
     const lineEl = document.getElementById('jn-tick');
     const cue    = document.getElementById('jn-cue');
     const panel  = document.getElementById('jn-panel');
@@ -2385,7 +2448,6 @@ function cues() {
     if (b.year) setG(yearEl, b.year);
     scene = Math.max(1, Math.min(10, scriptAt));
     chEl.textContent = scene + ' / 10';
-    noteEl.textContent = b.lines[0];
     live.textContent = b.lines.join(' ');
     /* 빨리 걸어 비트를 여럿 건너뛰면 최신 것만 남깁니다 — 대사가 위치를
        세 비트씩 뒤따라오면 그게 또 다른 "무슨 말인지 모르겠다"가 됩니다 */
@@ -2625,6 +2687,32 @@ function drawNav() {
       /* 그림이 안 나오는 브라우저에서도 이야기는 글로 남습니다 */
       statEl.textContent = 'WebGL2 없음 — 아래 기록으로 읽어 주세요';
     }
+    /* 전체화면 — 상자 안에서 걷던 사막이 화면 전체가 됩니다.
+       캔버스가 아니라 스테이지를 넘기는 이유는, 자막·나침반·안내가 전부
+       그 위에 얹힌 DOM 이라 캔버스만 넘기면 글자가 전부 사라지기 때문입니다. */
+    const fullBtn = document.getElementById('jn-full');
+    const stageEl = cv.parentNode;
+    const fsOn = function () {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    };
+    if (fullBtn && stageEl && (stageEl.requestFullscreen || stageEl.webkitRequestFullscreen)) {
+      fullBtn.addEventListener('click', function () {
+        try {
+          if (fsOn()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+          else (stageEl.requestFullscreen || stageEl.webkitRequestFullscreen).call(stageEl);
+        } catch (e) { /* 브라우저가 거절하면 그냥 상자로 씁니다 */ }
+      });
+      document.addEventListener('fullscreenchange', function () {
+        const on = fsOn();
+        fullBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        fullBtn.textContent = on ? '⛶ 나가기' : '⛶ 전체화면';
+        resize();
+        if (cv.focus) cv.focus();     /* 안 그러면 전체화면에서 키가 안 먹습니다 */
+      });
+    } else if (fullBtn) {
+      fullBtn.hidden = true;
+    }
+
     const sndBtn = document.getElementById('jn-snd');
     if (sndBtn) sndBtn.addEventListener('click', function () {
       snd = !snd;
@@ -2637,7 +2725,11 @@ function drawNav() {
       const r = cv.getBoundingClientRect ? cv.getBoundingClientRect() : { width: 960, height: 540 };
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.max(1, Math.round((r.width || 960) * dpr));
-      const h = Math.max(1, Math.round((r.width || 960) * 9 / 16 * dpr));
+      /* 상자일 때는 16:9 로 고정하고, 전체화면에서는 실제 높이를 씁니다.
+         고정한 채로 전체화면에 들어가면 위아래가 잘립니다. */
+      const full = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      const h = Math.max(1, Math.round(
+        (full && r.height > 1 ? r.height : (r.width || 960) * 9 / 16) * dpr));
       if (cv.width === w && cv.height === h) return;
       cv.width = w; cv.height = h;
       if (GLOK) { gl.viewport(0, 0, w, h); makePost(); }
@@ -2708,8 +2800,11 @@ function frame(now) {
     finish();
   }
   cues();
-  navCv.classList.toggle('on', moved > 4 && !inside);
-  if (moved > 4 && !inside) drawNav();
+  /* 나침반은 처음부터 켭니다. 4 단위를 걸어야 나타나게 뒀더니, 정작 방향을
+     제일 모르는 첫 순간에 아무 표시도 없었습니다. 유적 8개가 본길에서 최대
+     36 단위 옆에 있어서, 이게 없으면 대부분 지나쳐 버립니다. */
+  navCv.classList.toggle('on', !inside);
+  if (!inside) drawNav();
 
   /* 제일 가까운 신전. 문간 쪽에서 다가와야 들어갈 수 있습니다 — 뒷벽에
      붙어서 들어가지는 것보다, 돌아 들어가는 편이 유적답습니다. */
@@ -2757,8 +2852,13 @@ function frame(now) {
   const cfx = Math.sin(camYaw), cfz = Math.cos(camYaw);
 
   const wide = Math.min(1, Math.max(0, (zProg - 56)/20)) * (1 - Math.min(1, Math.max(0, (zProg - 96)/24)));
-  camBack += (7.8 + wide*12.0 - camBack) * 0.8 * dt;
-  camUp   += (3.0 + wide*6.0  - camUp)   * 0.8 * dt;
+  /* 인물이 화면 아래 가장자리에 걸려 옷단이 잘리고 있었습니다. 카메라를 조금
+     뒤로·위로 물리고 시선을 낮춰서, 발밑이 프레임 안에 들어오게 합니다. */
+  /* 카메라가 7.8 이면 인물이 화면 아래 22도쯤에 걸려서 옷단이 잘립니다
+     (화각 44도의 절반이 22도). 11.5 로 물리면 13도쯤으로 올라와 발밑이
+     프레임 안에 들어오고, 인물도 저니처럼 작아집니다. */
+  camBack += (11.5 + wide*12.0 - camBack) * 0.8 * dt;
+  camUp   += (3.6  + wide*6.0  - camUp)   * 0.8 * dt;
 
   const cx = px - cfx*camBack, cz = pz - cfz*camBack;
   const want = groundAvg(cx, cz, cfx, cfz) + camUp;
@@ -2767,7 +2867,7 @@ function frame(now) {
   camY = Math.max(camY, height(cx, cz) + 1.4);   /* 절대 땅을 뚫지 않습니다 */
 
   const eye = [cx, camY, cz];
-  const look = [px + cfx*16, groundAvg(px, pz, cfx, cfz) + 1.9 + wide*1.2, pz + cfz*16];
+  const look = [px + cfx*16, groundAvg(px, pz, cfx, cfz) + 1.4 + wide*1.2, pz + cfz*16];
   /* 근평면 0.4 · 원평면 2600 은 비율이 6500:1 이라 깊이 정밀도가 남아나지 않고,
      겹치지 않은 벽면끼리도 지글거립니다. 카메라는 인물보다 7.8 뒤에 있으니
      1.2 로 밀어도 잘리는 게 없고, 정밀도는 다섯 배쯤 벌어집니다. */
@@ -2837,6 +2937,14 @@ function frame(now) {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
     gl.drawArrays(gl.TRIANGLES, 0, templeMesh.n);
   }
+  /* 돌무지 — 유적과 같은 돌이되 조금 어둡게. 월드 좌표로 구워 뒀으니 모델은 단위행렬 */
+  gl.uniform3fv(uni.lit.litc, [0.78,0.48,0.24]);
+  gl.uniform3fv(uni.lit.dark, [0.20,0.13,0.11]);
+  gl.uniformMatrix4fv(uni.lit.model, false, ident());
+  gl.bindVertexArray(cairns.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, cairns.n);
+  gl.uniform3fv(uni.lit.litc, [0.88,0.56,0.28]);
+  gl.uniform3fv(uni.lit.dark, [0.24,0.155,0.125]);
   gl.uniform1f(uni.lit.emit, 1.0);
   gl.uniform3fv(uni.lit.litc, [0.86, 0.52, 0.19]);
   gl.bindVertexArray(templeGlow.vao);
@@ -3015,6 +3123,18 @@ function frame(now) {
       console.assert(VOIDF.z > TEMPLES[6].z && VOIDF.z < TEMPLES[7].z,
                      '빈 문틀은 NetTier 와 Hospify 사이에 있다');
       console.assert(MOUNTAIN.z > TEMPLES[7].z, '산은 마지막 신전보다 멀다');
+      /* 발견 가능성 — 이력서라서 이게 제일 중요합니다.
+         산만 보고 곧장 걸었을 때 몇 개가 안내 범위 안에 들어오는지를 셉니다.
+         셋뿐이라, 나머지는 돌무지가 데려가야 합니다. 배치를 만지면 여기가 먼저 웁니다. */
+      (function () {
+        let onPath = 0;
+        for (const t of TEMPLES) if (Math.abs(t.x - MAIN_X(t.z)) < 16) onPath++;
+        console.assert(onPath >= 3,
+          '곧장 걸어도 최소 셋은 만난다 (' + onPath + '/8)');
+        console.assert(onPath < 8,
+          '전부 길 위에 있으면 그건 사막이 아니라 복도다 (' + onPath + '/8)');
+        console.assert(cairns.n > 0, '길 밖 유적으로 데려갈 돌무지가 있다');
+      })();
       /* 검사 창구 — ?selftest 일 때만 열립니다.
          사막은 정해진 길이 없어서 여덟 유적을 걸어 도는 데만 몇 분이 걸립니다.
          그래서 문 앞까지는 이 창구로 데려다 놓고 들어가고 나오는 것만 진짜로

@@ -99,6 +99,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(1600);
   console.log('랜턴  ', (await state()).lantern, kb(await shot('06-after-lantern')));
 
+  /* 본길에서 길 밖 유적 쪽을 봤을 때 돌무지가 보이는가.
+     이 게임에서 제일 큰 실패는 "유적을 못 찾고 끝나는 것"이라, 이 한 장이
+     그걸 잡습니다 — 표식이 안 보이면 여덟 중 다섯은 없는 것과 같습니다. */
+  const off = temples.find(t => Math.abs(t.x - 14 * t.z / mtn.z) > 16);
+  if (off) {
+    const sx = 14 * (off.z - 30) / mtn.z, sz = off.z - 30;
+    await at(sx, sz, Math.atan2(off.x - sx, off.z - sz));
+    await sleep(800);
+    console.log('길 밖 유적', off.name, '표식 보임?', kb(await shot('09-cairn')));
+  }
+
   /* 열리지 않는 아홉 번째 */
   await at(voidf.x, voidf.z - 6, 0);
   await sleep(700);
