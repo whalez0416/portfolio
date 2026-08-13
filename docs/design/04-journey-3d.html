@@ -130,6 +130,10 @@ function mul(a, b) {                       /* a * b */
   }
   return o;
 }
+function rotX(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
+  o[0]=1;o[5]=c;o[6]=s;o[9]=-s;o[10]=c;o[15]=1;return o;}
+function rotZ(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
+  o[0]=c;o[1]=s;o[4]=-s;o[5]=c;o[10]=1;o[15]=1;return o;}
 function trs(tx, ty, tz, ry, s) {
   const co = Math.cos(ry), si = Math.sin(ry), o = M4();
   o[0]=co*s; o[2]=-si*s; o[5]=s; o[8]=si*s; o[10]=co*s;
@@ -276,10 +280,20 @@ void main(){
     c += vec3(1.0,0.86,0.6) * step(0.984, g) * spec * uGlit * 30.0 * near;
     c += vec3(1.0,0.84,0.58) * spec * uGlit * 0.34;
   }
+  /* 접지 그림자 — 인물 발밑의 부드러운 타원. 06 시트에서 "이게 없으면 무엇을
+     해도 떠 보인다"라고 적어 놓고 정작 사막에는 이식을 빼먹었습니다. 그게
+     "공중에 떠 있는 느낌"의 정체였습니다. 높이로 게이트를 걸어 신전 벽면까지
+     어두워지는 것을 막습니다. */
+  float sd = length(vW.xz - uPXZ);
+  float gate = smoothstep(uPY + 0.6, uPY + 0.15, vW.y);
+  c *= 1.0 - 0.62 * exp(-sd*sd*2.4) * gate;
   float f = 1.0 - exp(-dist*dist*uFog);
   frag = vec4(mix(c, uHaze, clamp(f,0.0,1.0)), 1.0);
 }`;
-const lit = program(litVS, litFS);
+const lit = program(litVS.replace('uniform vec3 uCam;',
+  'uniform vec3 uCam;'),
+  litFS.replace('uniform float uFog, uGlit, uEmit;',
+  'uniform float uFog, uGlit, uEmit, uPY;\nuniform vec2 uPXZ;'));
 
 /* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
    안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
@@ -301,7 +315,8 @@ const uni = {
   sky:  { haze: U(skyProg,'uHaze'), high: U(skyProg,'uHigh'), sunX: U(skyProg,'uSunX') },
   lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
           cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
-          haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit') },
+          haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit'),
+          pxz:U(lit,'uPXZ'), py:U(lit,'uPY') },
   far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
           tint:U(farProg,'uTint'), mix:U(farProg,'uMix'), cam:U(farProg,'uCam') }
 };
@@ -624,7 +639,7 @@ const P = {
    그리고 알아서 걷지 않습니다. 자동으로 흘러가면 게임이 아니라 영상이고,
    무엇보다 "내가 움직인 결과"가 아닌 화면 이동이 멀미의 제일 큰 원인입니다. */
 const SPEED = 10.5, TURN = 1.55;
-let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0;
+let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0;
 let keys = { f:false, l:false, r:false };
 let camBack = 6.4, camUp = 2.6;
 const MOUNTAIN = { x: 40, z: 1500 };            /* 월드에 못박힌 목표. 저니의 산입니다 */
@@ -729,13 +744,19 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last)/1000); last = now;
   const el = performance.now() * 0.001;          /* 흔들림·걸음 위상용 시계 */
 
-  /* ── 직접 걷습니다 ── */
+  /* ── 직접 걷습니다 — 미끄러지지 않고 ──
+     등속 이동은 스케이트입니다. 걸음은 발을 디딜 때마다 속도가 맥동하고
+     (밀 때 빠르고 발을 옮길 때 느리고), 몸이 좌우로 흔들립니다.
+     위상은 시간이 아니라 걸어온 거리에 묶습니다 — 그래야 발과 땅이 붙습니다. */
   if (keys.l) yaw -= TURN * dt;
   if (keys.r) yaw += TURN * dt;
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  walkA += ((keys.f ? 1 : 0) - walkA) * Math.min(1, 6*dt);   /* 출발·정지를 부드럽게 */
+  const ph = moved * 1.75;                                    /* 걸음 위상 = 거리 */
   if (keys.f) {
-    P0.x += fx * SPEED * dt; P0.z += fz * SPEED * dt;
-    moved += SPEED * dt;
+    const pulse = 0.78 + 0.40 * Math.abs(Math.sin(ph));
+    P0.x += fx * SPEED * pulse * dt; P0.z += fz * SPEED * pulse * dt;
+    moved += SPEED * pulse * dt;
   }
   cues(moved);
   hintEl.style.opacity = moved > 6 ? 0 : 1;
@@ -755,7 +776,16 @@ function frame(now) {
   enterEl.classList.toggle('on', !!nearT);
 
   const px = P0.x, pz = P0.z, py = height(px, pz);
-  const walk = keys.f ? Math.abs(Math.sin(el*3.1))*0.055 : 0;
+  /* 걸음의 몸: 위아래 바운스(걸음당 한 번) · 좌우 흔들림(두 걸음에 한 번) ·
+     앞으로 살짝 기울기. 전부 위상 ph(거리)에 묶여 있어 발과 땅이 밀리지 않습니다. */
+  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.055;
+  const rock  = walkA * Math.sin(ph) * 0.045;            /* 좌우 롤 */
+  const pitchG= walkA * 0.055;                           /* 전진 기울기 */
+  /* 지형 기울기 따라 눕기 — 언덕을 오르는데 몸이 수직이면 그게 곧 "떠 있음"입니다 */
+  const gAlong = (height(px+fx*.6, pz+fz*.6) - height(px-fx*.6, pz-fz*.6)) / 1.2;
+  const gSide  = (height(px+fz*.6, pz-fx*.6) - height(px-fz*.6, pz+fx*.6)) / 1.2;
+  const tPitch = Math.max(-.30, Math.min(.30, Math.atan(gAlong)*0.55));
+  const tRoll  = Math.max(-.25, Math.min(.25, Math.atan(gSide)*0.45));
 
   /* ── 카메라 ──
      저니의 절반은 이것인데, 어지럽지 않게 만드는 것도 절반은 이것입니다.
@@ -808,6 +838,7 @@ function frame(now) {
   gl.uniformMatrix4fv(uni.lit.vp, false, VP);
   gl.uniform3fv(uni.lit.cam, eye); gl.uniform3fv(uni.lit.sun, P.sun);
   gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.0000128);
+  gl.uniform2f(uni.lit.pxz, px, pz); gl.uniform1f(uni.lit.py, py);
   gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
   gl.uniform1f(uni.lit.glit, 1.0);
   gl.uniform1i(uni.lit.terrain, 1);
@@ -862,23 +893,29 @@ function frame(now) {
     const dx = c.x - cx, dz = c.z - cz;
     if (dx*cfx + dz*cfz < 3) continue;      /* 등 뒤나 코앞의 하나가 장면을 다 망칩니다 */
     /* +π: 06 조각은 얼굴이 로컬 -z 인데 이 월드는 +z 가 전진입니다.
-       모델을 반 바퀴 돌리면 얼굴·스카프·옷단 차임이 전부 제 방향이 됩니다. */
-    gl.uniformMatrix4fv(uniFig.m, false, trs(c.x, height(c.x, c.z), c.z, cy2 + Math.PI, 1));
+       무리도 걷습니다 — 바운스와 좌우 흔들림이 없으면 유령 행렬이 됩니다. */
+    const cph = el*3.0 + c.t*7;
+    gl.uniformMatrix4fv(uniFig.m, false,
+      mul(trs(c.x, height(c.x, c.z) + Math.abs(Math.sin(cph))*0.05, c.z, cy2 + Math.PI, 1),
+          rotZ(Math.sin(cph)*0.04)));
     gl.drawArrays(gl.TRIANGLES, 0, slotCrowd.n);
   }
 
   /* 나 — 걸을 때만 옷단이 차이고, 서면 천이 가라앉습니다 */
-  const meFig = buildFigure(keys.f ? 1 : 0, el*3.0, false);
+  const meFig = buildFigure(walkA, ph, false);   /* 옷단 차임도 거리 위상에 */
   slotMe.set(meFig);
   gl.uniform3fv(uniFig.c0, FIG_ME.c0); gl.uniform3fv(uniFig.c1, FIG_ME.c1);
   gl.uniform3fv(uniFig.c2, FIG_ME.c2); gl.uniform3fv(uniFig.c3, FIG_ME.c3);
-  const me = trs(px, py + walk, pz, yaw + Math.PI, 1);   /* +π: 위 무리와 같은 이유 */
+  /* +π: 06 조각은 얼굴이 로컬 -z. 회전 순서: 지형에 눕고 → 걸음 기울기 → 흔들림.
+     +π 를 돌면 로컬 x·z 부호가 뒤집히므로 피치는 부호를 뒤집어 얹습니다. */
+  const me = mul(trs(px, py + walk, pz, yaw + Math.PI, 1),
+                 mul(rotX(-(tPitch + pitchG)), rotZ(rock - tRoll)));
   gl.uniformMatrix4fv(uniFig.m, false, me);
   gl.bindVertexArray(slotMe.vao);
   gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
 
   /* 스카프 — 서 있으면 가라앉습니다. 바람은 내가 만드는 거니까 */
-  slotScarf.set(buildScarfMesh(el, keys.f ? 1 : 0.28));
+  slotScarf.set(buildScarfMesh(el, walkA > .5 ? 1 : 0.28));
   gl.uniformMatrix4fv(uniFig.m, false, me);
   gl.bindVertexArray(slotScarf.vao);
   gl.drawArrays(gl.TRIANGLES, 0, slotScarf.n);
