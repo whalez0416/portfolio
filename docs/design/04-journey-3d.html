@@ -732,35 +732,47 @@ void main(){
 const finalProg = program(fsVS, `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 frag;
-uniform sampler2D uTex, uBloom; uniform float uT;
+uniform sampler2D uTex, uBloom; uniform float uT; uniform vec2 uPx;
 vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.51*x+0.06)+0.14), 0.0, 1.0); }
+float luma(vec2 p){ vec3 t = texture(uTex, p).rgb; return dot(t, vec3(0.299,0.587,0.114)); }
 void main(){
   vec2 d = vUv - vec2(0.5, 0.46);
   float r2 = dot(d,d);
-  /* 색수차 — "아주 살짝"이 0.13이면 60픽셀입니다. 프리즘이 아니라 렌즈여야 합니다 */
-  vec2 ca = d * r2 * 0.012;
+  vec2 ca = d * r2 * 0.010;
   vec3 c;
   c.r = texture(uTex, vUv + ca).r;
   c.g = texture(uTex, vUv).g;
   c.b = texture(uTex, vUv - ca).b;
-  c += texture(uBloom, vUv).rgb * 0.55;
-  /* 장면 셰이더들은 눈으로 맞춘 표시 공간 값입니다 — 여기서 감마를 또 얹으면
-     전부 우유에 빠집니다. ACES 만 살짝: 하이라이트를 필름처럼 말고 끝. */
+  c += texture(uBloom, vUv).rgb * 0.50;
   c = aces(c * 1.04);
-  /* 스플릿 톤 — 어두움은 보라로, 밝음은 노을로 */
   float l = dot(c, vec3(0.299,0.587,0.114));
   c = mix(c * vec3(0.95,0.91,1.09), c * vec3(1.05,0.98,0.91), smoothstep(0.15, 0.75, l));
-  c = mix(vec3(l), c, 1.10);                   /* 채도 */
-  /* 비네트 + 그레인 */
-  c *= 1.0 - 0.38*smoothstep(0.30, 1.05, r2*2.4);
+  c = mix(vec3(l), c, 1.14);
+
+  /* ── 만화 층 ──
+     "3D 조각" 느낌의 정체는 매끄러운 명암 그라데이션입니다. 그래서
+     ① 포스터라이즈: 색을 일곱 단계로 끊어 그라데이션을 붓자국 면으로.
+        휘도만 끊고 색상은 살립니다 — RGB 를 통째로 끊으면 색이 죽습니다.
+     ② 윤곽선: 이웃 픽셀과 휘도가 확 바뀌는 곳에 잉크 선. 셀 애니의 문법.
+     전부 섞음 비율이 있어서 수채화까지는 안 가고, 그림과 3D 사이에 섭니다. */
+  float band = floor(l * 7.0 + 0.5) / 7.0;
+  c *= mix(1.0, band / max(l, 0.003), 0.62);
+  float ex = luma(vUv + vec2(uPx.x*1.5, 0.0)) - luma(vUv - vec2(uPx.x*1.5, 0.0));
+  float ey = luma(vUv + vec2(0.0, uPx.y*1.5)) - luma(vUv - vec2(0.0, uPx.y*1.5));
+  float edge = smoothstep(0.09, 0.24, abs(ex) + abs(ey));
+  c = mix(c, vec3(0.17, 0.09, 0.14), edge * 0.62);
+
+  /* 비네트. 그레인은 만화에선 소음이라 거의 껐습니다 */
+  c *= 1.0 - 0.34*smoothstep(0.30, 1.05, r2*2.4);
   float g = fract(sin(dot(gl_FragCoord.xy + fract(uT)*61.0, vec2(12.9898,78.233)))*43758.5453);
-  c += (g - 0.5) * 0.028;
+  c += (g - 0.5) * 0.010;
   frag = vec4(c, 1.0);
 }`);
 const uniPost = {
   bT: U(brightProg,'uTex'),
   uT: U(blurProg,'uTex'), uD: U(blurProg,'uDir'),
-  fT: U(finalProg,'uTex'), fB: U(finalProg,'uBloom'), fTime: U(finalProg,'uT')
+  fT: U(finalProg,'uTex'), fB: U(finalProg,'uBloom'), fTime: U(finalProg,'uT'),
+  fPx: U(finalProg,'uPx')
 };
 let post = null;
 function makePost() {
@@ -1504,6 +1516,7 @@ function frame(now) {
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, post.b1.t);
   gl.uniform1i(uniPost.fT, 0); gl.uniform1i(uniPost.fB, 1);
   gl.uniform1f(uniPost.fTime, el);
+  gl.uniform2f(uniPost.fPx, 1/post.W2, 1/post.H2);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.activeTexture(gl.TEXTURE0);
   gl.enable(gl.DEPTH_TEST);
