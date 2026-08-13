@@ -244,14 +244,12 @@
   .verdict li { margin-top: .15rem; }
   .verdict .none { color: var(--dim); }
 
-  /* ---------- side-scroll journey ---------- */
+  /* ---------- journey — 등 뒤에서 보는 한 시점 ---------- */
   .jn { border: 1px solid var(--line); background: var(--panel); margin-top: 1.8rem; }
-  .jn__stage { position: relative; background: #08080B; }
-  #jn {
-    display: block; width: 100%; height: auto;
-    image-rendering: pixelated; image-rendering: crisp-edges;
-    touch-action: none;
-  }
+  .jn__stage { position: relative; background: #0D0F15; }
+  /* NOT pixelated: this is projected vector art, not a sprite sheet. snapping
+     it to whole pixels destroys the horizon line and every far lamp. */
+  #jn { display: block; width: 100%; height: auto; touch-action: none; }
 
   /* HUD — chapter on the left, live counters on the right */
   .jn__hud {
@@ -396,7 +394,7 @@
 
   .jn__pad { display: none; }
   @media (pointer: coarse) {
-    .jn__pad { display: grid; grid-template-columns: 1fr 1fr 1.3fr 1.3fr; gap: .4rem;
+    .jn__pad { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: .4rem;
       padding: .6rem .8rem; border-top: 1px solid var(--line); }
     .jn__pad button {
       font-family: var(--mono); font-size: var(--f-0); padding: .7rem .2rem;
@@ -420,25 +418,31 @@
     border: 1px solid var(--line2); padding: 0 .35rem;
   }
 
-  /* scene card — the one line of the current scene, in DOM so the type is real
-     type (canvas text at 384px logical would be a smear) and screen readers get it */
+  /* scene card — one short line at a time, BIG, sat on the road ahead of you.
+     In the DOM rather than on the canvas so it is real type and so a screen
+     reader gets it. The scrim is what makes it readable over a lit horizon. */
   .jn__card {
-    position: absolute; left: 0; right: 0; top: 36%; pointer-events: none;
+    position: absolute; left: 0; right: 0; bottom: 9%; pointer-events: none;
     padding: 0 clamp(1rem, 6vw, 4rem); text-align: center;
     opacity: 0; transform: translateY(.5rem);
     transition: opacity .6s, transform .6s cubic-bezier(.2,.7,.25,1);
   }
+  .jn__card::before {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -9%; height: 320%;
+    background: linear-gradient(to top, rgba(6,8,12,.92), rgba(6,8,12,.55) 45%, rgba(6,8,12,0));
+    z-index: -1;
+  }
   .jn__card.on { opacity: 1; transform: none; }
   .jn__card b {
-    font-family: var(--disp); font-weight: 700; letter-spacing: -.035em;
-    font-size: clamp(1.1rem, 3.6vw, 2.1rem); line-height: 1.25;
+    font-family: var(--disp); font-weight: 800; letter-spacing: -.045em;
+    font-size: clamp(1.5rem, 5.2vw, 3.3rem); line-height: 1.15;
     color: var(--ink); display: block;
-    text-shadow: 0 2px 14px #000, 0 0 3px #000;
+    text-shadow: 0 4px 34px rgba(0,0,0,.95), 0 0 3px #000;
   }
   .jn__card i {
-    font-style: normal; display: block; margin-top: .5rem;
-    font-family: var(--mono); font-size: var(--f--2); color: var(--sig);
-    letter-spacing: .18em; text-shadow: 0 1px 3px #000;
+    font-style: normal; display: block; margin-top: .7rem;
+    font-family: var(--mono); font-size: var(--f--1); color: var(--sig);
+    letter-spacing: .16em; text-shadow: 0 1px 3px #000;
   }
   /* the reveal: one white-hot frame when the lantern finally lights */
   .jn__flash {
@@ -648,10 +652,10 @@
       <div class="band__head">
         <h2>읽지 말고, 걸어보세요</h2>
         <p><b>길은 제 이력이고, 길가의 문은 제가 만든 것들입니다.</b>
-          노출을 팔던 무리와 같은 길에서 출발합니다 — 위에서 내려다보면 정수리는 다 똑같이 생겼습니다.
-          갈림길에서 혼자 내려서는 순간 시점이 옆으로 눕고, 거기서부터가 제가 만든 것들입니다.
-          도구는 주운 순서가 곧 만든 순서라, <b>크롤러는 여섯 번째 도구를 줍기 전까지 보이지 않습니다</b> —
-          7개월을 그렇게 만들었습니다. 문은 안 열고 끝까지 걸어도 됩니다.</p>
+          노출을 팔던 무리와 같은 길에서 출발합니다. 앞만 보고 달리는 무리의 등이 보이고,
+          갈림길에서 <b>왼쪽으로 내려서면</b> 저 혼자 다른 길에 남습니다 — 시점은 처음부터 끝까지 하나입니다.
+          문은 지나온 순서가 곧 만든 순서라, <b>크롤러는 여섯 번째 문을 지나기 전까지 보이지 않습니다</b> —
+          7개월을 그렇게 만들었습니다. 문은 안 열고 끝까지 달려도 됩니다.</p>
       </div>
 
       <div class="jn">
@@ -660,8 +664,8 @@
           <span class="count" id="jn-stat">대기 중</span>
         </div>
         <div class="jn__stage">
-          <canvas id="jn" width="384" height="216"
-                  aria-label="열 장면짜리 이력 게임. 1~5장은 위에서 내려다보는 시점으로 무리와 같은 길을 걷고, 갈림길에서 아래로 벗어나면 6~10장은 옆에서 보는 횡스크롤이 됩니다. 좌우로 걷고 위로 점프하고 아래로 페이지를 발행하며, 길가의 문 여덟 개는 Enter로 열 수 있는 선택 사항입니다. 진행 상황은 소리 없이 화면 아래 안내 영역으로 읽어 드리고, 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
+          <canvas id="jn" width="960" height="540"
+                  aria-label="열 장면짜리 이력 게임. 등 뒤에서 보는 시점 하나로 처음부터 끝까지 달립니다. 무리와 같은 길에서 출발해 갈림길에서 왼쪽으로 내려서면 제 길로 갈라집니다. 좌우 화살표로 방향을 잡고 아래 화살표로 페이지를 발행하며, 길 위의 문 여덟 개는 지나가면 자동으로 열리고 Enter로 읽을 수 있는 선택 사항입니다. 진행 상황은 소리 없이 화면 아래 안내 영역으로 읽어 드리고, 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
 
           <div class="jn__hud" aria-hidden="true">
             <span class="ch" id="jn-ch">1 / 10</span>
@@ -698,15 +702,16 @@
             <h3>여기까지가 최희준입니다</h3>
             <p class="lede">저는 노출을 팔다가, 환자를 세겠다고 자리를 옮겼습니다.
               10년이 넘었고 지금도 같은 일을 합니다 — 세는 대상만 바뀌었습니다.</p>
-            <p>열 장면을 걸어서 지나갑니다. 앞의 다섯 장면은 <b>위에서 내려다보는 시점</b>이고,
-              갈림길에서 혼자 내려서면 시점이 옆으로 눕습니다.
-              길가의 문 여덟 개는 제가 만든 것들인데, <b>하나도 안 열고 끝까지 걸어도 됩니다.</b></p>
+            <p>열 장면을 달려서 지나갑니다. <b>등 뒤에서 보는 시점 하나</b>로 끝까지 갑니다 —
+              중간에 바뀌지 않습니다. 달리는 건 알아서 하고, 당신이 하는 건 <b>방향</b>과 <b>발행</b> 두 개뿐입니다.
+              길 위의 문 여덟 개는 제가 만든 것들인데, <b>하나도 안 열고 끝까지 달려도 됩니다.</b></p>
             <p class="keys">
-              <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동</span>
-              <span>갈림길에서 <kbd>↓</kbd> 아래로</span>
-              <span><kbd>Enter</kbd> 문 열기</span>
+              <span><kbd>←</kbd><kbd>→</kbd> 방향</span>
+              <span>갈림길에서 <kbd>←</kbd> 왼쪽으로</span>
+              <span><kbd>↓</kbd> 발행</span>
+              <span><kbd>Enter</kbd> 문 읽기</span>
             </p>
-            <button class="btn" id="jn-go" type="button">걷기 시작</button>
+            <button class="btn" id="jn-go" type="button">달리기 시작</button>
           </div>
 
           <div class="jn__panel" id="jn-panel" hidden>
@@ -717,16 +722,16 @@
         <!-- on touch this is the only way to play, so it must not be aria-hidden
              (focusable controls inside aria-hidden is a WCAG 4.1.2 failure) -->
         <div class="jn__pad">
-          <button type="button" data-key="l" aria-label="왼쪽으로 이동">◀</button>
-          <button type="button" data-key="r" aria-label="오른쪽으로 이동">▶</button>
-          <button type="button" data-key="u" id="jn-pad-up" aria-label="위로 이동 / 점프">▲ 위</button>
-          <button type="button" data-key="d" id="jn-pad-plant" aria-label="아래로 이동 / 페이지 발행">▼ 아래</button>
+          <button type="button" data-key="l" aria-label="왼쪽으로">◀</button>
+          <button type="button" data-key="r" aria-label="오른쪽으로">▶</button>
+          <button type="button" data-key="d" id="jn-pad-plant" aria-label="페이지 발행">▼ 발행</button>
         </div>
         <div class="jn__legend">
-          <b>1–5장</b> <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 이동 · 갈림길에서 아래로 &nbsp;|&nbsp;
-          <b>6–10장</b> <kbd>←</kbd><kbd>→</kbd> 걷기 · <kbd>↑</kbd> 점프 · <kbd>↓</kbd> 발행 &nbsp;|&nbsp;
-          <b>문</b> <kbd>Enter</kbd> 또는 화면 아래 앰버 버튼 탭 — 선택입니다. 안 열어도 끝까지 갑니다 &nbsp;|&nbsp;
-          걷기 싫으시면 그냥 스크롤하세요 — 같은 내용이 아래에 전부 글로 있습니다.
+          <b>방향</b> <kbd>←</kbd><kbd>→</kbd> — 달리는 건 알아서 합니다 &nbsp;|&nbsp;
+          <b>갈림길</b> <kbd>←</kbd> 왼쪽으로 내려서면 제 길입니다 &nbsp;|&nbsp;
+          <b>발행</b> <kbd>↓</kbd> — 여섯 번째 문 전까지는 읽혔는지 알 수 없습니다 &nbsp;|&nbsp;
+          <b>문</b> <kbd>Enter</kbd> 또는 화면 아래 앰버 버튼 탭 — 선택입니다 &nbsp;|&nbsp;
+          달리기 싫으시면 그냥 스크롤하세요 — 같은 내용이 아래에 전부 글로 있습니다.
         </div>
       </div>
       <p id="jn-live" aria-live="polite" style="position:absolute;left:-9999px"></p>
@@ -1336,11 +1341,18 @@
   box.addEventListener('input', run);
   run();
 
-  /* ================= JOURNEY — 횡스크롤 플랫포머 =================
-     The mechanic IS the argument. Every tool you pick up grants exactly one
+  /* ================= JOURNEY — 등 뒤에서 보는 한 시점 =================
+     One camera, the whole way. The piece is twelve years on one road, so it is
+     one shot: no top-down prologue, no tilt, no handover. Everything in the
+     world is (x, z) in world units and goes through the same projection.
+
+     The mechanic IS the argument. Every door you run through grants exactly one
      verb, and the verb is the claim it makes: you cannot count what you cannot
-     see, so the first tool is a lantern. Act 1 takes your visitors away and
-     gives you nothing to do about it — that helplessness is the premise.
+     see, so the citation dial reads "?" until the sixth door.
+
+     Art direction B (docs/design/01-directions.html): you are running on an
+     instrument. The rungs under your feet are the measuring surface, and that
+     is character description, not decoration.
 
      The eight records below this canvas stay the single source of truth; the
      game only has to make you want to read them. */
@@ -1349,100 +1361,103 @@
   if (jnc && jnc.getContext) (function () {
     var g = jnc.getContext('2d');
 
-    var W = 384, H = 216, FLOOR = 178, WORLD = 3160, GATEX = 2790, CLINIC = 3114;
-    var GRAV = 560, JUMPV = -196, SPEED = 98, REACH = 20, HOVER = 40, RECRAWL = 3.5;
+    /* ---------- the camera ----------
+       proj() is the whole visual identity in three lines. Sizes are ALWAYS
+       worldSize * p.s — a formula like `p.s / F * 40` explodes up close and
+       turns the nearest lamp into a beach ball. */
+    var W = 960, H = 540, HORIZON = H * .42, F = 570;
+    var CAM_H = 1.85, ROAD_HW = 3.6, NEAR = 1.7, TAU = Math.PI * 2;
+    var VIEW = 210;                     /* how far ahead anything is drawn */
+
+    function proj(d) { var s = F / d; return { y: HORIZON + CAM_H * s, hw: ROAD_HW * s, s: s }; }
+
+    /* ---------- the track ----------
+       2450 units at 27/s is about ninety seconds, and the first five scenes get
+       forty per cent of it: 1~5장이 12년이고 그게 이 자기소개의 절반입니다. */
+    var TRACK = 2450, SPEED = 27, STEER = 4.4, PZ = 7;
+    var FORK_Z = 880, FORK_LEN = 170, ROAD_END = 1090, MY_CX = -8.5;
+    var GATEZ = 2260, VOID_Z = 2350, CLINIC_Z = 2440;
+    var PLANT_AHEAD = 40, PAGE_SPACE = 26, RECRAWL = 3.5;
+    var REACH = 26;                     /* how close a door has to be to read it */
+
+    /* the road you were on stays where it was. yours peels off and never comes
+       back — that separation has to be wider than both roads or they overlap
+       and the fork reads as a wobble. */
+    function myCx(z) {
+      if (z <= FORK_Z) return 0;
+      var t = Math.min(1, (z - FORK_Z) / FORK_LEN);
+      return MY_CX * t * t * (3 - 2 * t);
+    }
+    function pavedCx() { return 0; }
 
     /* --- ten scenes, the same ten in docs/narrative.md. the road IS the CV, so
            each scene carries the year it happened and the one line it gets. --- */
     var SCENES = [
-      { n:  1, side: false, x:   0, year: '2014',
+      { n:  1, z:    0, year: '2014',
         line: '저는 노출을 팔았습니다',                       tag: '종합광고대행사' },
-      { n:  2, side: false, x: 250, year: '2015~',
+      { n:  2, z:  230, year: '2015~',
         line: '환자를 늘린다길래, 자리를 옮겼습니다',           tag: '의료 컨설팅 · 10년 넘게' },
-      { n:  3, side: false, x: 520, year: '2020',
+      { n:  3, z:  470, year: '2020',
         line: '잘 되고 있을 때, 그만 배우기로 했습니다',        tag: 'AI 독학 6개월 · ChatGPT 2년 전' },
-      { n:  4, side: false, x: 720, year: '2025',
+      { n:  4, z:  700, year: '2025',
         line: '5년 뒤, 팔던 것이 죽기 시작했습니다',            tag: '검색이 AI 답변으로' },
-      { n:  5, side: false, x: 830, year: '2025',
-        line: '굳이? 왜? — 다들 그렇게 물었습니다',            tag: '갈림길에서 ↓ 아래로' },
-      { n:  6, side: true,  x:   0, year: '2025-12',
+      { n:  5, z:  880, year: '2025',
+        line: '굳이? 왜? — 다들 그렇게 물었습니다',            tag: '갈림길에서 ← 왼쪽으로' },
+      { n:  6, z: 1160, year: '2025-12',
         line: '제일 먼저 만든 게, 제일 모호한 것이었습니다',     tag: 'aeo_sync' },
-      { n:  7, side: true,  x: 840, year: '2026-05',
+      { n:  7, z: 1460, year: '2026-05',
         line: '손으로 하던 것을 하나씩 떼어냈습니다',           tag: '자막 · 리포트 · 감시 · 분석' },
-      { n:  8, side: true,  x:2040, year: '2026-07',
-        line: '7개월을 만들고 나서야, 증명할 방법이 없다는 걸 알았습니다', tag: '여섯 번째 도구' },
-      { n:  9, side: true,  x:2470, year: '2026-08',
+      { n:  8, z: 1900, year: '2026-07',
+        line: '증명할 방법이 없다는 걸 알았습니다',             tag: '7개월 만에 · 여섯 번째 도구' },
+      { n:  9, z: 2140, year: '2026-08',
         line: '제가 없어도 돌아가야 도구입니다',               tag: '무인 야간 제작 · 국경' },
-      { n: 10, side: true,  x:2960, year: '2026-08',
+      { n: 10, z: 2340, year: '2026-08',
         line: '안 만든 것도 저입니다',                        tag: '못 지킬 약속은 자리를 비웁니다' }
     ];
 
     /* --- the doors. order is COMMIT ORDER, not the order that would be tidy.
            the lantern is sixth because it was built sixth: you publish for most
-           of the walk with the crawlers invisible and the citation gauge stuck
-           on "?", exactly as it happened. picking it up is the turn of the piece.
-           `grant` unlocks a verb · `rec` names the record · `door` is what the
-           door says when you open it (docs/programs.md). --- */
+           of the run with the crawlers invisible and the citation gauge stuck
+           on "?", exactly as it happened. running through it is the turn of the
+           piece. they span the whole track — nothing here is missable, because
+           a CV you can walk past by accident is a worse CV. --- */
     var TOOLS = [
-      { x:  260, rec: 'aeo_sync', grant: 'plant',
+      { z: 1180, rec: 'aeo_sync', grant: 'plant',
         line: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
         verb: '↓ 발행 — 페이지를 심습니다. 읽히는지는 아직 모릅니다.',
         door: '표준화와 고유함은 반대말인데, 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.' },
-      { x:  620, rec: 'MediSTT', grant: 'sub',
+      { z: 1360, rec: 'MediSTT', grant: 'sub',
         line: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
         verb: '자막 — 이후 발행하는 페이지가 더 자주 읽힙니다.',
         door: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
-      { x: 1000, rec: 'MetaPorter', grant: 'ledger',
+      { z: 1520, rec: 'MetaPorter', grant: 'ledger',
         line: '메타는 병원이 운영하기에 까다로운 매체입니다.',
         verb: '인용 계기판 — 켜졌는데 눈금이 ? 입니다. 아직 셀 방법이 없습니다.',
         door: '제한이 많아 캠페인이 자주 튕기고, 목표가 제각각이라 한 장으로 읽기 어렵습니다.' },
-      { x: 1360, rec: 'SERP Sentinel', grant: 'radar',
+      { z: 1680, rec: 'SERP Sentinel', grant: 'radar',
         line: '순위 변동은 산출물이 아니라 수단입니다.',
         verb: '경쟁 레이더 — 회색 경쟁사 페이지와 점유율이 드러납니다.',
         door: '설계서 첫 장에 목적을 못박고 시작했습니다. 안 그러면 기능만 늘어납니다.' },
-      { x: 1700, rec: 'KPIY', grant: 'kpi',
+      { z: 1800, rec: 'KPIY', grant: 'kpi',
         line: '정확해야 하는 곳에는 검색이 아니라 실행을 붙였습니다.',
         verb: 'KPI — 관측값이 그래프로 쌓입니다.',
         door: 'LLM이 숫자를 지어내면 경영 보고서로 쓸 수 없습니다. 계산은 pandas가 합니다.' },
-      { x: 2100, rec: 'aeo-log-analyzer', grant: 'lantern',
+      { z: 1930, rec: 'aeo-log-analyzer', grant: 'lantern',
         line: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
         verb: '랜턴 — 안 보이던 것이 전부 켜집니다. ? 가 숫자가 됩니다.',
         door: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.' },
-      { x: 2560, rec: 'NetTier', grant: 'gate',
+      { z: 2160, rec: 'NetTier', grant: 'gate',
         line: '추정은 틀리지만 실측은 안 틀립니다.',
         verb: '국경 개방 — 앞을 막던 벽이 열립니다.',
         door: '되돌릴 수 없는 작업은 사람 손에 남겼습니다 — 업로드 자동화 금지.' },
-      { x: 3080, rec: 'Hospify', grant: 'clinic',
+      { z: 2400, rec: 'Hospify', grant: 'clinic',
         line: '못 지킬 약속은, 자리를 비워둡니다.',
         verb: '도착 — 만들어 놓고 지운 자리가 여기 있습니다.',
         door: '가격 보증을 다 만들어 놓고 폐기했습니다. 병원이 지킬 수 없는 약속이라서.' }
     ];
 
-    /* the ninth door, which is not a door. Price Lock was built and then deleted,
-       so scene 10 gets a frame with nothing behind it that never lights and never
-       opens. You walk past it on the way to the last record. It is the only thing
-       in the game you cannot interact with, and that is the point. */
-    var VOID_X = 2965;
-
-    var HILLS  = [[700, 860, 12], [1330, 1470, 18], [2080, 2210, 10], [2900, 3010, 14]];
-    /* ledges: the high crawler lane is out of reach from the ground on purpose */
-    var PLATS  = [
-      [630, 138, 46], [726, 116, 38], [980, 132, 52],
-      [1270, 128, 44], [1392, 106, 40], [1640, 134, 50],
-      [1990, 126, 46], [2108, 104, 42], [2380, 132, 54],
-      [2860, 128, 48], [2962, 106, 40]
-    ];
-    /* low = catchable on foot · mid = needs a jump · high = needs a ledge.
-       the numbers are load-bearing; ?selftest checks each lane's reachability. */
-    var LANES  = [166, 144, 106];
     var AI_NAMES = ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'OAI-SearchBot',
                     'Google-Extended', 'Applebot-Extended'];
-
-    /* one hit test, so the selftest checks the same maths the game runs */
-    function boxHit(bx, by, ax, ay, pad) {
-      return bx + 4 > ax - 6 - pad && bx - 4 < ax + 6 + pad &&
-             by + 6 > ay - 20 - pad && by     < ay -  2 + pad;
-    }
 
     /* index the records that already live in the document */
     var RECS = {};
@@ -1451,168 +1466,133 @@
       if (b) RECS[b.textContent.trim()] = a;
     });
 
-    /* ---------- pixel sprites, baked once so nothing costs per-pixel work ---------- */
-    function bake(rows, pal) {
-      var c = document.createElement('canvas');
-      c.width = rows[0].length; c.height = rows.length;
-      var x = c.getContext('2d');
-      for (var r = 0; r < rows.length; r++)
-        for (var i = 0; i < rows[r].length; i++) {
-          var ch = rows[r][i];
-          if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, r, 1, 1); }
-        }
-      return c;
+    /* ---------- the figure ----------
+       docs/design/02-figure-cycle.html. Two failed attempts are recorded in
+       docs/design/README.md; the short version is that from behind you read a
+       run from heel-kick, knee lift, shoulder/hip counter-rotation, elbow flare
+       and vertical bob — NOT from a fore-aft stride, which is edge-on and
+       therefore invisible. IK was removed on purpose: a folded knee goes into
+       the screen and foreshortens, it does not swing out sideways. */
+    var L = { ground:0, hip:.5, waist:.61, shoulder:.8, crown:.945, hipHW:.05, shHW:.105,
+              headRX:.055, headRY:.067, thigh:.24, thighW:.062, shinW:.046, upperW:.045,
+              foreW:.033, upperArm:.15 };
+    function footPath(u) {
+      u -= Math.floor(u);
+      if (u < .42) { var k = u / .42;
+        return { y: .010 + .085 * Math.max(0, k - .72) / .28, lift: 0, squash: .03 * Math.sin(k * Math.PI) }; }
+      var k2 = (u - .42) / .58, arc = Math.sin(k2 * Math.PI), hard = Math.pow(arc, .72);
+      return { y: .015 + .415 * hard, lift: hard, squash: 0 };
     }
-
-    /* 최희준 — 안경(앰버) · 가방(블루) · 재킷(아이보리). 14 x 20 */
-    /* hair has to clear the near-black sky or the silhouette loses its head */
-    var PAL = { h:'#4E4E5C', f:'#E6D9C4', G:'#FFAE1A', j:'#DEDCD6',
-                b:'#6E8BB5', p:'#7E7C76', s:'#4C4A46' };
-    var BODY = [
-      '....hhhhhh....',
-      '...hhhhhhhh...',
-      '...hffffffh...',
-      '....GGfGGf....',
-      '....ffffff....',
-      '.....ffff.....',
-      '....jjjjjj....',
-      '..bjjjjjjjj...',
-      '..bbjjjjjjj...',
-      '..bbbjjjjjj...',
-      '..bbbjjjjjj...',
-      '...jjjjjjjj...',
-      '...jjjjjjjj...',
-      '...jjjjjjjj...',
-      '...pppppppp...'
-    ];
-    var LEGS = [
-      ['....pp..pp....','....pp..pp....','....pp..pp....','...sss..sss...','...sss..sss...'],
-      ['....pp..pp....','...pp....pp...','..pp......pp..','.sss......sss.','.sss......sss.'],
-      ['....pp..pp....','....pp..pp....','....pp..pp....','...sss..sss...','...sss..sss...'],
-      ['....pp..pp....','...pp....pp...','...pp....pp...','..sss....sss..','..sss....sss..']
-    ];
-    var HERO = LEGS.map(function (l) { return bake(BODY.concat(l), PAL); });
-
-    var BOT = bake([
-      '.X....X.',
-      '..XXXX..',
-      '.XXXXXX.',
-      'XX.XX.XX',
-      '.X.XX.X.',
-      'X..XX..X'
-    ], { X: '#FFAE1A' });
-    var BOT_D = bake([
-      '.X....X.',
-      '..XXXX..',
-      '.XXXXXX.',
-      'XX.XX.XX',
-      '.X.XX.X.',
-      'X..XX..X'
-    ], { X: '#4A4A58' });
-
-    /* a sign on a post, not a tile on the floor — planted at your feet it would
-       sit entirely behind the walker and you would never see what you published */
-    function pageSprite(edge, fill) {
-      return bake([
-        'PPPPPPPP',
-        'PLLLLLLP',
-        'PLLLLLLP',
-        'PLLLLLLP',
-        'PLLLLLLP',
-        'PLLLLLLP',
-        'PLLLLLLP',
-        'PPPPPPPP',
-        '...PP...',
-        '...PP...',
-        '...PP...',
-        '...PP...',
-        '...PP...',
-        '...PP...'
-      ], { P: edge, L: fill });
+    function seg(x0, y0, x1, y1, w, h, baseY, cx) {
+      g.lineWidth = Math.max(.8, w * h);
+      g.beginPath(); g.moveTo(cx + x0 * h, baseY - y0 * h); g.lineTo(cx + x1 * h, baseY - y1 * h); g.stroke();
     }
-    var PAGE_H = 14;
-    var PAGE  = pageSprite('#FFAE1A', '#4A3407');
-    var PAGE_C= pageSprite('#F2F1ED', '#6B5310');
-    var PAGE_R= pageSprite('#55545C', '#1B1B21');
-
-    var VIS  = bake(['.vvv.','.vvv.','vvvvv','vvvvv','vvvvv','.v.v.','.v.v.','.v.v.'], { v:'#55545C' });
-    var VIS2 = bake(['.vvv.','.vvv.','vvvvv','vvvvv','vvvvv','.v.v.','.v.v.','.v.v.'], { v:'#6E8BB5' });
-
-    /* ---------- prologue: the crown-of-the-head view ----------
-       Seen from above you get heads, and in a crowd every head looks the same.
-       That is the whole point of opening here: identical crowns drifting one way
-       and a single one peeling off. A side view cannot show a fork in the road. */
-    var TDW = 1400, ROAD_Y = 84, ROAD_H = 32, FORK_X = 900, ROAD_END = 1320;
-    var TD_SPEED = 92, CROWD_SPEED = 80, TILT = 1.15;
-
-    /* Filled, not ringed: a dark crown inside a light rim reads as a washer at
-       9px, not a head. Keep the hair close in value to the coat so the shape
-       stays one mass and only the facing pip carries direction. */
-    function topSprite(coat, hair) {
-      return bake([
-        '...ccc...',
-        '.ccccccc.',
-        '.cchhhcc.',
-        'cchhhhhcc',
-        'cchhhhhcc',
-        'cchhhhhcc',
-        '.cchhhcc.',
-        '.ccccccc.',
-        '...ccc...'
-      ], { c: coat, h: hair });
-    }
-    var TD_ME   = topSprite('#DEDCD6', '#B4B0A7');
-    var TD_THEM = topSprite('#4A4A58', '#3A3A46');
-
-    /* the dirt track that branches down and away from the paved road */
-    function dirtY(x) {
-      if (x < FORK_X) return null;
-      if (x > FORK_X + 250) return 176;
-      return 116 + (x - FORK_X) / 250 * 60;
-    }
-    /* Leaving is deliberately generous: anywhere clear of the tarmac past the
-       fork counts. The track is drawn to pull your eye down, not to be a
-       tightrope — a 28px band means walking a bit too far down misses the turn
-       entirely and you just trudge to the dead end wondering what you did wrong. */
-    function offRoad(x, y) { return x > FORK_X + 140 && y > ROAD_Y + ROAD_H + 22; }
-
-    /* lantern falloff, baked — a fresh radial gradient every frame is wasteful */
-    var GLOW = (function () {
-      var c = document.createElement('canvas'); c.width = c.height = 168;
-      var x = c.getContext('2d');
-      var gr = x.createRadialGradient(84, 84, 3, 84, 84, 84);
-      gr.addColorStop(0,   'rgba(255,174,26,.22)');
-      gr.addColorStop(.5,  'rgba(255,174,26,.06)');
-      gr.addColorStop(1,   'rgba(255,174,26,0)');
-      x.fillStyle = gr; x.fillRect(0, 0, 168, 168);
-      return c;
-    })();
-
-    /* ---------- world queries ---------- */
-    function groundAt(x) {
-      for (var i = 0; i < HILLS.length; i++)
-        if (x >= HILLS[i][0] && x <= HILLS[i][1]) return FLOOR - HILLS[i][2];
-      return FLOOR;
-    }
-    /* platforms only catch you on the way down; the ground always catches */
-    function landAt(x, prevB, nextB, vy) {
-      if (vy >= 0) {
-        for (var i = 0; i < PLATS.length; i++) {
-          var pl = PLATS[i];
-          if (x + 5 < pl[0] || x - 5 > pl[0] + pl[2]) continue;
-          if (prevB <= pl[1] + 1 && nextB >= pl[1]) return pl[1];
-        }
+    function runner(cx, baseY, h, t, fill, opts) {
+      opts = opts || {};
+      var u = t - Math.floor(t), ph = u * TAU, side, i;
+      var bob = -.026 * Math.cos(2 * ph) - .01, shTilt = .055 * Math.cos(ph);
+      var hipTilt = -.03 * Math.cos(ph), sway = .012 * Math.cos(ph);
+      g.save();
+      g.fillStyle = fill; g.strokeStyle = fill; g.lineCap = 'round'; g.lineJoin = 'round';
+      function P(x, y) { return [cx + (x + sway) * h, baseY - (y + bob) * h]; }
+      var legs = [];
+      for (i = 0; i < 2; i++) {
+        side = i ? 1 : -1;
+        var f = footPath(u + (side < 0 ? 0 : .5));
+        var hipX = side * L.hipHW + sway, hipY = L.hip + bob + hipTilt * side * .3;
+        var kx = hipX + side * (.008 + .03 * f.lift), ky = hipY - L.thigh * (1 - .46 * f.lift) + f.squash;
+        legs.push({ hipX: hipX, hipY: hipY, kx: kx, ky: ky,
+                    ankX: kx + side * (.004 + .014 * f.lift), ankY: L.ground + f.y + bob,
+                    lift: f.lift, side: side });
       }
-      var gy = groundAt(x);
-      return nextB >= gy ? gy : null;
-    }
-    /* one scene lookup for both halves of the walk: the prologue reads the
-       top-down x, the side view reads the platformer x, and they never mix */
-    function sceneAt(x, side) {
-      var s = null;
-      for (var i = 0; i < SCENES.length; i++)
-        if (!!SCENES[i].side === !!side && x >= SCENES[i].x) s = SCENES[i];
-      return s || SCENES[side ? 5 : 0];
+      legs.sort(function (a, b) { return b.lift - a.lift; });   /* trailing leg behind */
+      for (i = 0; i < legs.length; i++) {
+        var lg = legs[i];
+        seg(lg.hipX, lg.hipY - bob, lg.kx, lg.ky - bob, L.thighW, h, baseY, cx);
+        seg(lg.kx, lg.ky - bob, lg.ankX, lg.ankY - bob, L.shinW, h, baseY, cx);
+        seg(lg.ankX, lg.ankY - bob, lg.ankX + lg.side * (.024 - .014 * lg.lift),
+            lg.ankY - bob + .03 * lg.lift - .004, L.shinW * .85, h, baseY, cx);
+      }
+      var shLy = L.shoulder + shTilt, shRy = L.shoulder - shTilt;
+      var hpLy = L.hip + hipTilt, hpRy = L.hip - hipTilt;
+      g.beginPath();
+      g.moveTo.apply(g, P(-L.shHW, shLy));
+      g.quadraticCurveTo.apply(g, P(-L.shHW * .86, L.waist).concat(P(-L.hipHW - .01, hpLy)));
+      g.lineTo.apply(g, P(L.hipHW + .01, hpRy));
+      g.quadraticCurveTo.apply(g, P(L.shHW * .86, L.waist).concat(P(L.shHW, shRy)));
+      g.quadraticCurveTo.apply(g, P(0, L.shoulder + .042).concat(P(-L.shHW, shLy)));
+      g.closePath(); g.fill();
+
+      /* the pack. From behind this is the only silhouette cue that can carry an
+         identity — glasses, a face, a jacket colour are all on the far side of
+         the person. Everyone else on the road runs empty-handed; I am the one
+         carrying something, and it gets heavier with every door. */
+      if (opts.pack) {
+        var pk = Math.max(0, Math.min(1, opts.pack));
+        var pw = L.shHW * (.98 + .30 * pk), pTop = L.shoulder - .012, pBot = L.hip + .085 - .03 * pk;
+        var r = (pTop - pBot) * .3;
+        g.fillStyle = opts.packFill || '#161B26';
+        g.beginPath();
+        g.moveTo.apply(g, P(-pw, pTop - r));
+        g.quadraticCurveTo.apply(g, P(-pw, pTop).concat(P(-pw + r, pTop)));
+        g.lineTo.apply(g, P(pw - r, pTop));
+        g.quadraticCurveTo.apply(g, P(pw, pTop).concat(P(pw, pTop - r)));
+        g.lineTo.apply(g, P(pw, pBot + r));
+        g.quadraticCurveTo.apply(g, P(pw, pBot).concat(P(pw - r, pBot)));
+        g.lineTo.apply(g, P(-pw + r, pBot));
+        g.quadraticCurveTo.apply(g, P(-pw, pBot).concat(P(-pw, pBot + r)));
+        g.closePath(); g.fill();
+        g.strokeStyle = opts.packEdge || 'rgba(255,174,26,.62)';
+        g.lineWidth = Math.max(1, h * .012); g.stroke();
+        /* a lid seam, so at 40px it still reads as a bag and not as a block */
+        g.beginPath();
+        g.moveTo.apply(g, P(-pw * .82, pTop - (pTop - pBot) * .34));
+        g.lineTo.apply(g, P(pw * .82, pTop - (pTop - pBot) * .34));
+        g.stroke();
+        g.fillStyle = fill;                       /* restore for the arms below */
+        g.strokeStyle = fill;
+      }
+
+      var handX = 0, handY = 0;
+      for (i = 0; i < 2; i++) {
+        side = i ? 1 : -1;
+        var q = ph + (side < 0 ? Math.PI : 0), sw = Math.cos(q);
+        var shX = side * L.shHW * .88 + sway, shY = (side < 0 ? shLy : shRy) - .012;
+        var elbX = shX + side * (.052 + .03 * Math.max(0, -sw)), elbY = shY - L.upperArm + .03 * sw;
+        var wrX = elbX - side * (.04 + .03 * Math.max(0, sw)), wrY = elbY + .038 + .115 * sw;
+        seg(shX, shY, elbX, elbY, L.upperW, h, baseY, cx);
+        seg(elbX, elbY, wrX, wrY, L.foreW, h, baseY, cx);
+        if (side === 1) { handX = wrX; handY = wrY; }
+      }
+      /* the lamp, once he has one. it swings with the arm, which is the only
+         way a light reads as carried rather than pasted on. */
+      if (opts.lamp) {
+        var hp = P(handX, handY), lr = Math.max(1.4, h * .028);
+        var lg = g.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], lr * 11);
+        lg.addColorStop(0, 'rgba(255,190,110,.42)'); lg.addColorStop(1, 'rgba(255,190,110,0)');
+        g.fillStyle = lg; g.beginPath(); g.arc(hp[0], hp[1], lr * 11, 0, TAU); g.fill();
+        g.fillStyle = '#FFD27A'; g.beginPath(); g.arc(hp[0], hp[1], lr, 0, TAU); g.fill();
+        g.fillStyle = fill; g.strokeStyle = fill;
+      }
+      seg(sway, L.shoulder, sway + shTilt * .3, L.shoulder + .055, .055, h, baseY, cx);
+      var hx = cx + (sway + shTilt * .45) * h, hy = baseY - (L.crown - L.headRY + bob) * h;
+      g.beginPath(); g.ellipse(hx, hy, L.headRX * h, L.headRY * h, shTilt * 1.4, 0, TAU); g.fill();
+      /* the rim light is the only thing separating me from the crowd: same rig,
+         same silhouette, one lit edge. */
+      if (opts.rim) {
+        var s2 = opts.rimSide || -1;
+        g.strokeStyle = opts.rim; g.lineWidth = Math.max(1, h * .013);
+        g.beginPath();
+        g.ellipse(hx, hy, L.headRX * h, L.headRY * h, shTilt * 1.4,
+                  s2 < 0 ? Math.PI * .6 : Math.PI * 1.4, s2 < 0 ? Math.PI * 1.32 : Math.PI * 2.12);
+        g.stroke();
+        g.beginPath();
+        g.moveTo.apply(g, P(s2 * L.shHW, (s2 < 0 ? shLy : shRy) - .015));
+        g.quadraticCurveTo.apply(g, P(s2 * L.shHW * .88, L.waist)
+                                     .concat(P(s2 * (L.hipHW + .008), s2 < 0 ? hpLy : hpRy)));
+        g.stroke();
+      }
+      g.restore();
     }
 
     /* ---------- dom ---------- */
@@ -1632,19 +1612,6 @@
     var bLine = document.getElementById('jn-b-line');
     var bVerb = document.getElementById('jn-b-verb');
     var padPlant = document.getElementById('jn-pad-plant');
-    var padUp    = document.getElementById('jn-pad-up');
-
-    /* the pad keys change meaning at the handover: in the prologue up/down are
-       movement (and DOWN is how you take the fork — disabling it there strands
-       every touch player on the road forever), afterwards they are verbs */
-    function padLabels() {
-      var side = mode === 'side';
-      if (padUp)    padUp.textContent    = side ? '▲ 점프' : '▲ 위';
-      if (padPlant) {
-        padPlant.textContent = side ? '▼ 발행' : '▼ 아래';
-        padPlant.disabled = side && !have.plant;
-      }
-    }
     var GAUGE = {
       year:  document.getElementById('jn-g-year'),
       crawl: document.getElementById('jn-g-crawl'),
@@ -1675,16 +1642,15 @@
         a.gain.exponentialRampToValueAtTime(.0001, t0 + len);
         o.connect(a); a.connect(actx.destination);
         o.start(t0); o.stop(t0 + len + .02);
-      } catch (e) { sndOn = false; }         /* never let audio break the walk */
+      } catch (e) { sndOn = false; }         /* never let audio break the run */
     }
     var SFX = {
-      jump:   function () { beep(420, .09, 'square', .035); },
-      land:   function () { beep(150, .05, 'sine',   .03); },
       plant:  function () { beep(520, .07, 'triangle', .04); beep(780, .09, 'triangle', .025); },
       cite:   function () { beep(940, .07, 'sine',   .03); },
       pick:   function () { beep(660, .10, 'square', .045); beep(990, .16, 'square', .03); },
       reveal: function () { beep(220, .5, 'sawtooth', .05); beep(660, .7, 'sine', .04); },
       door:   function () { beep(300, .12, 'triangle', .04); },
+      turn:   function () { beep(180, .18, 'sine', .045); beep(300, .22, 'sine', .03); },
       end:    function () { beep(392, .25, 'sine', .05); beep(587, .45, 'sine', .04); }
     };
     sndBtn.addEventListener('click', function () {
@@ -1696,98 +1662,93 @@
     });
 
     /* ---------- scene cards ----------
-       The line lives in the DOM, not on the canvas: at 384px logical the canvas
-       would render Korean type as a smear, and a screen reader would get none
-       of it. Same reason the reveal flash is a div. */
+       One short line at a time, big, in the DOM — canvas text would be neither
+       real type nor readable by anything assistive. */
     var shownScene = 0, cardT = 0;
     function showScene(s) {
       if (!s || s.n === shownScene) return;
+      /* one big thing at a time. a pickup banner and a scene line both landing
+         on the bottom of the frame is two headlines on top of each other —
+         the scene waits its turn rather than being lost. */
+      if (bannerT && clock < bannerT) return;
       shownScene = s.n;
       cardLine.textContent = s.line;
       cardTag.textContent  = s.year + ' · ' + s.tag;
       card.classList.add('on');
-      cardT = clock + 3.6;
+      cardT = clock + 4.2;
       live.textContent = s.n + '장. ' + s.line;
     }
 
-    /* ---------- juice ----------
-       Shake and dust are the two things that make a pixel walk feel physical, and
-       the two things that make motion-sensitive people close the tab. Honour the
-       OS setting rather than shipping a toggle nobody finds. */
     var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var shake = 0, dust = [];
     function kick(n) { if (!calm) shake = Math.max(shake, n); }
-    function puff(x, y, n, col, spread) {
+    function puff(x, z, n, col) {
       if (calm) return;
       for (var i = 0; i < n; i++)
-        dust.push({ x: x, y: y, t: 0,
-                    vx: (Math.random() - .5) * (spread || 40),
-                    vy: -Math.random() * (spread || 40) * .8,
-                    c: col || '#7E7C76' });
-      if (dust.length > 140) dust.splice(0, dust.length - 140);
+        dust.push({ x: x + (Math.random() - .5) * .6, z: z, h: Math.random() * .3, t: 0,
+                    vx: (Math.random() - .5) * 1.2, vh: Math.random() * 1.4, c: col || '#7E7C76' });
+      if (dust.length > 120) dust.splice(0, dust.length - 120);
     }
 
-    /* the crown view is frozen into this the moment you leave the road, then
-       squashed toward the horizon while the side view rises underneath */
-    var tdSnap = document.createElement('canvas');
-    tdSnap.width = W; tdSnap.height = H;
-    var tdCtx = tdSnap.getContext('2d');
-
     /* ---------- state ---------- */
-    var p, have, stats, pages, bots, visitors, rivals, pops, spark, sparkAt, sparkLast;
-    var cam, running, ended, raf, last, clock, wallBump, plantCd, got;
-    var mode, td, tiltT;
-    var keys = { l: false, r: false, u: false, d: false };
+    var p, camX, camZ, have, stats, pages, bots, crowd, arrivals, rivals, pops;
+    var spark, sparkAt, sparkLast;
+    var running, ended, raf, last, clock, plantCd, got, forked, blockT;
+    var keys = { l: false, r: false, d: false };
 
     function reset() {
-      p = { x: 26, y: FLOOR, vy: 0, face: 1, anim: 0, grounded: true };
+      p = { z: 4, x: 0, anim: 0 };
+      camX = 0; camZ = p.z - PZ;
       have = {};
       stats = { crawl: 0, pages: 0, cited: 0, doors: 0 };
       pages = []; pops = []; spark = []; sparkAt = 0; sparkLast = 0;
-      cam = 0; running = false; ended = false; clock = 0;
-      wallBump = 0; plantCd = 0; got = 0;
+      running = false; ended = false; clock = 0;
+      plantCd = 0; got = 0; forked = false; blockT = 0;
       shake = 0; dust = []; shownScene = 0; cardT = 0;
       card.classList.remove('on'); flash.classList.remove('on');
-      keys.l = keys.r = keys.u = keys.d = false;
+      keys.l = keys.r = keys.d = false;
 
-      /* prologue: everyone on the same road, walking the same way */
-      mode = 'top'; tiltT = 0;
-      td = { x: 40, y: 100, face: 1, crowd: [], gate: 0 };
-      for (var ci2 = 0; ci2 < 11; ci2++)
-        td.crowd.push({ x: 4 + ci2 * 17, y: ROAD_Y + 6 + (ci2 * 11) % 20,
-                        sp: CROWD_SPEED - 5 + (ci2 % 5) * 3, gone: 0 });
+      /* everyone starts on the same road, going the same way. they stay on it. */
+      /* they run at very nearly my speed. Slower and they are all behind me by
+         the time the road forks, and 5장 — the one beat the whole thing turns
+         on — plays to an empty road. They have to still be there to be left. */
+      crowd = [];
+      for (var i = 0; i < 18; i++)
+        crowd.push({ z: 12 + i * 11 + Math.random() * 7,
+                     x: (Math.random() - .5) * 2 * ROAD_HW * .78,
+                     sp: SPEED * (.97 + Math.random() * .06), t: Math.random() });
 
       bots = [];
-      for (var i = 0; i < 14; i++) bots.push(respawn({}, 40 + i * 120));
+      for (i = 0; i < 16; i++) bots.push(respawn({}, 30 + i * 14));
 
-      /* the mirror of scene 1: at the far end people walk IN, toward the clinic.
-         nobody walks away in the side view — the leaving happened in the
-         prologue, back when there was nothing to be done about it. */
-      visitors = [];
-      for (i = 0; i < 10; i++)
-        visitors.push({ x: GATEX + 40 + i * 26, y: FLOOR, gone: 0, arrival: true });
+      /* the mirror of scene 1: once the border opens, people walk toward the
+         clinic on MY track. nobody walks away here — the leaving happened back
+         on the paved road, when there was nothing to be done about it. */
+      arrivals = [];
+      for (i = 0; i < 9; i++)
+        arrivals.push({ z: GATEZ + 40 + i * 22, x: (Math.random() - .5) * 2 * ROAD_HW * .6,
+                        t: Math.random() });
 
       /* competitors, invisible until the radar */
       rivals = [];
-      for (i = 0; i < 16; i++) {
-        var rx = 1900 + i * 78;
-        rivals.push({ x: rx, y: groundAt(rx) });
-      }
+      for (i = 0; i < 22; i++)
+        rivals.push({ z: 1650 + i * 34, x: (Math.random() - .5) * 2 * ROAD_HW * .82 });
+
       TOOLS.forEach(function (t) { t.taken = false; t.read = false; });
       for (var k in GAUGE) GAUGE[k].hidden = true;   /* nothing to count yet */
       GAUGE.year.hidden = false;                     /* except the year: it always runs */
       padLabels();
     }
 
-    function respawn(b, x) {
-      /* keep the re-entry short: in act 3 crawlers are consumed by pages, and a
-         long off-screen spawn gap makes the traffic look like it stopped */
-      b.x = x !== undefined ? x : cam + W + 8 + Math.random() * 150;
-      b.lane = (Math.random() * LANES.length) | 0;
-      b.y = LANES[b.lane];
-      b.vx = -(26 + Math.random() * 30);
+    /* crawlers come toward you out of the distance. they are drawn at .07 alpha
+       until the lantern — present the whole time, just not countable. */
+    function respawn(b, d) {
+      b.z = p ? p.z + (d !== undefined ? d : 120 + Math.random() * 90)
+              : (d !== undefined ? d : 120);
+      b.x = myCx(b.z) + (Math.random() - .5) * 2 * ROAD_HW * .85;
+      b.h = .6 + Math.random() * .8;         /* how high above the surface it flies */
       b.name = AI_NAMES[(Math.random() * AI_NAMES.length) | 0];
-      b.wob = Math.random() * 6.283;
+      b.wob = Math.random() * TAU;
       b.dead = 0;
       b.target = null;
       return b;
@@ -1798,12 +1759,15 @@
     function say(msg, announce) {
       tickEl.textContent = msg;
       tickEl.classList.add('on');
-      tickT = clock + 2.2;
+      tickT = clock + 2.6;
       if (announce) live.textContent = msg;
     }
-    function pop(x, y, text) {
-      if (pops.length > 18) pops.shift();
-      pops.push({ x: x, y: y, t: 0, text: text });
+    function pop(x, z, h, text) {
+      if (pops.length > 16) pops.shift();
+      pops.push({ x: x, z: z, h: h, t: 0, text: text });
+    }
+    function padLabels() {
+      if (padPlant) padPlant.disabled = !have || !have.plant;
     }
 
     var bannerT = 0;
@@ -1815,9 +1779,9 @@
       bLine.textContent = '“' + t.line + '”';
       bVerb.textContent = t.verb;
       banner.classList.add('on');
-      bannerT = clock + 4.2;
+      bannerT = clock + 4.6;
 
-      puff(t.x, groundAt(t.x) - 14, 14, '#FFAE1A', 60);
+      puff(myCx(t.z), t.z, 16, '#FFAE1A');
       kick(3);
       SFX.pick();
 
@@ -1842,242 +1806,203 @@
       GAUGE.cite.hidden = false;
       flash.classList.add('on');
       setTimeout(function () { flash.classList.remove('on'); }, 40);
-      kick(7);
+      kick(8);
       SFX.reveal();
       for (var i = 0; i < bots.length; i++)
-        if (!bots[i].dead) puff(bots[i].x, bots[i].y + 3, 3, '#FFAE1A', 26);
+        if (!bots[i].dead) puff(bots[i].x, bots[i].z, 2, '#FFAE1A');
       say(stats.cited > 0
         ? '그동안 ' + stats.cited + '번 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다'
         : '크롤러가 보입니다 — 계속 지나다니고 있었습니다', true);
     }
 
-    /* ---------- verbs ---------- */
-    function jump() {
-      if (!running || !p.grounded) return;
-      p.vy = JUMPV; p.grounded = false;
-      puff(p.x, p.y, 3, '#4C4A46', 22);
-      SFX.jump();
-    }
+    /* ---------- the one verb you get before the lantern ---------- */
     function plant() {
-      if (!running) return;
-      if (!have.plant) { say('아직 발행할 수 없습니다 — 길에 놓인 aeo_sync를 먼저 주우세요'); return; }
-      if (plantCd > 0 || pages.length >= 44) return;
-      /* in front of you, so you actually see it appear */
-      var nx = p.x + 12 * (p.face < 0 ? -1 : 1);
-      for (var qi = 0; qi < pages.length; qi++) {
-        if (Math.abs(pages[qi].x - nx) < 18) {
-          say('같은 자리에는 다시 발행할 수 없습니다 — 걸으면서 발행하세요');
+      if (!running || ended) return;
+      if (!have.plant) { say('아직 발행할 수 없습니다 — 앞의 aeo_sync 문을 먼저 지나세요'); return; }
+      if (plantCd > 0 || pages.length >= 46) return;
+      /* ahead of you, because in a back view nothing behind you exists. you see
+         it come toward you, and you watch a crawler land on it. */
+      var nz = p.z + PLANT_AHEAD;
+      for (var i = 0; i < pages.length; i++) {
+        if (Math.abs(pages[i].z - nz) < PAGE_SPACE) {
+          say('같은 자리에는 다시 발행할 수 없습니다 — 달리면서 발행하세요');
           return;
         }
       }
-      plantCd = .32;
-      pages.push({ x: nx, y: groundAt(nx), cited: 0, cool: 0, sub: !!have.sub });
+      plantCd = .3;
+      pages.push({ z: nz, x: p.x, cited: 0, cool: 0, sub: !!have.sub });
       stats.pages++;
-      pop(nx, groundAt(nx) - 22, '발행');
-      puff(nx, groundAt(nx), 5, '#FFAE1A', 26);
+      pop(p.x, p.z + 6, 1.5, '발행');   /* at me, not at the page — the page is 40 away and the pop would be a speck on the horizon */
       SFX.plant();
       /* the quality gate is in the pipeline, not after it */
       if (stats.pages % 4 === 0) say('감수 통과 — reviewedBy 주입', false);
     }
 
-    /* ---------- simulation ---------- */
-    /* radius has to clear the spawn distance (bots enter ~240-420px ahead of the
-       player) or nothing ever locks on and no page is ever cited.
-       a page on re-crawl cooldown is skipped, so standing on six pages farms a
-       trickle while publishing more is what actually raises the number. */
-    function nearestPage(x) {
+    /* a page still on re-crawl cooldown is skipped, so standing on a pile of
+       pages farms a trickle while publishing more is what raises the number */
+    function nearestPage(z) {
       var best = null, bd = 1e9;
       for (var i = 0; i < pages.length; i++) {
         if (pages[i].cool > 0) continue;
-        var d = Math.abs(pages[i].x - x);
+        var d = Math.abs(pages[i].z - z);
         if (d < bd) { bd = d; best = pages[i]; }
       }
-      return bd < 380 ? best : null;
+      return bd < 150 ? best : null;
+    }
+    /* the lamps are 유입. they are lit at the start, they go out when the thing
+       I was selling starts dying, and they come back exactly where I published. */
+    function lampLit(z) {
+      if (z < 520) return true;
+      if (have.gate) return true;
+      for (var i = 0; i < pages.length; i++)
+        if (Math.abs(pages[i].z - z) < 120) return true;
+      return false;
+    }
+    function sceneAt(z) {
+      var s = SCENES[0];
+      for (var i = 0; i < SCENES.length; i++) if (z >= SCENES[i].z) s = SCENES[i];
+      return s;
+    }
+    function nearTool() {
+      for (var i = 0; i < TOOLS.length; i++)
+        if (Math.abs(TOOLS[i].z - p.z) < REACH) return TOOLS[i];
+      return null;
     }
 
-    /* ---------- prologue simulation ---------- */
-    function stepTop(dt) {
-      clock += dt;
-      var dx = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
-      var dy = (keys.d ? 1 : 0) - (keys.u ? 1 : 0);
-      if (dx || dy) {
-        var n = (dx && dy) ? .7071 : 1;
-        td.x += dx * TD_SPEED * n * dt;
-        td.y += dy * TD_SPEED * n * dt;
-        if (dx) td.face = dx;
-      }
-      td.x = Math.max(10, Math.min(ROAD_END + 30, td.x));
-      td.y = Math.max(12, Math.min(H - 14, td.y));
-
-      /* they keep going. past the end of the tarmac they simply are not there. */
-      for (var i = 0; i < td.crowd.length; i++) {
-        var c = td.crowd[i];
-        c.x += c.sp * dt;
-        if (c.x > ROAD_END && !c.gone) c.gone = clock;
-      }
-
-      cam = Math.max(0, Math.min(TDW - W, td.x - W * .42));
-
-      showScene(sceneAt(td.x, false));
-      if (shownScene === 5 && clock > td.gate && !offRoad(td.x, td.y)) {
-        td.gate = clock + 6;
-        say('여기서 길이 갈립니다 — ↓ 아래로 내려서세요', true);
-      }
-
-      if (td.x > ROAD_END - 70 && !offRoad(td.x, td.y) && clock > td.gate) {
-        td.gate = clock + 4;
-        say('포장된 길은 여기까지입니다 — 아래로 갈라진 길을 보세요.', true);
-      }
-
-      if (offRoad(td.x, td.y)) { leaveTheRoad(); return; }
-      hud();
-    }
-
-    function leaveTheRoad() {
-      drawTop(tdCtx);                 /* freeze the crown view for the tilt */
-      mode = 'tilt'; tiltT = 0;
-      /* deliberately does NOT clear the held keys. The tilt reads no input, so
-         clearing bought nothing and cost a dead zone: the physical key is still
-         down, no fresh keydown arrives until OS auto-repeat (~0.5s), and the
-         walker stands still through the handover — right at the pivot of the
-         whole piece. Holding right now carries straight into the side view. */
-      live.textContent = '포장도로를 벗어났습니다. 시점이 옆으로 눕습니다.';
-    }
-
-    function stepTilt(dt) {
-      clock += dt;
-      tiltT += dt;
-      if (tiltT >= TILT) {
-        mode = 'side';
-        padLabels();
-        kick(4);
-        bName.textContent = '6장';
-        bLine.textContent = '"개발자에게 부탁하는 대신, 직접 만들었습니다."';
-        bVerb.textContent = '← → 걷기 · ↑ 점프 · 길에 놓인 것을 주우세요';
-        banner.classList.add('on');
-        bannerT = clock + 4.5;
-      }
-      hud();
-    }
-
+    /* ---------- simulation ---------- */
     function step(dt) {
-      if (mode === 'top')  return stepTop(dt);
-      if (mode === 'tilt') return stepTilt(dt);
       clock += dt;
       if (plantCd > 0) plantCd -= dt;
-      for (var ci = 0; ci < pages.length; ci++)
-        if (pages[ci].cool > 0) pages[ci].cool -= dt;
+      var i, b, t;
+      for (i = 0; i < pages.length; i++) if (pages[i].cool > 0) pages[i].cool -= dt;
 
-      /* --- walk --- */
+      /* --- steering. there is no jump: this is one road and one decision. --- */
       var dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
-      if (dir) { p.x += dir * SPEED * dt; p.face = dir; p.anim += dt * 9; }
-      p.x = Math.max(8, Math.min(WORLD - 8, p.x));
+      p.x += dir * STEER * dt;
 
-      /* --- the border holds until NetTier --- */
-      if (!have.gate && p.x > GATEX - 12) {
-        p.x = GATEX - 12;
-        if (clock > wallBump) {
-          wallBump = clock + 3;
+      /* the crowd pulls right through the fork. you have to hold left to leave —
+         that resistance is 5장, and it is the only hard thing in the game. */
+      if (p.z > FORK_Z && p.z < ROAD_END && !forked) p.x += 1.5 * dt;
+      /* the band has to be WIDER than the clamp below, or holding left pins you
+         at myCx - ROAD_HW*1.02 — three centimetres outside your own road — and
+         the fork never latches. Held ← stranded the runner at the dead end. */
+      if (p.z > FORK_Z + FORK_LEN * .8 && !forked &&
+          Math.abs(p.x - myCx(p.z)) < ROAD_HW * 1.05) {
+        forked = true;
+        kick(4); SFX.turn();
+        say('무리에서 내려섰습니다', true);
+      }
+
+      var lo = myCx(p.z) - ROAD_HW * 1.02;
+      var hi = forked ? myCx(p.z) + ROAD_HW * 1.02 : ROAD_HW * 1.02;
+      p.x = Math.max(lo, Math.min(hi, p.x));
+
+      /* the tarmac ends. this is a wall you clear by steering, never a death —
+         you cannot lose this game, you can only stand still in it. */
+      var blocked = !forked && p.z >= ROAD_END;
+      if (blocked) {
+        p.z = ROAD_END;
+        if (clock > blockT) {
+          blockT = clock + 4;
+          say('포장된 길은 여기까지입니다 — ← 왼쪽 길로 내려서세요', true);
+        }
+      } else {
+        p.z += SPEED * dt;
+        p.anim += dt * 1.55;
+      }
+
+      /* the border holds until NetTier */
+      if (!have.gate && p.z > GATEZ - 3) {
+        p.z = GATEZ - 3;
+        if (clock > blockT) {
+          blockT = clock + 4;
           say('국경 — 다국어 없이는 넘어갈 수 없습니다', true);
         }
       }
 
-      /* --- gravity, ledges --- */
-      var prevB = p.y, wasAir = !p.grounded, fell = p.vy;
-      p.vy += GRAV * dt;
-      var nextB = p.y + p.vy * dt;
-      var s = landAt(p.x, prevB, nextB, p.vy);
-      if (s !== null && p.vy >= 0) {
-        p.y = s; p.vy = 0; p.grounded = true;
-        if (wasAir && fell > 60) { puff(p.x, p.y, 4, '#4C4A46', 30); SFX.land(); }
-      }
-      else { p.y = nextB; p.grounded = false; }
-      if (p.grounded) {                       /* walking up a slope shouldn't drop you */
-        var up = landAt(p.x, p.y, p.y + 1, 1);
-        if (up !== null && up < p.y && p.y - up <= 16) p.y = up;
-      }
-      if (p.y > H + 40) { p.y = groundAt(p.x); p.vy = 0; }
+      camX += (p.x - camX) * 3.4 * dt;    /* lags, so steering shows on screen */
+      camZ = p.z - PZ;
 
-      cam = Math.max(0, Math.min(WORLD - W, p.x - W * .42));
-
-      /* --- the mirror: once the border opens they walk in --- */
-      var i, v, b;
-      for (i = 0; i < visitors.length; i++) {
-        v = visitors[i];
-        if (have.gate && v.x < CLINIC - 6) v.x += 15 * dt;
+      /* --- the others keep going, on the road that ends --- */
+      for (i = 0; i < crowd.length; i++) {
+        var c = crowd[i];
+        c.z += c.sp * dt;
+        c.t += dt * 1.55;
+        /* recycled until the tarmac runs out, so the road is still full of them
+           at the fork. after that they are simply not replaced — the road they
+           are on ends, and the emptying is the point rather than a cleanup. */
+        if (c.z < camZ - 6 || c.z > camZ + VIEW + 60) {
+          if (p.z < ROAD_END) {
+            c.z = camZ + 40 + Math.random() * 130;
+            c.x = (Math.random() - .5) * 2 * ROAD_HW * .78;
+            c.sp = SPEED * (.97 + Math.random() * .06);
+          }
+        }
+      }
+      for (i = 0; i < arrivals.length; i++) {
+        if (have.gate && arrivals[i].z < CLINIC_Z - 4) {
+          arrivals[i].z += 6 * dt; arrivals[i].t += dt * 1.1;
+        }
       }
 
       /* --- crawlers --- */
       for (i = 0; i < bots.length; i++) {
         b = bots[i];
-        if (b.dead) {
-          b.dead -= dt;
-          if (b.dead <= 0) respawn(b);
-          continue;
-        }
-        b.x += b.vx * dt;
+        if (b.dead) { b.dead -= dt; if (b.dead <= 0) respawn(b); continue; }
+        b.z -= 16 * dt;                                   /* они come toward you */
 
-        /* once pages exist, the traffic comes to you instead. a bot commits to
-           its target so it still lands after the camera has moved on. */
-        var t = null;
+        t = null;
         if (have.plant) {
           if (b.target && b.target.cool > 0) b.target = null;
-          if (!b.target) b.target = nearestPage(b.x);
+          if (!b.target) b.target = nearestPage(b.z);
           t = b.target;
         }
         if (t) {
-          /* hover ABOVE the page, clear of a standing player's hitbox — else
-             every diving bot is intercepted by your own body and nothing is
-             ever cited. stand still and citations accrue; jump and you steal
-             them back as measurements. that trade is the act-3 game. */
-          b.x += (t.x - b.x) * 2.8 * dt;
-          b.y += (t.y - HOVER - b.y) * 3.2 * dt;
-          if (Math.abs(t.x - b.x) < 8 && Math.abs(t.y - HOVER - b.y) < 8) {
+          b.z += (t.z - b.z) * 2.2 * dt;
+          b.x += (t.x - b.x) * 2.6 * dt;
+          b.h += (1.15 - b.h) * 3 * dt;
+          if (Math.abs(t.z - b.z) < 3.5 && Math.abs(t.x - b.x) < .7) {
             /* a page with subtitles is re-read sooner — MediSTT's whole claim */
             t.cited++; t.cool = t.sub ? RECRAWL * .6 : RECRAWL; stats.cited++;
-            if (have.lantern) { pop(t.x, t.y - 30, '인용 +1'); SFX.cite(); }
-            else pop(t.x, t.y - 30, '?');   /* something happened; you cannot count it */
+            if (have.lantern) { pop(t.x, t.z, 1.8, '인용 +1'); SFX.cite(); }
+            else pop(t.x, t.z, 1.8, '?');   /* something happened; you cannot count it */
             b.dead = .8; continue;
           }
         } else {
-          /* NOT an else-less assignment: writing b.y every frame would undo the
-             convergence above and no page would ever be cited */
-          b.y = LANES[b.lane] + Math.sin(clock * 2.2 + b.wob) * 3;
+          b.h = .6 + .5 + Math.sin(clock * 1.6 + b.wob) * .18;
         }
-        if (b.x < cam - 150 || b.x > cam + W + 340) { respawn(b); continue; }
+        if (b.z < camZ + NEAR || b.z > camZ + VIEW + 40) { respawn(b); continue; }
 
-        /* --- measure: only possible once you carry the lantern --- */
-        if (have.lantern) {
-          if (boxHit(b.x, b.y, p.x, p.y, 0)) {
-            stats.crawl++;
-            pop(b.x, b.y - 4, '+1');
-            puff(b.x, b.y + 3, 3, '#FFAE1A', 24);
-            SFX.cite();
-            say(b.name + ' 계측 · GA에는 안 잡히는 트래픽', false);
-            b.dead = .6;
-          }
+        /* --- measure: only possible once you carry the lantern.
+               running into one is the whole verb — you have to be in its lane. */
+        if (have.lantern && Math.abs(b.z - p.z) < 3 && Math.abs(b.x - p.x) < 1.1 && b.h < 1.5) {
+          stats.crawl++;
+          pop(b.x, b.z, b.h + .4, '+1');
+          puff(b.x, b.z, 3, '#FFAE1A');
+          SFX.cite();
+          say(b.name + ' 계측 · GA에는 안 잡히는 트래픽', false);
+          b.dead = .6;
         }
       }
 
-      /* --- pickups --- */
-      for (i = 0; i < TOOLS.length; i++) {
-        if (!TOOLS[i].taken && Math.abs(TOOLS[i].x - p.x) < REACH &&
-            Math.abs(groundAt(TOOLS[i].x) - p.y) < 34) pickup(TOOLS[i]);
-      }
+      /* --- doors: full width, so nothing here is missable --- */
+      for (i = 0; i < TOOLS.length; i++)
+        if (!TOOLS[i].taken && p.z >= TOOLS[i].z) pickup(TOOLS[i]);
 
       /* --- pops, dust, shake --- */
-      for (i = pops.length - 1; i >= 0; i--) {
-        pops[i].t += dt;
-        if (pops[i].t > 1) pops.splice(i, 1);
-      }
+      for (i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; if (pops[i].t > 1.1) pops.splice(i, 1); }
       for (i = dust.length - 1; i >= 0; i--) {
         var d = dust[i];
-        d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 120 * dt;
-        if (d.t > .7) dust.splice(i, 1);
+        d.t += dt; d.x += d.vx * dt; d.h += d.vh * dt; d.vh -= 2.6 * dt;
+        if (d.t > .8) dust.splice(i, 1);
       }
       if (shake > 0) shake = Math.max(0, shake - dt * 22);
 
-      showScene(sceneAt(p.x, true));
+      showScene(sceneAt(p.z));
+      if (shownScene === 5 && !forked && clock > blockT && p.z > FORK_Z + 30) {
+        blockT = clock + 6;
+        say('여기서 길이 갈립니다 — ← 왼쪽으로', true);
+      }
 
       /* --- kpi trace: rate, not running total. a cumulative series only ever
              rises, so every bar pins to max and the chart reads as a solid block */
@@ -2086,403 +2011,335 @@
         var tot = stats.crawl + stats.cited;
         spark.push(tot - sparkLast);
         sparkLast = tot;
-        if (spark.length > 30) spark.shift();
+        if (spark.length > 34) spark.shift();
       }
 
-      if (!ended && p.x >= WORLD - 30) finish();
+      if (!ended && p.z >= TRACK) finish();
       hud();
     }
 
     function sov() {
       var mine = 0, theirs = 0, i;
       for (i = 0; i < pages.length; i++)
-        if (pages[i].x > cam - 120 && pages[i].x < cam + W + 120) mine++;
+        if (pages[i].z > camZ && pages[i].z < camZ + VIEW) mine++;
       for (i = 0; i < rivals.length; i++)
-        if (rivals[i].x > cam - 120 && rivals[i].x < cam + W + 120) theirs++;
+        if (rivals[i].z > camZ && rivals[i].z < camZ + VIEW) theirs++;
       return mine + theirs ? Math.round(mine / (mine + theirs) * 100) : 0;
     }
 
-    /* ---------- render ---------- */
-    var STARS = [], FAR = [], MID = [], SCRUB = [];
-    (function () {
-      var i;
-      for (i = 0; i < 130; i++) STARS.push([Math.random() * WORLD, 6 + Math.random() * 92]);
-      for (i = 0; i < 80; i++)  FAR.push([Math.random() * WORLD, 26 + Math.random() * 40]);
-      for (i = 0; i < 100; i++) MID.push([Math.random() * WORLD, 12 + Math.random() * 28]);
-      for (i = 0; i < 260; i++) SCRUB.push([Math.random() * TDW, 8 + Math.random() * 200]);
-    })();
-    function px(n) { return n | 0; }
+    /* ---------- render ----------
+       Painter's algorithm over one sorted list. Everything in the world is a
+       (z, draw) pair, so a page, a crawler and a person can never be layered
+       wrongly against each other. */
+    function sx(wx, pr) { return W / 2 + (wx - camX) * pr.s; }
+    var props = [];
+    function prop(z, fn) { if (z > camZ + NEAR && z < camZ + VIEW) props.push({ z: z, f: fn }); }
 
-    /* ---------- prologue render (takes a context so the tilt can freeze it) ---------- */
-    function drawTop(c) {
-      var i, sx, wx;
-
-      c.fillStyle = '#0C0C11'; c.fillRect(0, 0, W, H);
-
-      c.fillStyle = '#1A1A23';
-      for (i = 0; i < SCRUB.length; i++) {
-        sx = SCRUB[i][0] - cam;
-        if (sx > -4 && sx < W) c.fillRect(px(sx), px(SCRUB[i][1]), 2 + (i % 2), 1);
+    function drawRoad(cxf, zA, zB, a) {
+      var i, t, d, Z, pr, X, first;
+      for (i = 0; i < 4; i++) {
+        t = [-1, -1 / 3, 1 / 3, 1][i];
+        g.strokeStyle = (i === 0 || i === 3)
+          ? 'rgba(150,178,220,' + (.55 * a).toFixed(3) + ')'
+          : 'rgba(255,174,26,' + (.30 * a).toFixed(3) + ')';
+        g.lineWidth = 1.6;
+        g.beginPath(); first = true;
+        for (d = NEAR; d < VIEW; d *= 1.045) {
+          Z = camZ + d;
+          if (Z < zA || Z > zB) { first = true; continue; }
+          pr = proj(d);
+          X = sx(cxf(Z) + t * ROAD_HW, pr);
+          if (first) { g.moveTo(X, pr.y); first = false; } else g.lineTo(X, pr.y);
+        }
+        g.stroke();
       }
-
-      /* the paved road */
-      for (sx = 0; sx < W; sx++) {
-        wx = (cam + sx) | 0;
-        if (wx > ROAD_END) continue;
-        c.fillStyle = '#1E1E27'; c.fillRect(sx, ROAD_Y, 1, ROAD_H);
-        c.fillStyle = '#33333E';
-        c.fillRect(sx, ROAD_Y, 1, 1);
-        c.fillRect(sx, ROAD_Y + ROAD_H - 1, 1, 1);
-        if (wx % 18 < 9) { c.fillStyle = '#4A4A58'; c.fillRect(sx, ROAD_Y + 15, 1, 1); }
+      /* the rungs. anchored to WORLD z, not to depth — anchored to depth they
+         sit still under a moving runner and the road stops reading as motion. */
+      var st = 2, Z0 = Math.ceil(Math.max(zA, camZ + NEAR) / st) * st;
+      var Z1 = Math.min(zB, camZ + VIEW);
+      for (Z = Z0; Z < Z1; Z += st) {
+        d = Z - camZ; pr = proj(d);
+        var c = cxf(Z);
+        g.strokeStyle = 'rgba(255,174,26,' + Math.max(.04, (.34 - d / 230) * a).toFixed(3) + ')';
+        g.lineWidth = Math.max(.7, 3.2 * pr.s / F);
+        g.beginPath();
+        g.moveTo(sx(c - ROAD_HW, pr), pr.y);
+        g.lineTo(sx(c + ROAD_HW, pr), pr.y);
+        g.stroke();
       }
-      /* breaking up past the fork. punched as scattered holes, not as skipped
-         columns — a skipped column is a full-height slit and reads as railings. */
-      for (var hx = FORK_X; hx < ROAD_END; hx += 6) {
-        if (((hx * 37) % 100) / 100 > (hx - FORK_X) / (ROAD_END - FORK_X) * .95) continue;
-        sx = hx - cam;
-        if (sx < -10 || sx > W + 10) continue;
-        c.fillStyle = '#0E0E13';
-        c.fillRect(px(sx), ROAD_Y + 2 + (hx * 53) % (ROAD_H - 8),
-                   3 + (hx * 29) % 5, 2 + (hx * 17) % 4);
-      }
+    }
 
-      /* the track that branches down */
-      for (sx = 0; sx < W; sx++) {
-        wx = (cam + sx) | 0;
-        var dy0 = dirtY(wx);
-        if (dy0 === null || wx > TDW) continue;
-        c.fillStyle = '#191721'; c.fillRect(sx, px(dy0) - 9, 1, 18);
-        if ((wx * 13) % 11 < 3) { c.fillStyle = '#2C2936'; c.fillRect(sx, px(dy0) - 6 + (wx % 9), 1, 1); }
+    function drawLamps() {
+      var STEP = 13;
+      var Z0 = Math.ceil((camZ + NEAR) / STEP) * STEP;
+      for (var Z = Z0; Z < camZ + VIEW; Z += STEP) {
+        var d = Z - camZ, pr = proj(d), c = myCx(Z);
+        var lit = lampLit(Z), r = Math.max(.8, .085 * pr.s), postH = .95 * pr.s;
+        for (var s2 = -1; s2 <= 1; s2 += 2) {
+          var x = sx(c + s2 * ROAD_HW * 1.18, pr), y = pr.y;
+          if (x < -60 || x > W + 60) continue;
+          g.strokeStyle = 'rgba(120,132,158,.40)';
+          g.lineWidth = Math.max(.7, .03 * pr.s);
+          g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - postH); g.stroke();
+          if (lit) {
+            var gl = g.createRadialGradient(x, y - postH, 0, x, y - postH, r * 9);
+            gl.addColorStop(0, 'rgba(255,190,110,.40)'); gl.addColorStop(1, 'rgba(255,190,110,0)');
+            g.fillStyle = gl; g.beginPath(); g.arc(x, y - postH, r * 9, 0, TAU); g.fill();
+          }
+          g.fillStyle = lit ? 'rgba(255,200,130,.95)' : 'rgba(86,92,108,.45)';
+          g.beginPath(); g.arc(x, y - postH, r, 0, TAU); g.fill();
+        }
       }
+    }
 
-      /* the billboards everyone on this road is selling — dark past the fork */
-      for (var s0 = 130; s0 < ROAD_END; s0 += 145) {
-        sx = s0 - cam;
-        if (sx < -16 || sx > W + 16) continue;
-        var dead = s0 > FORK_X;
-        c.fillStyle = '#26262F'; c.fillRect(px(sx), ROAD_Y - 15, 1, 15);
-        c.fillStyle = dead ? '#1B1B23' : '#2E2E39'; c.fillRect(px(sx) - 7, ROAD_Y - 26, 15, 12);
-        c.fillStyle = dead ? '#2A2A34' : '#7E7C76';
-        c.fillRect(px(sx) - 5, ROAD_Y - 23, 11, 1);
-        c.fillRect(px(sx) - 5, ROAD_Y - 21, 7, 1);
-        c.fillRect(px(sx) - 5, ROAD_Y - 19, 10, 1);
-        /* a kerbstone on the far side, so the lower half is not blank */
-        c.fillStyle = '#1C1C25';
-        c.fillRect(px(sx) - 2, ROAD_Y + ROAD_H + 12, 5, 3);
+    function drawSign(x, z, cited, sub, rival) {
+      var pr = proj(z - camZ), cx = sx(x, pr);
+      var w = .62 * pr.s, h = .78 * pr.s, postH = .55 * pr.s;
+      var top = pr.y - postH - h;
+      g.fillStyle = rival ? '#55545C' : '#7A6A44';
+      g.fillRect(cx - Math.max(.6, .035 * pr.s) / 2, pr.y - postH, Math.max(.8, .035 * pr.s), postH);
+      g.fillStyle = rival ? '#1B1B21' : (cited ? '#6B5310' : '#4A3407');
+      g.fillRect(cx - w / 2, top, w, h);
+      g.strokeStyle = rival ? '#55545C' : (cited ? '#F2F1ED' : '#FFAE1A');
+      g.lineWidth = Math.max(1, .035 * pr.s);
+      g.strokeRect(cx - w / 2, top, w, h);
+      if (sub) {                                   /* the subtitle bar MediSTT adds */
+        g.fillStyle = '#6E8BB5';
+        g.fillRect(cx - w * .32, top + h * .74, w * .64, Math.max(1, h * .09));
       }
+    }
 
-      /* the fork itself, marked in the one colour that means "mine" */
-      sx = FORK_X - cam;
-      if (sx > -30 && sx < W + 30) {
-        c.fillStyle = '#FFAE1A';
-        c.fillRect(px(sx), ROAD_Y + ROAD_H, 1, 10);
-        c.fillRect(px(sx) - 3, ROAD_Y + ROAD_H + 8, 7, 1);
-        c.fillRect(px(sx) - 2, ROAD_Y + ROAD_H + 9, 5, 1);
-        c.fillRect(px(sx) - 1, ROAD_Y + ROAD_H + 10, 3, 1);
+    function drawDoor(t, i) {
+      var pr = proj(t.z - camZ), c = myCx(t.z), cx = sx(c, pr);
+      var hw = pr.hw * 1.1, h = 2.55 * pr.s, th = Math.max(2, .17 * pr.s);
+      var lit = t.taken;
+      /* the head of the opening is filled and the foot is left open, so it reads
+         as something you run THROUGH. Filled edge to edge it was a wall across
+         the road, which is the one thing a door must not look like. */
+      var dg = g.createLinearGradient(0, pr.y - h, 0, pr.y);
+      dg.addColorStop(0, 'rgba(10,12,18,.34)');
+      dg.addColorStop(.4, 'rgba(10,12,18,.10)');
+      dg.addColorStop(1, 'rgba(10,12,18,0)');
+      g.fillStyle = dg; g.fillRect(cx - hw, pr.y - h, hw * 2, h);
+      if (lit) {
+        var lgd = g.createLinearGradient(0, pr.y - h, 0, pr.y);
+        var a2 = .16 + .07 * Math.sin(clock * 1.7 + i);
+        lgd.addColorStop(0, 'rgba(255,174,26,' + a2.toFixed(3) + ')');
+        lgd.addColorStop(1, 'rgba(255,174,26,0)');
+        g.fillStyle = lgd; g.fillRect(cx - hw, pr.y - h, hw * 2, h);
       }
-
-      /* the others */
-      for (i = 0; i < td.crowd.length; i++) {
-        var cr = td.crowd[i];
-        sx = cr.x - cam;
-        if (sx < -10 || sx > W + 10) continue;
-        var a = 1;
-        if (cr.gone) { a = Math.max(0, 1 - (clock - cr.gone) / 1.3); if (a <= 0) continue; }
-        c.globalAlpha = a;
-        c.drawImage(TD_THEM, px(sx) - 4, px(cr.y) - 4);
-        c.fillStyle = '#63626C'; c.fillRect(px(sx) + 5, px(cr.y) - 1, 3, 2);
-        c.globalAlpha = 1;
+      /* a gantry, not a wall: what carries it is the frame, so the frame has to
+         be thick and light enough to read against the sky at 200 units out. A
+         thin dark frame over a filled panel just looked like a bridge deck. */
+      g.fillStyle = lit ? '#FFAE1A' : '#565E74';
+      g.fillRect(cx - hw - th, pr.y - h - th, hw * 2 + th * 2, th);   /* lintel */
+      g.fillRect(cx - hw - th, pr.y - h, th, h);                      /* posts */
+      g.fillRect(cx + hw,      pr.y - h, th, h);
+      g.fillStyle = lit ? 'rgba(255,174,26,.9)' : 'rgba(86,94,116,.7)';
+      g.fillRect(cx - hw - th, pr.y - h + h * .18, hw * 2 + th * 2, th * .5);  /* cross-brace */
+      if (lit) { g.fillStyle = '#FFAE1A'; g.fillRect(cx - hw, pr.y - th * .6, hw * 2, th * .6); }
+      /* the name, on the lintel, at a size that survives the distance */
+      var fs = Math.round(Math.min(30, .26 * pr.s));
+      if (fs >= 7) {
+        g.font = '700 ' + fs + 'px ui-monospace, Consolas, monospace';
+        g.textAlign = 'center';
+        g.fillStyle = lit ? 'rgba(10,12,18,.92)' : 'rgba(150,158,178,.85)';
+        g.fillText(t.rec, cx, pr.y - h - th * .22);
+        g.textAlign = 'left';
       }
+    }
 
-      /* me */
-      sx = td.x - cam;
-      c.drawImage(TD_ME, px(sx) - 4, px(td.y) - 4);
-      c.fillStyle = '#FFAE1A';
-      c.fillRect(px(sx) + (td.face < 0 ? -8 : 5), px(td.y) - 1, 3, 2);
+    /* the ninth door, which is not a door. Price Lock was built and then
+       deleted, so scene 10 gets a frame with the lintel broken in the middle
+       that never lights and never opens. It is the only thing in the game you
+       cannot interact with, and that is the point. */
+    function drawVoid() {
+      var pr = proj(VOID_Z - camZ), cx = sx(myCx(VOID_Z), pr);
+      var hw = pr.hw * .34, h = 1.9 * pr.s, th = Math.max(1.2, .09 * pr.s);
+      g.fillStyle = '#2B2B36';
+      g.fillRect(cx - hw - th, pr.y - h, th, h);
+      g.fillRect(cx + hw,      pr.y - h, th, h);
+      g.fillRect(cx - hw - th, pr.y - h - th, hw * .8, th);
+      g.fillRect(cx + hw * .2 + th, pr.y - h - th, hw * .8, th);
+    }
+
+    function drawGate() {
+      var pr = proj(GATEZ - camZ), cx = sx(myCx(GATEZ), pr);
+      var hw = pr.hw * 1.35, h = 3.4 * pr.s;
+      if (have.gate) {
+        g.fillStyle = '#2B2B36';
+        g.fillRect(cx - hw, pr.y - h, hw * .42, h);
+        g.fillRect(cx + hw * .58, pr.y - h, hw * .42, h);
+        g.fillStyle = '#FFAE1A';
+        g.fillRect(cx - hw * .58, pr.y - h, Math.max(1.5, .1 * pr.s), h);
+        g.fillRect(cx + hw * .58 - Math.max(1.5, .1 * pr.s), pr.y - h, Math.max(1.5, .1 * pr.s), h);
+        g.fillRect(cx - hw * .58, pr.y - h, hw * 1.16, Math.max(1.5, .1 * pr.s));
+      } else {
+        g.fillStyle = '#22222C'; g.fillRect(cx - hw, pr.y - h, hw * 2, h);
+        g.fillStyle = '#33333E'; g.fillRect(cx - hw, pr.y - h, hw * 2, Math.max(1.5, .12 * pr.s));
+      }
+    }
+
+    function drawClinic() {
+      var pr = proj(CLINIC_Z - camZ), cx = sx(myCx(CLINIC_Z), pr);
+      var w = pr.hw * 1.7, h = 3.6 * pr.s;
+      var litc = have.gate ? '#FFAE1A' : '#33333E';
+      g.fillStyle = '#14141B'; g.fillRect(cx - w, pr.y - h, w * 2, h);
+      g.fillStyle = '#2B2B36'; g.fillRect(cx - w * 1.1, pr.y - h - h * .07, w * 2.2, h * .07);
+      g.fillStyle = litc;
+      for (var i = 0; i < 4; i++)
+        for (var j = 0; j < 3; j++)
+          g.fillRect(cx - w * .74 + i * w * .42, pr.y - h * .84 + j * h * .24, w * .22, h * .13);
+      g.fillStyle = '#0B0B10'; g.fillRect(cx - w * .16, pr.y - h * .3, w * .32, h * .3);
+      g.fillStyle = litc; g.fillRect(cx - w * .16, pr.y - h * .3, w * .32, Math.max(1, h * .02));
     }
 
     function draw() {
-      /* the shake translates the whole frame, so paint the void underneath it
-         first or the offset shows through as a black rim on two edges */
-      g.fillStyle = '#0B0B10'; g.fillRect(0, 0, W, H);
-      var ox = 0, oy = 0;
-      if (shake > .4) {
-        ox = ((Math.random() - .5) * shake) | 0;
-        oy = ((Math.random() - .5) * shake) | 0;
-      }
+      var i, pr, ox = 0, oy = 0;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.fillStyle = '#0D0F15'; g.fillRect(0, 0, W, H);
+      if (shake > .4) { ox = (Math.random() - .5) * shake; oy = (Math.random() - .5) * shake; }
       g.save();
       if (ox || oy) g.translate(ox, oy);
-      if (mode === 'top') { drawTop(g); g.restore(); return; }
-      drawSide();
-      if (mode === 'tilt') {
-        /* the frozen crown view folds down onto the horizon */
-        var t = Math.min(1, tiltT / TILT);
-        g.globalAlpha = 1 - t * t;
-        g.drawImage(tdSnap, 0, 0, W, H, 0, (FLOOR - 34) * t, W, Math.max(1, H * (1 - t)));
-        g.globalAlpha = 1;
+
+      /* sky and ground, then the amber horizon — one line, the whole width.
+         docs/design fixed this as the signature of the piece: the only warm
+         thing above ground. */
+      var sk = g.createLinearGradient(0, 0, 0, HORIZON);
+      sk.addColorStop(0, '#0A0C12'); sk.addColorStop(.62, '#141824'); sk.addColorStop(1, '#242A3A');
+      g.fillStyle = sk; g.fillRect(-8, -8, W + 16, HORIZON + 8);
+      var gr = g.createLinearGradient(0, HORIZON, 0, H);
+      gr.addColorStop(0, '#171B26'); gr.addColorStop(1, '#0A0C12');
+      g.fillStyle = gr; g.fillRect(-8, HORIZON, W + 16, H - HORIZON + 16);
+
+      var hg = g.createLinearGradient(0, HORIZON - 150, 0, HORIZON + 4);
+      hg.addColorStop(0, 'rgba(255,174,26,0)'); hg.addColorStop(1, 'rgba(255,174,26,.34)');
+      g.fillStyle = hg; g.fillRect(-8, HORIZON - 150, W + 16, 154);
+      g.fillStyle = 'rgba(255,200,110,.85)'; g.fillRect(-8, HORIZON - 1.5, W + 16, 2.5);
+
+      /* the paved road: still there, decaying past the fork, and it stops. that
+         is the whole of 4장 drawn rather than narrated. */
+      var pavedEnd = ROAD_END + 260;
+      if (camZ < pavedEnd) {
+        var pa = p.z < FORK_Z ? 1 : Math.max(.16, 1 - (p.z - FORK_Z) / 420);
+        drawRoad(pavedCx, -20, pavedEnd, pa);
       }
-      g.restore();
-    }
+      if (p.z > FORK_Z - 60) drawRoad(myCx, FORK_Z - 40, TRACK + 60, 1);
+      else drawRoad(myCx, -20, FORK_Z + 40, 1);
+      drawLamps();
 
-    function drawSide() {
-      var i, sx, y;
+      /* ---- one sorted list, far to near ---- */
+      props.length = 0;
+      for (i = 0; i < TOOLS.length; i++) (function (t, k) { prop(t.z, function () { drawDoor(t, k); }); })(TOOLS[i], i);
+      prop(VOID_Z, drawVoid);
+      prop(GATEZ, drawGate);
+      prop(CLINIC_Z, drawClinic);
+      if (have.radar)
+        for (i = 0; i < rivals.length; i++)
+          (function (r) { prop(r.z, function () { drawSign(r.x, r.z, 0, false, true); }); })(rivals[i]);
+      for (i = 0; i < pages.length; i++)
+        (function (q) { prop(q.z, function () { drawSign(q.x, q.z, q.cited, q.sub, false); }); })(pages[i]);
+      for (i = 0; i < crowd.length; i++)
+        (function (c) {
+          prop(c.z, function () {
+            var pr2 = proj(c.z - camZ);
+            /* they run at my speed, so without this they would still be jogging
+               alongside in 10장 — on a road that stopped being drawn 1000 units
+               ago. They do not vanish at the fork, they recede out of it. */
+            var gone = p.z <= ROAD_END ? 1 : Math.max(0, 1 - (p.z - ROAD_END) / 260);
+            if (gone <= 0) return;
+            g.globalAlpha = gone * Math.max(.22, 1 - (c.z - camZ) / 170);
+            /* #1C2230 was within a shade of the ground and they were invisible.
+               They have to be dark enough to read as a crowd and light enough
+               to read at all — and no pack, which is the whole difference. */
+            runner(sx(c.x, pr2), pr2.y, 1.75 * pr2.s, c.t, '#39415C');
+            g.globalAlpha = 1;
+          });
+        })(crowd[i]);
+      if (have.gate)
+        for (i = 0; i < arrivals.length; i++)
+          (function (a) {
+            prop(a.z, function () {
+              var pr2 = proj(a.z - camZ);
+              g.globalAlpha = .8;
+              runner(sx(a.x, pr2), pr2.y, 1.75 * pr2.s, a.t, '#31405C');
+              g.globalAlpha = 1;
+            });
+          })(arrivals[i]);
+      for (i = 0; i < bots.length; i++)
+        (function (b) {
+          if (b.dead) return;
+          prop(b.z, function () {
+            var pr2 = proj(b.z - camZ), x = sx(b.x, pr2), y = pr2.y - b.h * pr2.s;
+            var r = Math.max(.9, .13 * pr2.s);
+            g.globalAlpha = have.lantern ? 1 : .07;
+            var gl = g.createRadialGradient(x, y, 0, x, y, r * 3.2);
+            gl.addColorStop(0, 'rgba(255,174,26,.5)'); gl.addColorStop(1, 'rgba(255,174,26,0)');
+            g.fillStyle = gl; g.beginPath(); g.arc(x, y, r * 3.2, 0, TAU); g.fill();
+            g.fillStyle = have.lantern ? '#FFC246' : '#4A4A58';
+            g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+            g.fillStyle = '#0D0F15'; g.beginPath(); g.arc(x, y, r * .42, 0, TAU); g.fill();
+            g.globalAlpha = 1;
+          });
+        })(bots[i]);
 
-      g.fillStyle = '#0B0B10'; g.fillRect(0, 0, W, H);
+      /* me. drawn from the same list, so a page I just published can pass in
+         front of me on its way out of frame. */
+      prop(p.z, function () {
+        var pr2 = proj(PZ);
+        runner(sx(p.x, pr2), pr2.y, 1.75 * pr2.s, p.anim, '#080A10',
+               { rim: 'rgba(255,190,90,1)', rimSide: -1,
+                 pack: .18 + got / 8 * .82, lamp: !!have.lantern });
+      });
 
-      g.fillStyle = '#1C1C26';
-      for (i = 0; i < STARS.length; i++) {
-        sx = STARS[i][0] - cam * .12;
-        if (sx > -2 && sx < W) g.fillRect(px(sx), px(STARS[i][1]), 1, 1);
-      }
-      /* the amber horizon — one line, the whole width, behind everything built.
-         docs/design fixed this as the signature of the piece: it is the only warm
-         thing above ground, and the skyline stands in front of it. */
-      g.fillStyle = '#2A1E08'; g.fillRect(0, FLOOR - 62, W, 8);
-      g.fillStyle = '#3A2A0B'; g.fillRect(0, FLOOR - 55, W, 1);
-      g.globalAlpha = .55; g.fillStyle = '#FFAE1A'; g.fillRect(0, FLOOR - 56, W, 1);
-      g.globalAlpha = 1;
+      props.sort(function (a, b) { return b.z - a.z; });
+      for (i = 0; i < props.length; i++) props[i].f();
 
-      g.fillStyle = '#15151D';
-      for (i = 0; i < FAR.length; i++) {
-        sx = FAR[i][0] - cam * .34;
-        if (sx > -20 && sx < W) g.fillRect(px(sx), FLOOR - px(FAR[i][1]), 14, px(FAR[i][1]));
-      }
-      g.fillStyle = '#1D1D27';
-      for (i = 0; i < MID.length; i++) {
-        sx = MID[i][0] - cam * .60;
-        if (sx > -16 && sx < W) g.fillRect(px(sx), FLOOR - px(MID[i][1]), 9, px(MID[i][1]));
-      }
-
-      /* terrain, with strata so the soil band reads as ground and not as a slab */
-      for (sx = 0; sx < W; sx++) {
-        y = groundAt(cam + sx);
-        var wx0 = (cam + sx) | 0;
-        g.fillStyle = '#20202A'; g.fillRect(sx, y, 1, H - y);
-        g.fillStyle = '#3A3A48'; g.fillRect(sx, y, 1, 1);
-        g.fillStyle = '#1A1A22'; g.fillRect(sx, y + 7, 1, 1);
-        if (wx0 % 9 < 4) g.fillRect(sx, y + 15, 1, 1);
-        if (wx0 % 23 < 2) g.fillRect(sx, y + 24, 1, 2);
-      }
-
-      /* the measuring surface. you are not running on a road, you are running on
-         an instrument — ticks every 16 world px, a taller one every 80, and the
-         reading is the distance walked. this is the argument, drawn. */
-      for (var tx = (cam - cam % 16) | 0; tx < cam + W + 16; tx += 16) {
-        sx = tx - cam;
-        if (sx < 0 || sx >= W) continue;
-        y = groundAt(tx);
-        var major = tx % 80 === 0;
-        g.globalAlpha = major ? .34 : .16;
-        g.fillStyle = '#FFAE1A';
-        g.fillRect(px(sx), y - (major ? 7 : 3), 1, major ? 7 : 3);
-        if (major) {
-          g.globalAlpha = .09;
-          g.fillRect(px(sx), FLOOR - 55, 1, y - (FLOOR - 55));
-        }
-        g.globalAlpha = 1;
-      }
-      /* ledges */
-      for (i = 0; i < PLATS.length; i++) {
-        sx = PLATS[i][0] - cam;
-        if (sx > W || sx + PLATS[i][2] < 0) continue;
-        g.fillStyle = '#20202A'; g.fillRect(px(sx), PLATS[i][1], PLATS[i][2], 4);
-        g.fillStyle = '#3A3A48'; g.fillRect(px(sx), PLATS[i][1], PLATS[i][2], 1);
-      }
-
-      /* scene markers — a milepost per scene, so the road reads as a timeline */
-      for (i = 0; i < SCENES.length; i++) {
-        if (!SCENES[i].side) continue;
-        sx = SCENES[i].x - cam;
-        if (sx < -10 || sx > W + 10) continue;
-        y = groundAt(SCENES[i].x);
-        g.fillStyle = '#6E8BB5';
-        g.fillRect(px(sx), y - 22, 1, 22);
-        g.fillRect(px(sx), y - 22, 8, 4);
-      }
-
-      /* the border wall */
-      sx = GATEX - cam;
-      if (sx > -30 && sx < W + 30) {
-        y = groundAt(GATEX);
-        g.fillStyle = '#2B2B36'; g.fillRect(px(sx) - 6, 40, 12, y - 40);
-        g.fillStyle = '#3A3A48'; g.fillRect(px(sx) - 6, 40, 12, 2);
-        if (have.gate) {                       /* opened: an amber doorway */
-          g.fillStyle = '#0B0B10'; g.fillRect(px(sx) - 5, y - 40, 10, 40);
-          g.fillStyle = '#FFAE1A';
-          g.fillRect(px(sx) - 5, y - 40, 10, 2);
-          g.fillRect(px(sx) - 5, y - 40, 1, 40);
-          g.fillRect(px(sx) + 4, y - 40, 1, 40);
-        }
-      }
-
-      /* the clinic at the far end — the mirror of act 1: people walking in */
-      sx = CLINIC - cam;
-      if (sx > -60 && sx < W + 60) {
-        y = groundAt(CLINIC);
-        var lit = have.gate ? '#FFAE1A' : '#33333E';
-        g.fillStyle = '#14141B'; g.fillRect(px(sx) - 22, y - 42, 44, 42);
-        g.fillStyle = '#2B2B36'; g.fillRect(px(sx) - 25, y - 46, 50, 4);
-        g.fillStyle = lit;
-        for (var wi = 0; wi < 3; wi++)
-          for (var wj = 0; wj < 2; wj++)
-            g.fillRect(px(sx) - 16 + wi * 12, y - 37 + wj * 11, 6, 6);
-        g.fillStyle = '#0B0B10'; g.fillRect(px(sx) - 5, y - 14, 10, 14);
-        g.fillStyle = lit; g.fillRect(px(sx) - 5, y - 14, 10, 1);
-      }
-
-      /* rivals — only once the radar exists */
-      if (have.radar) {
-        for (i = 0; i < rivals.length; i++) {
-          sx = rivals[i].x - cam;
-          if (sx < -12 || sx > W + 12) continue;
-          g.drawImage(PAGE_R, px(sx) - 4, rivals[i].y - PAGE_H);
-        }
-      }
-
-      /* your pages */
-      for (i = 0; i < pages.length; i++) {
-        sx = pages[i].x - cam;
-        if (sx < -12 || sx > W + 12) continue;
-        g.drawImage(pages[i].cited ? PAGE_C : PAGE, px(sx) - 4, pages[i].y - PAGE_H);
-        if (pages[i].sub) { g.fillStyle = '#6E8BB5'; g.fillRect(px(sx) - 3, pages[i].y - 8, 6, 1); }
-      }
-
-      /* visitors */
-      for (i = 0; i < visitors.length; i++) {
-        var v = visitors[i];
-        sx = v.x - cam;
-        if (sx < -10 || sx > W + 10) continue;
-        if (v.arrival) {
-          if (have.gate) g.drawImage(VIS2, px(sx) - 2, groundAt(v.x) - 8);
-          continue;
-        }
-        if (!v.gone) { g.drawImage(VIS, px(sx) - 2, FLOOR - 8); continue; }
-        var age = clock - v.gone;
-        if (age > 1.6) continue;               /* pulled upward, out of the funnel */
-        g.globalAlpha = Math.max(0, 1 - age / 1.6);
-        g.drawImage(VIS, px(sx) - 2, px(FLOOR - 8 - age * 44));
-        g.globalAlpha = 1;
-      }
-
-      /* the door that was built and then deleted. drawn as a frame with the
-         lintel missing, so it reads as unfinished rather than merely unlit. */
-      sx = VOID_X - cam;
-      if (sx > -26 && sx < W + 26) {
-        y = groundAt(VOID_X);
-        g.fillStyle = '#101016'; g.fillRect(px(sx) - 9, y - 30, 18, 30);
-        g.fillStyle = '#2B2B36';
-        g.fillRect(px(sx) - 11, y - 30, 2, 30);
-        g.fillRect(px(sx) + 9,  y - 30, 2, 30);
-        g.fillRect(px(sx) - 11, y - 33, 5, 3);      /* lintel, broken in the middle */
-        g.fillRect(px(sx) + 6,  y - 33, 5, 3);
-      }
-
-      /* the eight doors. the door is the programme; the amber block in front of
-         it is the verb you have not picked up yet. once taken the frame lights,
-         and it stays lit for the rest of the walk so you can come back to read. */
-      for (i = 0; i < TOOLS.length; i++) {
-        var t = TOOLS[i];
-        sx = t.x - cam;
-        if (sx < -26 || sx > W + 26) continue;
-        y = groundAt(t.x);
-        var lit = t.taken, dh = 30, dw = 18;
-
-        g.fillStyle = '#15151D';                          /* recess */
-        g.fillRect(px(sx) - dw / 2, y - dh, dw, dh);
-        g.fillStyle = lit ? '#FFAE1A' : '#33333E';        /* frame */
-        g.fillRect(px(sx) - dw / 2 - 2, y - dh - 3, dw + 4, 3);
-        g.fillRect(px(sx) - dw / 2 - 2, y - dh, 2, dh);
-        g.fillRect(px(sx) + dw / 2,     y - dh, 2, dh);
-        if (lit) {
-          /* light spilling out of an opened door, pulsing very slightly */
-          g.globalAlpha = .10 + .05 * Math.sin(clock * 1.7 + i);
-          g.fillStyle = '#FFAE1A';
-          g.fillRect(px(sx) - dw / 2, y - dh + 2, dw, dh - 2);
-          g.globalAlpha = 1;
-          g.fillStyle = '#FFAE1A';
-          g.fillRect(px(sx) - dw / 2, y - 1, dw, 1);
-          if (t.read) {                                   /* already read: a tick */
-            g.fillRect(px(sx) - 2, y - dh - 8, 1, 3);
-            g.fillRect(px(sx) - 1, y - dh - 6, 1, 2);
-            g.fillRect(px(sx),     y - dh - 8, 1, 3);
-          }
-        } else {
-          var bob = Math.sin(clock * 3 + i) * 2;
-          g.globalAlpha = .16 + .12 * Math.sin(clock * 3 + i);
-          g.fillStyle = '#FFAE1A'; g.fillRect(px(sx) - 1, 0, 3, y - dh);
-          g.globalAlpha = 1;
-          g.fillStyle = '#FFAE1A';
-          g.fillRect(px(sx) - 5, px(y - 20 + bob), 11, 2);
-          g.fillRect(px(sx) - 5, px(y - 20 + bob), 2, 11);
-          g.fillRect(px(sx) + 4, px(y - 20 + bob), 2, 11);
-          g.fillRect(px(sx) - 5, px(y - 11 + bob), 11, 2);
-          g.fillStyle = '#4A3407'; g.fillRect(px(sx) - 3, px(y - 18 + bob), 7, 7);
-        }
-      }
-
-      /* crawlers — invisible until the lantern. that is the whole point. */
-      g.globalAlpha = have.lantern ? 1 : .07;
-      for (i = 0; i < bots.length; i++) {
-        var b = bots[i];
-        if (b.dead) continue;
-        sx = b.x - cam;
-        if (sx < -12 || sx > W + 12) continue;
-        g.drawImage(have.lantern ? BOT : BOT_D, px(sx) - 4, px(b.y));
-      }
-      g.globalAlpha = 1;
-
-      /* night: heaviest at the start, lifting with every tool — and lifting
-         hardest at the lantern, because that is when you could finally see */
-      var dark = Math.max(.03, .34 - .035 * got - (have.lantern ? .10 : 0));
-      g.fillStyle = 'rgba(0,0,0,' + dark.toFixed(3) + ')';
-      g.fillRect(0, 0, W, H);
-
-      var wx = px(p.x - cam), wy = px(p.y);
-      if (have.lantern) g.drawImage(GLOW, wx - 84, wy - 96);
-
-      /* 최희준 */
-      var f = p.grounded ? ((keys.l || keys.r) ? (p.anim | 0) % 4 : 0) : 1;
-      g.save();
-      g.translate(wx, wy - 20);
-      if (p.face < 0) g.scale(-1, 1);
-      g.drawImage(HERO[f], -7, 0);
-      g.restore();
-      if (have.lantern) {                      /* the lamp he is carrying */
-        g.fillStyle = '#FFAE1A';
-        g.fillRect(wx + (p.face < 0 ? -10 : 7), wy - 12, 3, 3);
-      }
-
-      /* dust and sparks */
+      /* dust */
       for (i = 0; i < dust.length; i++) {
-        var dp = dust[i];
-        sx = dp.x - cam;
-        if (sx < -4 || sx > W + 4) continue;
-        g.globalAlpha = Math.max(0, 1 - dp.t / .7);
-        g.fillStyle = dp.c;
-        g.fillRect(px(sx), px(dp.y), 1, 1);
+        var d = dust[i];
+        if (d.z <= camZ + NEAR || d.z > camZ + 60) continue;
+        pr = proj(d.z - camZ);
+        g.globalAlpha = Math.max(0, 1 - d.t / .8);
+        g.fillStyle = d.c;
+        var ds = Math.max(1, .06 * pr.s);
+        g.fillRect(sx(d.x, pr), pr.y - d.h * pr.s, ds, ds);
       }
       g.globalAlpha = 1;
 
-      /* floating numbers */
-      g.font = '7px monospace'; g.textAlign = 'center';
+      /* night lifts with every door, and hardest at the lantern, because that is
+         when I could finally see */
+      var dark = Math.max(.02, .30 - .032 * got - (have.lantern ? .10 : 0));
+      g.fillStyle = 'rgba(0,0,0,' + dark.toFixed(3) + ')';
+      g.fillRect(-8, -8, W + 16, H + 16);
+
+      var v = g.createRadialGradient(W / 2, H * .54, H * .30, W / 2, H * .54, W * .75);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.60)');
+      g.fillStyle = v; g.fillRect(-8, -8, W + 16, H + 16);
+
+      /* floating numbers, projected so they sit on the thing they describe */
+      g.font = '600 16px ui-monospace, Consolas, monospace'; g.textAlign = 'center';
       for (i = 0; i < pops.length; i++) {
-        g.globalAlpha = Math.max(0, 1 - pops[i].t);
+        var q = pops[i];
+        if (q.z <= camZ + NEAR || q.z > camZ + 90) continue;
+        pr = proj(q.z - camZ);
+        g.globalAlpha = Math.max(0, 1 - q.t / 1.1);
         g.fillStyle = '#FFAE1A';
-        g.fillText(pops[i].text, px(pops[i].x - cam), px(pops[i].y - pops[i].t * 18));
+        g.fillText(q.text, sx(q.x, pr), pr.y - q.h * pr.s - q.t * 26);
       }
       g.globalAlpha = 1; g.textAlign = 'left';
 
-      /* kpi trace — down in the soil band, which is otherwise dead space. it used
-         to sit at y=164 where it collided with terrain and buildings. */
+      /* kpi trace, bottom left where nothing else lives */
       if (have.kpi && spark.length > 1) {
-        var mx = Math.max.apply(null, spark) || 1, base = 208, n = spark.length;
-        g.fillStyle = '#33333E'; g.fillRect(6, base + 1, n * 3 + 2, 1);
+        var mx = Math.max.apply(null, spark) || 1, base = H - 22, n = spark.length;
+        g.fillStyle = '#33333E'; g.fillRect(22, base + 2, n * 7 + 2, 1);
         for (i = 0; i < n; i++) {
-          var hgt = Math.max(1, Math.round(spark[i] / mx * 20));
-          g.fillStyle = '#4A3407'; g.fillRect(8 + i * 3, base - 20, 2, 20);
-          g.fillStyle = '#FFAE1A'; g.fillRect(8 + i * 3, base - hgt, 2, hgt);
+          var hgt = Math.max(2, Math.round(spark[i] / mx * 46));
+          g.fillStyle = 'rgba(74,52,7,.8)'; g.fillRect(24 + i * 7, base - 46, 5, 46);
+          g.fillStyle = '#FFAE1A'; g.fillRect(24 + i * 7, base - hgt, 5, hgt);
         }
       }
+      g.restore();
     }
 
     /* ---------- hud ---------- */
@@ -2492,45 +2349,32 @@
       if (bannerT && clock > bannerT) { banner.classList.remove('on'); bannerT = 0; }
       if (cardT && clock > cardT) { card.classList.remove('on'); cardT = 0; }
 
-      var s = sceneAt(mode === 'side' ? p.x : td.x, mode === 'side');
+      var s = sceneAt(p.z);
       var label = s.n + ' / 10';
       if (chEl.textContent !== label) {
         chEl.textContent = label;
         noteEl.textContent = s.line;
       }
       setG(GAUGE.year, s.year);
-
-      if (mode !== 'side') {
-        stat.textContent = mode === 'tilt' ? '시점 전환…'
-          : '1–5장 · ' + Math.round(Math.min(1, td.x / ROAD_END) * 100) + '%';
-        cue.hidden = true;
-        return;
-      }
-
       setG(GAUGE.crawl, String(stats.crawl));
       setG(GAUGE.page,  String(stats.pages));
-      /* the whole point of the middle of the walk: the dial exists and reads "?" */
+      /* the whole point of the middle of the run: the dial exists and reads "?" */
       setG(GAUGE.cite,  have.lantern ? String(stats.cited) : '?');
       setG(GAUGE.sov,   sov() + '%');
-      stat.textContent = got + ' / 8 문 · ' + Math.round(p.x / WORLD * 100) + '%';
+      stat.textContent = got + ' / 8 문 · ' + Math.round(p.z / TRACK * 100) + '%';
 
       var n = nearTool();
       if (n && n.taken) {
         cue.textContent = 'Enter — ' + n.rec + (n.read ? ' 다시 읽기' : ' 문 열기');
         cue.disabled = false; cue.hidden = false;
-      } else if (Math.abs(VOID_X - p.x) < REACH + 14) {
+      } else if (Math.abs(VOID_Z - p.z) < REACH + 14) {
         cue.textContent = '이 문은 열리지 않습니다 — 만들어 놓고 지웠습니다';
         cue.disabled = true; cue.hidden = false;
       } else cue.hidden = true;
     }
-    function nearTool() {
-      for (var i = 0; i < TOOLS.length; i++)
-        if (Math.abs(TOOLS[i].x - p.x) < REACH + 12) return TOOLS[i];
-      return null;
-    }
 
     /* ---------- record panel (on demand — the game never forces it) ---------- */
-    /* A door is a reading room, not a puzzle: the walk stops, nothing is asked of
+    /* A door is a reading room, not a puzzle: the run stops, nothing is asked of
        you, and the body is the record markup that already exists further down the
        page. The only thing the game adds is the one line about why it was built —
        everything factual has exactly one copy, in the .rec below. */
@@ -2594,7 +2438,7 @@
           '<button type="button" data-go="#biz">창업 · 투자<i>이 밸류체인을 제품으로 만든다면</i></button>' +
         '</div>' +
         '<div class="jn__list">' + list + '</div>' +
-        '<button class="btn" id="jn-again" type="button">다시 걷기</button>';
+        '<button class="btn" id="jn-again" type="button">다시 달리기</button>';
       veil.hidden = false;
 
       document.getElementById('jn-again').addEventListener('click', function () {
@@ -2637,7 +2481,7 @@
     /* ---------- input ---------- */
     goBtn.addEventListener('click', start);
     xBtn.addEventListener('click', closeRec);
-    /* the cue is the touch equivalent of Enter — without it a phone can walk the
+    /* the cue is the touch equivalent of Enter — without it a phone can run the
        whole road and never open a single door */
     cue.addEventListener('click', function () {
       /* CSS hides this behind a veil with pointer-events, but :has() is not
@@ -2656,14 +2500,9 @@
       if (!veil.hidden) return;
       if (k === 'ArrowLeft'  || k === 'a' || k === 'A') keys.l = down;
       else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = down;
-      /* up/down are held directions in the prologue and one-shot verbs after it */
-      else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === ' ') {
-        keys.u = down;
-        if (down && mode === 'side') jump();
-      }
-      else if (k === 'ArrowDown' || k === 's' || k === 'S') {
+      else if (k === 'ArrowDown' || k === 's' || k === 'S' || k === ' ') {
         keys.d = down;
-        if (down && !e.repeat && mode === 'side') plant();
+        if (down && !e.repeat) plant();
       }
       else if (down && k === 'Escape' && !panel.hidden) closeRec();
       else if (down && k === 'Enter') {
@@ -2680,15 +2519,14 @@
     panel.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { e.preventDefault(); closeRec(); }
     });
-    jnc.addEventListener('blur', function () { keys.l = keys.r = keys.u = keys.d = false; });
+    jnc.addEventListener('blur', function () { keys.l = keys.r = keys.d = false; });
 
     [].forEach.call(document.querySelectorAll('.jn__pad button'), function (btn) {
       var k = btn.getAttribute('data-key');
       btn.addEventListener('pointerdown', function (e) {
         e.preventDefault();
         keys[k] = true;
-        if (k === 'u' && mode === 'side') jump();
-        else if (k === 'd' && mode === 'side') plant();
+        if (k === 'd') plant();
       });
       function up(e) { e.preventDefault(); keys[k] = false; }
       btn.addEventListener('pointerup', up);
@@ -2696,10 +2534,10 @@
       btn.addEventListener('pointercancel', up);
     });
 
-    /* switching tabs mid-walk and coming back should not resume with the keys
-       still held down from before — that reads as the walker running off alone */
+    /* switching tabs mid-run and coming back should not resume with the keys
+       still held down from before */
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden) { keys.l = keys.r = keys.u = keys.d = false; last = 0; }
+      if (document.hidden) { keys.l = keys.r = keys.d = false; last = 0; }
     });
 
     /* the loop is unbounded, so stop it whenever the canvas is off-screen */
@@ -2717,43 +2555,34 @@
 
     /* ---- self-check ---- */
     if (location.search.indexOf('selftest') !== -1) {
+      /* one camera, and the projection has to stay sane at both ends */
+      var near = proj(NEAR), far = proj(VIEW);
+      console.assert(near.y > H, 'the road spills past the bottom edge');
+      console.assert(far.y > HORIZON && far.y - HORIZON < 12, 'the far end converges on the horizon');
+      console.assert(near.hw > far.hw * 20, 'perspective actually converges');
+      console.assert(proj(10).s === F / 10, 'scale is F/z and nothing else');
+
+      /* the two roads must genuinely separate, or the fork reads as a wobble */
+      console.assert(myCx(FORK_Z) === 0, 'both roads are the same road until the fork');
+      console.assert(Math.abs(myCx(FORK_Z + FORK_LEN) - MY_CX) < .01, 'my track finishes peeling off');
+      console.assert(Math.abs(MY_CX) > ROAD_HW * 2, 'the roads do not overlap once split');
+      console.assert(FORK_Z + FORK_LEN < ROAD_END, 'the split completes before the tarmac ends');
+      /* and you must be able to out-steer the pull, or 5장 is unwinnable */
+      console.assert(STEER > 1.5 + Math.abs(MY_CX) / (FORK_LEN / SPEED),
+                     'steering beats the crowd pull with room to spare');
+      /* holding ← pins you against the clamp, so the "you made it" band must be
+         wider than the clamp or the fork never latches and you stand there */
+      console.assert(ROAD_HW * 1.05 > ROAD_HW * 1.02, 'the fork band clears the steering clamp');
+
       TOOLS.forEach(function (t) {
         console.assert(!!RECS[t.rec], 'tool has a record: ' + t.rec);
-        console.assert(t.x > 0 && t.x < WORLD, 'tool inside world: ' + t.rec);
+        console.assert(t.z > ROAD_END && t.z <= TRACK, 'door is on my track: ' + t.rec);
+        console.assert(!!t.door, 'door ' + t.rec + ' says why it was built');
+        console.assert(!!t.verb && !!t.line, 'door ' + t.rec + ' has a line and a verb');
       });
-      console.assert(TOOLS.length === 8, 'eight tools');
-
-      /* prologue: the fork has to exist, be reachable, and not be the road */
-      console.assert(TD_ME.width === 9 && TD_ME.height === 9, 'crown sprite is 9x9');
-      console.assert(TD_ME.width === TD_THEM.width, 'in a crowd every crown is the same size');
-      console.assert(dirtY(FORK_X - 1) === null, 'no track before the fork');
-      console.assert(dirtY(FORK_X) === ROAD_Y + ROAD_H, 'track leaves from the road edge');
-      console.assert(dirtY(FORK_X + 250) === 176, 'track levels out well below the road');
-      console.assert(!offRoad(FORK_X + 200, 100), 'staying on the tarmac is not leaving');
-      console.assert(!offRoad(FORK_X - 100, 190), 'wandering off before the fork is not leaving');
-      console.assert(offRoad(FORK_X + 200, dirtY(FORK_X + 200)), 'following the track does turn you off');
-      console.assert(offRoad(FORK_X + 200, H - 14), 'so does overshooting below it');
-      console.assert(FORK_X + 140 < ROAD_END, 'the turn-off commits before the tarmac ends');
-      console.assert(dirtY(FORK_X + 250) < H - 14, 'the track stays inside the frame');
-      console.assert(BODY.every(function (r) { return r.length === 14; }), 'body rows are 14 wide');
-      LEGS.forEach(function (l, i) {
-        console.assert(l.every(function (r) { return r.length === 14; }), 'leg frame ' + i + ' is 14 wide');
-        console.assert(l.length === 5, 'leg frame ' + i + ' is 5 tall');
-      });
-      console.assert(HERO[0].height === 20, 'hero is 20 tall');
-      /* ten scenes, five on each side of the tilt, in the order docs/narrative.md
-         fixes them. a renamed or reordered scene fails here, not in review. */
-      console.assert(SCENES.length === 10, 'ten scenes');
-      console.assert(SCENES.filter(function (s) { return !s.side; }).length === 5,
-                     'five scenes before the tilt');
-      console.assert(sceneAt(0, false).n === 1, 'prologue opens on scene 1');
-      console.assert(sceneAt(FORK_X, false).n === 5, 'the fork is scene 5');
-      console.assert(sceneAt(0, true).n === 6, 'the side view opens on scene 6');
-      console.assert(sceneAt(WORLD, true).n === 10, 'the walk ends on scene 10');
-      SCENES.forEach(function (s, i) {
-        console.assert(s.n === i + 1, 'scenes are numbered in order');
-        console.assert(!!s.line && !!s.year, 'scene ' + s.n + ' has a line and a year');
-      });
+      console.assert(TOOLS.length === 8, 'eight doors');
+      for (var ti = 1; ti < TOOLS.length; ti++)
+        console.assert(TOOLS[ti].z > TOOLS[ti - 1].z, 'doors are in commit order along the road');
 
       /* the order of the doors is the order the things were actually built.
          the lantern being sixth is the whole argument — if a tidy-up ever moves
@@ -2761,81 +2590,77 @@
       console.assert(TOOLS[0].rec === 'aeo_sync', 'aeo_sync was built first');
       console.assert(TOOLS[5].grant === 'lantern', 'the lantern is the sixth door');
       console.assert(TOOLS[5].rec === 'aeo-log-analyzer', 'and it is the log analyzer');
-      console.assert(TOOLS[0].x < TOOLS[5].x, 'you publish long before you can measure');
-      TOOLS.forEach(function (t) {
-        console.assert(!!t.door, 'door ' + t.rec + ' says why it was built');
-        console.assert(!!t.verb && !!t.line, 'door ' + t.rec + ' has a line and a verb');
+      console.assert(TOOLS[0].z < TOOLS[5].z, 'you publish long before you can measure');
+
+      /* ten scenes, in the order docs/narrative.md fixes them */
+      console.assert(SCENES.length === 10, 'ten scenes');
+      console.assert(sceneAt(0).n === 1, 'the run opens on scene 1');
+      console.assert(sceneAt(FORK_Z).n === 5, 'the fork is scene 5');
+      console.assert(sceneAt(TRACK).n === 10, 'the run ends on scene 10');
+      console.assert(SCENES[4].z <= FORK_Z && SCENES[5].z > ROAD_END,
+                     'five scenes before the fork, five after');
+      SCENES.forEach(function (s, i) {
+        console.assert(s.n === i + 1, 'scenes are numbered in order');
+        console.assert(!!s.line && !!s.year, 'scene ' + s.n + ' has a line and a year');
+        console.assert(s.line.length <= 26, 'scene ' + s.n + ' line is short enough to be big');
       });
 
       /* the empty frame belongs to scene 10 and must be passed BEFORE the last
          record, or you never see the thing that was deleted */
-      console.assert(sceneAt(VOID_X, true).n === 10, 'the empty frame is in scene 10');
-      console.assert(VOID_X < TOOLS[7].x, 'you walk past it before the last door');
-      console.assert(!TOOLS.some(function (t) { return Math.abs(t.x - VOID_X) < 40; }),
+      console.assert(sceneAt(VOID_Z).n === 10, 'the empty frame is in scene 10');
+      console.assert(VOID_Z < TOOLS[7].z, 'you run past it before the last door');
+      console.assert(!TOOLS.some(function (t) { return Math.abs(t.z - VOID_Z) < 40; }),
                      'nothing real stands where the deleted thing was');
 
-      console.assert(groundAt(50) === FLOOR, 'flat ground');
-      console.assert(groundAt(760) < FLOOR, 'hill raises ground');
-      /* NetTier must be reachable before the wall it opens */
-      console.assert(TOOLS[6].x < GATEX && GATEX < TOOLS[7].x, 'gate sits between NetTier and Hospify');
+      /* NetTier must be reached before the wall it opens */
+      console.assert(TOOLS[6].z < GATEZ && GATEZ < TOOLS[7].z, 'gate sits between NetTier and Hospify');
+      console.assert(CLINIC_Z <= TRACK, 'the clinic is inside the run');
 
-      /* ledges */
-      console.assert(landAt(640, 130, 140, 60) === 138, 'ledge catches a falling player');
-      console.assert(landAt(640, 174, 180, 60) === FLOOR, 'ledge ignored from below');
-      console.assert(landAt(640, 130, 134, -60) === null, 'ledge ignored while rising');
+      /* about ninety seconds, and the prologue keeps its share of it */
+      console.assert(TRACK / SPEED > 75 && TRACK / SPEED < 110, 'the run is about a minute and a half');
+      console.assert(FORK_Z / TRACK > .3, 'the first five scenes are not cut short');
 
-      /* the three lanes have to stay a real difficulty gradient */
-      var apex = FLOOR - (JUMPV * JUMPV) / (2 * GRAV);   /* highest a flat-ground jump reaches */
-      console.assert(boxHit(500, LANES[0], 500, FLOOR, 0), 'low lane catchable on foot');
-      console.assert(!boxHit(500, LANES[1], 500, FLOOR, 0), 'mid lane not catchable on foot');
-      console.assert(boxHit(500, LANES[1], 500, FLOOR - 24, 0), 'mid lane catchable mid-jump');
-      console.assert(!boxHit(500, LANES[2], 500, apex, 0), 'top lane unreachable from flat ground');
-      console.assert(boxHit(500, LANES[2], 500, 116, 0), 'top lane catchable from a 116 ledge');
-      console.assert(PLATS.some(function (pl) { return pl[1] <= 116; }), 'a ledge that low exists');
-
-      /* a bot reading one of your pages must clear a standing player, or the
-         citation loop starves — but stay stealable by jumping */
-      console.assert(!boxHit(500, FLOOR - HOVER, 500, FLOOR, 5), 'reading bot clears a standing player');
-      console.assert(boxHit(500, FLOOR - HOVER, 500, apex, 0), 'reading bot is stealable mid-jump');
-
-      /* the re-crawl cooldown is what stops six pages farming citations forever */
-      pages.push({ x: 100, y: FLOOR, cited: 0, cool: 0 });
-      console.assert(nearestPage(100) !== null, 'a fresh page attracts crawlers');
+      /* lamps are 유입: lit at the start, out when the thing I sold started
+         dying, and back exactly where I published */
+      console.assert(lampLit(100), '유입 is fine at the start');
+      console.assert(!lampLit(760), 'and gone by the time search moved to AI answers');
+      pages.push({ z: 1500, x: 0, cited: 0, cool: 0 });
+      console.assert(lampLit(1500), 'publishing lights the road again');
+      console.assert(!lampLit(1900), 'but only where I actually published');
+      console.assert(nearestPage(1500) !== null, 'a fresh page attracts crawlers');
       pages[0].cool = RECRAWL;
-      console.assert(nearestPage(100) === null, 'a page on re-crawl cooldown is skipped');
+      console.assert(nearestPage(1500) === null, 'a page on re-crawl cooldown is skipped');
       pages.length = 0;
 
-      /* publishing must put a visible sign in front of you and make you walk on:
-         stacked pages hide behind the walker and farm citations for free */
+      /* publishing must put a sign AHEAD — behind you there is no picture — and
+         make you keep running, or a stack of pages farms citations for free */
       (function () {
-        var sx0 = p.x, sf = p.face, sr = running;
+        var sz = p.z, sr = running;
         pages.length = 0; stats.pages = 0; have.plant = true; running = true;
-        p.x = 500; p.face = 1; plantCd = 0;
+        p.z = 1200; p.x = 0; plantCd = 0;
         plant();
         console.assert(pages.length === 1, 'first publish lands');
-        console.assert(pages[0].x > p.x, 'page is planted in front of the walker');
+        console.assert(pages[0].z > p.z, 'the page is planted ahead, where you can see it');
         plantCd = 0; plant();
         console.assert(pages.length === 1, 'no second page on the same spot');
-        p.x = 540; plantCd = 0; plant();
-        console.assert(pages.length === 2, 'walking on lets you publish again');
-        console.assert(PAGE.height === PAGE_H && PAGE_H > 20 - 8,
-                       'the page sign is tall enough to clear the walker');
+        p.z = 1200 + PAGE_SPACE + 2; plantCd = 0; plant();
+        console.assert(pages.length === 2, 'running on lets you publish again');
         pages.length = 0; stats.pages = 0; have.plant = false;
-        plantCd = 0; p.x = sx0; p.face = sf; running = sr;
+        plantCd = 0; p.z = sz; running = sr;
       })();
 
       /* the citation dial must read "?" until the lantern and a number after —
          that gap IS the seven months, so it is worth a test of its own */
       (function () {
-        var wasL = have.lantern, wasC = stats.cited, wasMode = mode;
-        mode = 'side'; stats.cited = 17;
+        var wasL = have.lantern, wasC = stats.cited;
+        stats.cited = 17;
         have.lantern = false; hud();
         console.assert(GAUGE.cite.lastChild.textContent === '?',
                        'citations read ? before the lantern');
         have.lantern = true; hud();
         console.assert(GAUGE.cite.lastChild.textContent === '17',
                        'and read the real number after it');
-        have.lantern = wasL; stats.cited = wasC; mode = wasMode; hud();
+        have.lantern = wasL; stats.cited = wasC; hud();
       })();
 
       /* a page with subtitles has to come back round sooner, or MediSTT grants

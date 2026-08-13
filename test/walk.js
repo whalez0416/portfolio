@@ -20,8 +20,10 @@ const REC_NAMES = ['aeo_sync', 'aeo-log-analyzer', 'MediSTT', 'MetaPorter',
 /* ---------- stubs ---------- */
 const noop = () => {};
 const ctxStub = () => new Proxy(
-  { fillStyle: '', font: '', textAlign: '', globalAlpha: 1,
+  { fillStyle: '', strokeStyle: '', font: '', textAlign: '', lineWidth: 1,
+    lineCap: '', lineJoin: '', globalAlpha: 1, filter: '',
     createRadialGradient: () => ({ addColorStop: noop }),
+    createLinearGradient: () => ({ addColorStop: noop }),
     measureText: () => ({ width: 10 }) },
   { get: (t, k) => (k in t ? t[k] : noop), set: (t, k, v) => (t[k] = v, true) });
 
@@ -56,7 +58,7 @@ const recs = REC_NAMES.map(n => {
   r.querySelector = sel => (sel === '.rec__title b' ? b : null);
   return r;
 });
-const padBtns = ['l', 'r', 'u', 'd'].map(k => { const b = el('button'); b._data = k; return b; });
+const padBtns = ['l', 'r', 'd'].map(k => { const b = el('button'); b._data = k; return b; });
 
 global.window = {};
 global.location = { search: '?selftest' };
@@ -112,23 +114,22 @@ const notes = [];
 fire(id('jn-go'), 'click');
 tick(1);
 
-/* 1~5장 — 포장도로를 걷다가 갈림길에서 아래로 */
-key('ArrowRight', true);
-for (let i = 0; i < 900 && !/^5 /.test(chEl.textContent); i++) { tick(1); scenes.add(chEl.textContent); }
-tick(120);
-key('ArrowDown', true); tick(90); key('ArrowDown', false);
-key('ArrowRight', false); tick(120);
-notes.push('전환 후 장면 = ' + chEl.textContent);
+/* 1~5장 — 무리와 같은 길을 달리다가 갈림길에서 왼쪽으로.
+   달리는 건 게임이 알아서 하므로 앞으로 가는 키가 없다. 5장에 닿을 때까지
+   그냥 흘려보내고, 거기서 ← 를 붙잡아 무리의 당김을 이겨내야 한다. */
+for (let i = 0; i < 3000 && !/^5 /.test(chEl.textContent); i++) { tick(1); scenes.add(chEl.textContent); }
+key('ArrowLeft', true);
+for (let i = 0; i < 2000 && /^5 /.test(chEl.textContent); i++) { tick(1); }
+key('ArrowLeft', false);
+notes.push('갈림길 이후 장면 = ' + chEl.textContent);
 
-/* 6~10장 — 발행하고 점프하며 끝까지, 문은 한 번씩만 */
-key('ArrowRight', true);
+/* 6~10장 — 달리면서 발행하고 끝까지, 문은 한 번씩만 */
 const opened = new Set();
 let citeWasQuestion = false, lanternFrame = -1, voidSeen = false, f = 0, done = false, tapped = 0;
-for (let i = 0; i < 4000; i++) {
+for (let i = 0; i < 8000; i++) {
   f++; tick(1);
   scenes.add(chEl.textContent);
   if (f % 7 === 0)  { key('ArrowDown', true); key('ArrowDown', false); }
-  if (f % 23 === 0) { key('ArrowUp', true);   key('ArrowUp', false); }
   if (!cite.hidden && cite.lastChild.textContent === '?') citeWasQuestion = true;
   if (lanternFrame < 0 && !crawl.hidden) lanternFrame = f;
   if (!cue.hidden && /열리지 않습니다/.test(cue.textContent)) voidSeen = true;
@@ -146,13 +147,11 @@ for (let i = 0; i < 4000; i++) {
         if (!/record body/.test(bodyHtml)) notes.push('문 본문 없음: ' + name);
         if (!/jn__why/.test(bodyHtml))     notes.push('문에 "왜 만들었나" 없음: ' + name);
         fire(id('jn-x'), 'click');
-        key('ArrowRight', true);
       }
     }
   }
   if (!veil.hidden) { done = true; break; }
 }
-key('ArrowRight', false);
 
 /* ---------- report ---------- */
 let pass = true;
