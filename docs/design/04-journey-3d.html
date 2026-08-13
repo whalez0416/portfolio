@@ -101,6 +101,7 @@
 
 <script>
 /* ═══════════ 최소 행렬 ═══════════ */
+const TAU = Math.PI * 2;
 const M4 = () => new Float32Array(16);
 function perspective(fovy, aspect, near, far) {
   const f = 1 / Math.tan(fovy / 2), o = M4();
@@ -348,72 +349,203 @@ const terrain = (() => {
   return mesh(new Float32Array(v));
 })();
 
-/* ── 로브 인물. 다리가 없습니다 — 저니 주인공이 그렇고, 덕분에
-      "뒤에서 본 달리기"라는 세 번 실패한 문제가 통째로 사라집니다. ── */
-function revolve(profile, sides) {
-  const v = [];
-  for (let s = 0; s < sides; s++) {
-    const a0 = s/sides*Math.PI*2, a1 = (s+1)/sides*Math.PI*2;
-    const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
-    for (let k = 0; k < profile.length-1; k++) {
-      const [r0,y0] = profile[k], [r1,y1] = profile[k+1];
-      const A=[r0*c0,y0,r0*s0], B=[r0*c1,y0,r0*s1], C=[r1*c1,y1,r1*s1], D=[r1*c0,y1,r1*s0];
-      v.push(...A,...B,...C, ...A,...C,...D);
+/* ══════════ 인물 — 06-figure-sculpt 에서 확정한 조각을 그대로 이식 ══════════
+   회전체가 아닙니다: 사다리꼴 로브 + 각진 크리스 + 열린 옷단 + 어깨 단차 + 꺾인 후드.
+   지형과 달리 진짜 면 법선과 정점 AO·색을 가지므로 전용 셰이더(figProg)를 씁니다.
+   조명도 06에서 확정한 세트: 반구 환경광 + 앞(노을)에서 오는 키 + 앰버 림 + 톤매핑. */
+function FMesh(){ this.p=[]; this.n=[]; this.a=[]; this.c=[]; }
+FMesh.prototype.tri=function(A,B,C,ao,ci){
+  const ux=B[0]-A[0],uy=B[1]-A[1],uz=B[2]-A[2];
+  const vx=C[0]-A[0],vy=C[1]-A[1],vz=C[2]-A[2];
+  let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+  const l=Math.hypot(nx,ny,nz)||1; nx/=l;ny/=l;nz/=l;
+  for(const Pt of [A,B,C]){ this.p.push(Pt[0],Pt[1],Pt[2]); this.n.push(nx,ny,nz);
+    this.a.push(typeof ao==='function'?ao(Pt):(ao||0)); this.c.push(ci||0); }
+};
+FMesh.prototype.quad=function(A,B,C,D,ao,ci){ this.tri(A,B,C,ao,ci); this.tri(A,C,D,ao,ci); };
+
+/* 기둥 성격(크리스·옷단 들림)은 시드 고정 — 프레임마다 흔들리면 젤리가 됩니다 */
+const FIG_NS = 12, FIG_NY = 15;
+const FIG_COL = [];
+for (let i=0;i<=FIG_NS;i++){
+  const h = Math.sin(i*127.1+3.7)*43758.5453, r1 = h-Math.floor(h);
+  const h2 = Math.sin(i*269.5+1.3)*24634.6345, r2 = h2-Math.floor(h2);
+  FIG_COL.push({ crease:(r1-0.5)*0.13 + (i%4===0?0.055:0), hem:r2*0.085 });
+}
+FIG_COL[FIG_NS] = FIG_COL[0];
+const FIG_SIL = [
+  [.500,.030],[.468,.150],
+  [.402,.430],[.335,.800],[.305,1.040],
+  [.312,1.190],[.352,1.300],[.352,1.368],
+  [.150,1.405],[.135,1.470]
+];
+const figR = y => {
+  for (let k=0;k<FIG_SIL.length-1;k++){
+    const [r0,y0]=FIG_SIL[k],[r1,y1]=FIG_SIL[k+1];
+    if (y>=y0&&y<=y1) return r0+(r1-r0)*((y-y0)/(y1-y0));
+  }
+  return y<FIG_SIL[0][1] ? FIG_SIL[0][0] : FIG_SIL[FIG_SIL.length-1][0];
+};
+/* plain=true 는 무리용: 옷단 띠·눈금 없음. 그 차이가 곧 "나"입니다. */
+function buildFigure(walk, ph, plain) {
+  const m = new FMesh();
+  const kick = walk * 0.55;
+  const Y0=.03, Y1=1.47;
+  const hemKick = (a,y) => {
+    const back = Math.max(0, Math.cos(a-Math.PI/2));
+    const low  = Math.max(0, 1 - y/0.55);
+    return kick * back*back * low*low * (0.55 + 0.45*Math.sin(ph*2));
+  };
+  const P = (i,j) => {
+    const a = i/FIG_NS*TAU, t = j/FIG_NY;
+    const y = Y0+(Y1-Y0)*t;
+    const deep = Math.max(0, 1 - y/1.42);
+    const r = figR(y) * (1 + FIG_COL[i].crease*deep) + .012*Math.sin(a*2+ph*0.9)*deep;
+    const lift = (FIG_COL[i].hem + hemKick(a,y)*0.30) * Math.max(0,1-t*3.2);
+    const lean = 0.03*Math.max(0,(y-0.9));
+    return [ r*Math.cos(a), y + lift, r*Math.sin(a) - lean + hemKick(a,y)*0.55 ];
+  };
+  const hemAO = Pt => Math.max(0, 1 - Pt[1]/1.35);
+  for (let i=0;i<FIG_NS;i++) for (let j=0;j<FIG_NY;j++)
+    m.quad(P(i,j), P(i+1,j), P(i+1,j+1), P(i,j+1), hemAO, 0);
+  /* 옷단 안쪽의 어둠 — 이게 없으면 바닥에 붙은 원뿔로 읽힙니다 */
+  for (let i=0;i<FIG_NS;i++){
+    const A=P(i,0), B=P(i+1,0);
+    m.quad(B, A, [A[0]*.55,.015,A[2]*.55], [B[0]*.55,.015,B[2]*.55], 0, 3);
+  }
+  if (!plain) {
+    for (let i=0;i<FIG_NS;i++){
+      const A=P(i,0), B=P(i+1,0), C=P(i+1,1), D=P(i,1);
+      const out = Q => [Q[0]*1.008, Q[1], Q[2]*1.008];
+      const mid = (Q,W) => [ (Q[0]+W[0])/2*1.008, (Q[1]+W[1])/2, (Q[2]+W[2])/2*1.008 ];
+      m.quad(out(A), out(B), mid(B,C), mid(A,D), .15, 1);
+    }
+    const radAt = (a,y) => {
+      const deep = Math.max(0, 1 - y/1.42);
+      return figR(y)*(1 + FIG_COL[Math.round(a/TAU*FIG_NS)%FIG_NS].crease*deep);
+    };
+    for (let i=0;i<FIG_NS*2;i++){
+      const a=i/(FIG_NS*2)*TAU, major=i%5===0;
+      const y0=.032, y1=major?.092:.062;
+      const r0=radAt(a,y0)*1.02, r1=radAt(a,y1)*1.02, w=.006;
+      const tx=-Math.sin(a), tz=Math.cos(a);
+      m.quad([r0*Math.cos(a)-tx*w,y0,r0*Math.sin(a)-tz*w],
+             [r0*Math.cos(a)+tx*w,y0,r0*Math.sin(a)+tz*w],
+             [r1*Math.cos(a)+tx*w,y1,r1*Math.sin(a)+tz*w],
+             [r1*Math.cos(a)-tx*w,y1,r1*Math.sin(a)-tz*w], 0, 2);
     }
   }
-  return v;
-}
-/* 처음엔 높이 1.52에 최대 반경 0.46이라 1.7:1 — 달걀처럼 보였습니다.
-   저니 쪽은 3:1에 가깝고, 그 가늘고 긴 실루엣이 인물의 절반입니다. */
-const robeMesh = mesh(new Float32Array(revolve([
-  [0.00, 0.00],[0.27, 0.04],[0.32, 0.16],[0.29, 0.58],   /* 아랫자락 */
-  [0.22, 0.98],[0.185,1.26],[0.215,1.40],                /* 어깨 */
-  [0.185,1.60],[0.105,1.74],[0.00, 1.82]                 /* 후드 */
-], 10)));
-
-/* ── 스카프. 뒤에서 볼 때 실제로 읽히는 유일한 것이고,
-      문을 지날 때마다 길어집니다 = 성장 곡선이 실루엣에 보입니다. ── */
-const SCARF_N = 26;
-const scarf = (() => {
-  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, SCARF_N*6*3*4, gl.DYNAMIC_DRAW);
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-  gl.bindVertexArray(null);
-  return { vao, buf, data: new Float32Array(SCARF_N*6*3) };
-})();
-let flow = 1;
-function buildScarf(t, len, wind, drive) {
-  flow += (drive - flow) * 0.05;             /* 걷기 시작/멈춤에 천천히 반응 */
-  len *= 0.42 + 0.58*flow;
-  const d = scarf.data;
-  /* 뒤로 흐르되 위로 뜨고 옆으로 비껴야 합니다. 처음엔 아래로 늘어뜨렸더니
-     카메라가 등 뒤에 있어서 스카프가 인물 앞으로 쏟아져 얼굴(후드)을 가렸습니다.
-     바람이 들어올리는 쪽이 맞고, 그래야 실루엣도 안 가립니다. */
-  const pt = (i) => {
-    const u = i / SCARF_N;
-    /* 옆으로 크게 흘려보냅니다. 등 뒤 시점에서 뒤로만 곧게 뻗으면 리본을
-       정면으로 보게 되어 목에 두른 판때기처럼 읽힙니다. */
-    return [ 0.85*u*flow + Math.sin(t*2.2 - u*5.4)*0.30*u,
-             1.26 + (0.34*u)*flow - 0.55*u*u*(1-flow) + Math.sin(t*3.1 - u*4.2)*0.15*u,
-             -0.13 - u*len*0.62 + Math.cos(t*2.6 - u*4.8)*0.11*u ];
+  const HOOD = [[.150,1.44],[.190,1.53],[.200,1.64],[.165,1.77],[.100,1.87],[.025,1.95]];
+  const hood = (i,j) => {
+    const a=i/10*TAU, r=HOOD[j][0], y=HOOD[j][1];
+    const kink = Math.max(0,(y-1.62))*0.62;
+    const rr = r*(1+.05*Math.sin(a*3+.8));
+    return [rr*Math.cos(a), y, rr*Math.sin(a)+kink];
   };
-  for (let i = 0; i < SCARF_N; i++) {
-    const a = pt(i), b = pt(i+1);
-    /* 0.15은 막대기, 0.26은 판때기였습니다. 폭보다 길이로 읽히게 둡니다. */
-    const wa = 0.155*(1-i/SCARF_N*0.65)+0.035, wb = 0.155*(1-(i+1)/SCARF_N*0.65)+0.035;
-    const A=[a[0]-wa,a[1],a[2]], B=[a[0]+wa,a[1]+wind*wa,a[2]];
-    const C=[b[0]+wb,b[1]+wind*wb,b[2]], D=[b[0]-wb,b[1],b[2]];
-    const o = i*18;
-    d[o]=A[0];d[o+1]=A[1];d[o+2]=A[2]; d[o+3]=B[0];d[o+4]=B[1];d[o+5]=B[2];
-    d[o+6]=C[0];d[o+7]=C[1];d[o+8]=C[2]; d[o+9]=A[0];d[o+10]=A[1];d[o+11]=A[2];
-    d[o+12]=C[0];d[o+13]=C[1];d[o+14]=C[2]; d[o+15]=D[0];d[o+16]=D[1];d[o+17]=D[2];
+  for (let i=0;i<10;i++) for (let j=0;j<HOOD.length-1;j++)
+    m.quad(hood(i,j),hood(i+1,j),hood(i+1,j+1),hood(i,j+1), 0, 0);
+  /* 얼굴 구멍 — 뒤에서는 안 보이고 3/4에서 사람이 됩니다 */
+  for(let i=0;i<10;i++){
+    const a0=i/10*TAU, a1=(i+1)/10*TAU, r=.135;
+    m.tri([0,1.58,-.155],
+          [Math.cos(a0)*r*.72, 1.58+Math.sin(a0)*r, -.165],
+          [Math.cos(a1)*r*.72, 1.58+Math.sin(a1)*r, -.165], 0, 3);
   }
-  gl.bindBuffer(gl.ARRAY_BUFFER, scarf.buf);
-  gl.bufferSubData(gl.ARRAY_BUFFER, 0, d);
+  return m;
 }
+let flow = 1;
+function buildScarfMesh(t, drive) {
+  flow += (drive - flow) * 0.05;             /* 걷기 시작/멈춤에 천천히 반응 */
+  const m=new FMesh(), N=26, L=2.1*(0.45+0.55*flow);
+  const pts=[], up=[];
+  for(let i=0;i<=N;i++){
+    const u=i/N;
+    /* +z 가 뒤 — 스카프는 진행 반대(등 뒤 카메라 쪽)로 흐릅니다 */
+    pts.push([ .40*u + Math.sin(t*2.1-u*5.2)*0.26*u,
+               1.52 + 0.22*u*flow - 0.5*u*u*(1-flow) + Math.sin(t*3.0-u*4.1)*0.13*u,
+               0.16 + u*L*0.72 + Math.cos(t*2.5-u*4.6)*0.08*u ]);
+    up.push(Math.sin(u*6+t*2.2)*0.5);
+  }
+  for(let i=0;i<N;i++){
+    const u0=i/N,u1=(i+1)/N;
+    const w0=.072*(1-u0*.7)+.014, w1=.072*(1-u1*.7)+.014;
+    const a=pts[i], b=pts[i+1];
+    const A=[a[0]-w0,a[1]+up[i]*w0,a[2]], B=[a[0]+w0,a[1]-up[i]*w0,a[2]];
+    const C=[b[0]+w1,b[1]-up[i+1]*w1,b[2]], D=[b[0]-w1,b[1]+up[i+1]*w1,b[2]];
+    m.quad(A,B,C,D,0,2); m.quad(D,C,B,A,0,2);
+  }
+  return m;
+}
+
+/* 매 프레임 다시 채우는 동적 슬롯. VAO·버퍼를 프레임마다 만들면 GPU 메모리가 새서,
+   고정 용량을 한 번 잡고 bufferSubData 로만 갱신합니다. */
+function dynSlot(capVerts) {
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const mk = (loc, size) => {
+    const b = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, capVerts*size*4, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+    return b;
+  };
+  const bP = mk(0,3), bN = mk(1,3), bA = mk(2,1), bC = mk(3,1);
+  gl.bindVertexArray(null);
+  return {
+    vao, n: 0,
+    set(m) {
+      this.n = Math.min(capVerts, m.p.length/3);
+      const put = (b, d) => { gl.bindBuffer(gl.ARRAY_BUFFER, b);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(d)); };
+      put(bP, m.p); put(bN, m.n); put(bA, m.a); put(bC, m.c);
+    }
+  };
+}
+const slotMe    = dynSlot(4000);
+const slotCrowd = dynSlot(4000);
+const slotScarf = dynSlot(400);
+
+/* 인물 전용 셰이더 — 06에서 확정한 조명 그대로 + 이 장면의 안개 */
+const figProg = program(`#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNor;
+layout(location=2) in float aAo;
+layout(location=3) in float aCi;
+uniform mat4 uVP, uM;
+out vec3 vN; out vec3 vP; out float vAo; flat out int vCi;
+void main(){ vec4 w=uM*vec4(aPos,1.0); vP=w.xyz;
+  vN=mat3(uM)*aNor; vAo=aAo; vCi=int(aCi+0.5); gl_Position=uVP*w; }`,
+`#version 300 es
+precision highp float;
+in vec3 vN; in vec3 vP; in float vAo; flat in int vCi; out vec4 frag;
+uniform vec3 uCam,uHaze;
+uniform vec3 uC0,uC1,uC2,uC3;
+uniform float uFog;
+void main(){
+  vec3 base = vCi==1?uC1 : vCi==2?uC2 : vCi==3?uC3 : uC0;
+  float dist = length(vP-uCam);
+  float fog = clamp(1.0-exp(-dist*dist*uFog), 0.0, 1.0);
+  if (vCi>=2) { frag=vec4(mix(base,uHaze,fog),1.0); return; }  /* 발광·어둠은 그대로 */
+  vec3 n=normalize(vN); vec3 V=normalize(uCam-vP);
+  if (dot(n,V)<0.0) n=-n;
+  /* 해는 앞(+z 노을)에 있으므로 등 뒤 시점에선 역광 — 06의 게임 조명 그대로 */
+  float key=max(dot(n,normalize(vec3(0.15,0.28,0.95))),0.0);
+  vec3 amb=mix(vec3(0.40,0.24,0.12), vec3(0.30,0.32,0.50), n.y*0.5+0.5);
+  float rim=pow(1.0-max(dot(n,V),0.0),3.2);
+  float ao=1.0-0.5*vAo;
+  vec3 c=base*(amb*ao+vec3(1.05,0.66,0.38)*key)*(1.0+rim*1.5);
+  c+=vec3(1.15,0.62,0.22)*rim*rim*0.30;
+  c=c/(c*0.55+vec3(1.0));
+  c=pow(c,vec3(1.0/2.2));
+  frag=vec4(mix(c,uHaze,fog),1.0);
+}`);
+const uniFig = {
+  vp:U(figProg,'uVP'), m:U(figProg,'uM'), cam:U(figProg,'uCam'), haze:U(figProg,'uHaze'),
+  fog:U(figProg,'uFog'),
+  c0:U(figProg,'uC0'), c1:U(figProg,'uC1'), c2:U(figProg,'uC2'), c3:U(figProg,'uC3')
+};
+/* 나: 짙은 적 로브 + 모래색 띠 + 앰버 눈금 · 무리: 회청, 띠 없음 */
+const FIG_ME    = { c0:[0.485,0.115,0.095], c1:[0.82,0.62,0.38], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
+const FIG_CROWD = { c0:[0.235,0.205,0.285], c1:[0.3,0.3,0.35],   c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.05] };
 
 /* ── 신전 ──
    만든 것 하나에 유적 하나. 모래에 반쯤 묻혀 있고, 멀리서는 능선 위의 실루엣으로
@@ -703,11 +835,22 @@ function frame(now) {
   }
   gl.uniform1f(uni.lit.emit, 0.0);
 
-  /* 무리 — 처음엔 같이 가다가 능선 너머로 넘어갑니다.
-     이름도 대화도 없이 사라지는 것, 저니가 하는 그대로입니다. */
-  gl.uniform3fv(uni.lit.litc, [0.35,0.24,0.26]);
-  gl.uniform3fv(uni.lit.dark, [0.13,0.09,0.11]);
-  gl.bindVertexArray(robeMesh.vao);
+  /* ── 인물들 — 06의 조각과 조명으로 ── */
+  gl.useProgram(figProg);
+  gl.uniformMatrix4fv(uniFig.vp, false, VP);
+  gl.uniform3fv(uniFig.cam, eye);
+  gl.uniform3fv(uniFig.haze, P.haze);
+  gl.uniform1f(uniFig.fog, 0.0000128);
+  gl.disable(gl.CULL_FACE);               /* 옷단 안쪽·스카프 뒷면이 보여야 합니다 */
+
+  /* 무리 — 같은 조각, 색만 회청이고 띠가 없습니다. 그 차이가 곧 "나"입니다.
+     걸음 위상은 하나로 공유합니다: 개별 위상은 메시를 사람 수만큼 다시
+     조각하는 값인데, 이 거리에선 아무도 못 알아봅니다. */
+  const crowdFig = buildFigure(1, el*3.0 + 1.7, true);
+  slotCrowd.set(crowdFig);
+  gl.uniform3fv(uniFig.c0, FIG_CROWD.c0); gl.uniform3fv(uniFig.c1, FIG_CROWD.c1);
+  gl.uniform3fv(uniFig.c2, FIG_CROWD.c2); gl.uniform3fv(uniFig.c3, FIG_CROWD.c3);
+  gl.bindVertexArray(slotCrowd.vao);
   for (const c of crowd) {
     /* 그들도 걷습니다. 그리고 어느 지점부터 방향을 틉니다 — 나는 따라가도 되고
        안 따라가도 됩니다. 레인을 막아놓고 "왼쪽으로 가세요"라고 시키는 것보다
@@ -718,26 +861,27 @@ function frame(now) {
     c.z += Math.cos(cy2) * SPEED*0.93 * dt;
     const dx = c.x - cx, dz = c.z - cz;
     if (dx*cfx + dz*cfz < 3) continue;      /* 등 뒤나 코앞의 하나가 장면을 다 망칩니다 */
-    const cgy = height(c.x, c.z) + Math.abs(Math.sin((el + c.t)*3.0))*0.05;
-    gl.uniformMatrix4fv(uni.lit.model, false, trs(c.x, cgy, c.z, cy2, 1));
-    gl.drawArrays(gl.TRIANGLES, 0, robeMesh.n);
+    /* +π: 06 조각은 얼굴이 로컬 -z 인데 이 월드는 +z 가 전진입니다.
+       모델을 반 바퀴 돌리면 얼굴·스카프·옷단 차임이 전부 제 방향이 됩니다. */
+    gl.uniformMatrix4fv(uniFig.m, false, trs(c.x, height(c.x, c.z), c.z, cy2 + Math.PI, 1));
+    gl.drawArrays(gl.TRIANGLES, 0, slotCrowd.n);
   }
 
-  /* 나 */
-  gl.uniform3fv(uni.lit.litc, [0.86,0.34,0.20]);
-  gl.uniform3fv(uni.lit.dark, [0.20,0.08,0.08]);
-  const me = trs(px, py + walk, pz, yaw, 1);
-  gl.uniformMatrix4fv(uni.lit.model, false, me);
-  gl.drawArrays(gl.TRIANGLES, 0, robeMesh.n);
+  /* 나 — 걸을 때만 옷단이 차이고, 서면 천이 가라앉습니다 */
+  const meFig = buildFigure(keys.f ? 1 : 0, el*3.0, false);
+  slotMe.set(meFig);
+  gl.uniform3fv(uniFig.c0, FIG_ME.c0); gl.uniform3fv(uniFig.c1, FIG_ME.c1);
+  gl.uniform3fv(uniFig.c2, FIG_ME.c2); gl.uniform3fv(uniFig.c3, FIG_ME.c3);
+  const me = trs(px, py + walk, pz, yaw + Math.PI, 1);   /* +π: 위 무리와 같은 이유 */
+  gl.uniformMatrix4fv(uniFig.m, false, me);
+  gl.bindVertexArray(slotMe.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
 
-  /* 스카프 */
-  /* 서 있으면 스카프도 가라앉습니다 — 바람은 내가 만드는 거니까 */
-  buildScarf(el, 3.4, 0.35, keys.f ? 1 : 0.28);
-  gl.uniform3fv(uni.lit.litc, [1.00,0.72,0.22]);
-  gl.uniform3fv(uni.lit.dark, [0.55,0.28,0.06]);
-  gl.uniformMatrix4fv(uni.lit.model, false, me);
-  gl.disable(gl.CULL_FACE);
-  gl.bindVertexArray(scarf.vao); gl.drawArrays(gl.TRIANGLES, 0, SCARF_N*6);
+  /* 스카프 — 서 있으면 가라앉습니다. 바람은 내가 만드는 거니까 */
+  slotScarf.set(buildScarfMesh(el, keys.f ? 1 : 0.28));
+  gl.uniformMatrix4fv(uniFig.m, false, me);
+  gl.bindVertexArray(slotScarf.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, slotScarf.n);
   gl.enable(gl.CULL_FACE);
 
   requestAnimationFrame(frame);
