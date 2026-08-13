@@ -59,6 +59,14 @@
     font: inherit; border: 1px solid rgba(255,236,204,.5); padding: .05em .5em; margin: 0 .3em;
   }
 
+  /* 나침반 — 신전에서 나오면 어디가 어디인지 모르게 됩니다.
+     지도라기보다 얇은 원판 하나: 진행 방향이 늘 위, 산이 목표 침, 신전이 점. */
+  #nav {
+    position: fixed; top: 20px; right: 22px; width: 116px; height: 116px;
+    opacity: 0; transition: opacity 1.2s; pointer-events: none;
+  }
+  #nav.on { opacity: .9; }
+
   /* 신전 안 — 읽는 자리. 조작을 요구하지 않습니다. */
   .room {
     position: fixed; inset: 0; z-index: 5; overflow: auto;
@@ -92,6 +100,7 @@
 <div class="badge">04 · JOURNEY TONE · 갈림길 · 신전</div>
 <div class="hint" id="hint">↑ 걷기 &nbsp;·&nbsp; ← → 방향 &nbsp;·&nbsp; 산 쪽으로, 유적을 찾아보세요</div>
 <div class="enter" id="enter"></div>
+<canvas id="nav" width="232" height="232"></canvas>
 <div class="room" id="room"><div>
   <h2 id="room-name"></h2>
   <p class="why" id="room-why"></p>
@@ -777,8 +786,60 @@ function cues(el) {
 lineEl.style.whiteSpace = 'pre-line';
 
 const enterEl = document.getElementById('enter'), roomEl = document.getElementById('room');
+
+/* ── 나침반 ──
+   2D 캔버스 오버레이. 진행 방향이 늘 위쪽입니다 — 신전에서 나와 몸이 어디를
+   보고 있든, "산은 저쪽, 다음 신전은 이쪽"이 한눈에 잡히게. 표기는 셋뿐입니다:
+   산(목표 침) · 신전(점, 들어가 본 곳은 빈 원) · 나(가운데 쐐기). */
+const navCv = document.getElementById('nav'), navG = navCv.getContext('2d');
+function drawNav() {
+  const S = 232, C = S/2, R = 104, RANGE = 90;   /* RANGE: 원 가장자리 = 90 단위 */
+  navG.clearRect(0, 0, S, S);
+  navG.save();
+  navG.translate(C, C);
+  /* 판 */
+  navG.beginPath(); navG.arc(0, 0, R, 0, TAU);
+  navG.fillStyle = 'rgba(10,8,16,.44)'; navG.fill();
+  navG.lineWidth = 2; navG.strokeStyle = 'rgba(255,238,210,.28)'; navG.stroke();
+  navG.beginPath(); navG.arc(0, 0, R*0.5, 0, TAU);
+  navG.lineWidth = 1; navG.strokeStyle = 'rgba(255,238,210,.10)'; navG.stroke();
+
+  const cw = Math.cos(camYaw), sw = Math.sin(camYaw);
+  const toMap = (wx, wz) => {          /* 진행 방향 = 위 */
+    const dx = wx - P0.x, dz = wz - P0.z;
+    const lx = cw*dx - sw*dz, lz = sw*dx + cw*dz;
+    return { x: lx/RANGE*R, y: -lz/RANGE*R, d: Math.hypot(lx, lz) };
+  };
+  const clampRim = (p, rim) => {
+    const m = Math.hypot(p.x, p.y);
+    if (m > rim) { p.x *= rim/m; p.y *= rim/m; p.clamped = true; }
+    return p;
+  };
+
+  /* 산 — 항상 원 가장자리의 침. 이게 이 나침반의 북쪽입니다 */
+  const mt = clampRim(toMap(MOUNTAIN.x, MOUNTAIN.z), R-8);
+  const ma = Math.atan2(mt.y, mt.x);
+  navG.save();
+  navG.translate(mt.x, mt.y); navG.rotate(ma + Math.PI/2);
+  navG.beginPath(); navG.moveTo(0, -7); navG.lineTo(5, 5); navG.lineTo(-5, 5); navG.closePath();
+  navG.fillStyle = 'rgba(255,224,170,.95)'; navG.fill();
+  navG.restore();
+
+  /* 신전들 — 점. 들어가 본 곳은 빈 원이 됩니다 */
+  for (const t of TEMPLES) {
+    const p = clampRim(toMap(t.x, t.z), R-10);
+    navG.beginPath(); navG.arc(p.x, p.y, p.clamped ? 3 : 4.5, 0, TAU);
+    if (t.seen) { navG.lineWidth = 2; navG.strokeStyle = 'rgba(255,174,26,.85)'; navG.stroke(); }
+    else { navG.fillStyle = p.clamped ? 'rgba(255,174,26,.55)' : 'rgba(255,174,26,.95)'; navG.fill(); }
+  }
+
+  /* 나 — 가운데 쐐기, 늘 위를 봅니다 */
+  navG.beginPath(); navG.moveTo(0, -8); navG.lineTo(5.5, 6); navG.lineTo(-5.5, 6); navG.closePath();
+  navG.fillStyle = 'rgba(255,246,230,.95)'; navG.fill();
+  navG.restore();
+}
 function goIn(t) {
-  inside = t;
+  inside = t; t.seen = true;
   document.getElementById('room-name').textContent = t.name;
   document.getElementById('room-why').textContent = t.why;   /* 문장에 이미 따옴표가 있어 겹따옴표가 됩니다 */
   document.getElementById('room-body').textContent = t.body;
@@ -889,6 +950,8 @@ function frame(now) {
   }
   cues(moved);
   hintEl.style.opacity = moved > 6 ? 0 : 1;
+  navCv.classList.toggle('on', moved > 4 && !inside);
+  if (moved > 4 && !inside) drawNav();
 
   /* 제일 가까운 신전. 문간 쪽에서 다가와야 들어갈 수 있습니다 — 뒷벽에
      붙어서 들어가지는 것보다, 돌아 들어가는 편이 유적답습니다. */
