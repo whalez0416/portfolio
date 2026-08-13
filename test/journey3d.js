@@ -55,9 +55,12 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
 
   /* 랜턴 신전(여섯 번째) 입장 → 전환 */
   const lt = await p.evaluate(() => { const t = TEMPLES[5];
-    return { x: t.x - 9*Math.sin(t.yaw), z: t.z - 9*Math.cos(t.yaw), yaw: t.yaw, name: t.name, lantern: !!t.lantern }; });
+    return { x: t.x - 5.2*Math.sin(t.yaw), z: t.z - 5.2*Math.cos(t.yaw), yaw: t.yaw, name: t.name, lantern: !!t.lantern }; });
   ok(lt.name === 'aeo-log-analyzer' && lt.lantern, '여섯 번째가 랜턴: ' + lt.name);
-  await tp(lt.x, lt.z, lt.yaw); await walk(3500);
+  await tp(lt.x, lt.z, lt.yaw);
+  await p.keyboard.down('ArrowUp');
+  for (let i = 0; i < 40; i++) { await sleep(500); if ((await S()).inside) break; }
+  await p.keyboard.up('ArrowUp');
   s = await S();
   ok(s.inside === 'aeo-log-analyzer', '랜턴 신전 입장: ' + s.inside);
   await p.keyboard.press('Escape'); await sleep(700);
