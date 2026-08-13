@@ -1,0 +1,521 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>04 · 저니 톤 3D 프로토타입 — 갈림길</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!--
+  갈림길(5장)을 저니 톤으로 만든 프로토타입입니다. 판단용이고, index.html은 안 건드립니다.
+
+  확인하려는 것 딱 세 가지:
+    1. 굽이치는 언덕 위를 달리는 게 곧은 리본 위보다 나은가
+    2. 로브 + 스카프가 "뒤에서 본 달리는 사람"보다 나은가 (그건 세 번 실패했습니다)
+    3. 화면 가운데 큰 글자가 저니처럼 읽히는가
+
+  의존성 0은 그대로입니다 — WebGL은 라이브러리가 아니라 브라우저 기본 기능이고,
+  텍스처도 모델도 외부 파일이 아니라 전부 코드에서 만듭니다. 폰트만 예외입니다.
+
+  플랫셰이딩은 법선을 안 넘깁니다. 프래그먼트에서 dFdx/dFdy로 면 법선을 구하기 때문에
+  정점 버퍼에 위치만 있으면 되고, 그래서 지형도 로브도 스카프도 같은 셰이더를 씁니다.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #14100E; overflow: hidden; }
+  #gl { display: block; width: 100vw; height: 100vh; }
+
+  /* 저니식 자막 — UI는 0인데 서사만 가운데 뜬다.
+     얇고, 자간 넓고, 아주 천천히 나타났다 사라진다. 이게 요점이라 공들였습니다. */
+  .say {
+    position: fixed; inset: 0; display: grid; place-items: center;
+    pointer-events: none; padding: 0 8vw; text-align: center;
+    font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  }
+  .say b {
+    font-weight: 300; font-size: clamp(1.5rem, 3.6vw, 3rem); line-height: 1.5;
+    letter-spacing: .06em; color: #FFF6E6;
+    text-shadow: 0 2px 40px rgba(0,0,0,.75), 0 0 90px rgba(0,0,0,.5);
+    opacity: 0; transition: opacity 2.6s ease;
+  }
+  .say b.on { opacity: 1; }
+
+  .hint {
+    position: fixed; left: 0; right: 0; bottom: 22px; text-align: center;
+    font: 300 13px/1.9 "Pretendard Variable", Pretendard, system-ui, sans-serif;
+    letter-spacing: .18em; color: rgba(255,240,220,.34); pointer-events: none;
+  }
+  .badge {
+    position: fixed; top: 18px; left: 22px;
+    font: 400 12px/1.7 ui-monospace, Consolas, monospace;
+    letter-spacing: .16em; color: rgba(255,240,220,.30);
+  }
+</style>
+
+<canvas id="gl"></canvas>
+<div class="say"><b id="line"></b></div>
+<div class="badge">04 · JOURNEY TONE · 갈림길</div>
+<div class="hint">← → 방향 &nbsp;·&nbsp; 클릭하면 처음부터</div>
+
+<script>
+/* ═══════════ 최소 행렬 ═══════════ */
+const M4 = () => new Float32Array(16);
+function perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), o = M4();
+  o[0] = f / aspect; o[5] = f; o[11] = -1;
+  o[10] = (far + near) / (near - far); o[14] = 2 * far * near / (near - far);
+  return o;
+}
+function lookAt(e, c, up) {
+  let zx = e[0]-c[0], zy = e[1]-c[1], zz = e[2]-c[2];
+  let l = Math.hypot(zx,zy,zz) || 1; zx/=l; zy/=l; zz/=l;
+  let xx = up[1]*zz - up[2]*zy, xy = up[2]*zx - up[0]*zz, xz = up[0]*zy - up[1]*zx;
+  l = Math.hypot(xx,xy,xz) || 1; xx/=l; xy/=l; xz/=l;
+  const yx = zy*xz - zz*xy, yy = zz*xx - zx*xz, yz = zx*xy - zy*xx;
+  const o = M4();
+  o[0]=xx; o[1]=yx; o[2]=zx; o[4]=xy; o[5]=yy; o[6]=zy; o[8]=xz; o[9]=yz; o[10]=zz;
+  o[12]=-(xx*e[0]+xy*e[1]+xz*e[2]);
+  o[13]=-(yx*e[0]+yy*e[1]+yz*e[2]);
+  o[14]=-(zx*e[0]+zy*e[1]+zz*e[2]);
+  o[15]=1; return o;
+}
+function mul(a, b) {                       /* a * b */
+  const o = M4();
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+    let s = 0; for (let k = 0; k < 4; k++) s += a[k*4+r] * b[c*4+k];
+    o[c*4+r] = s;
+  }
+  return o;
+}
+function trs(tx, ty, tz, ry, s) {
+  const co = Math.cos(ry), si = Math.sin(ry), o = M4();
+  o[0]=co*s; o[2]=-si*s; o[5]=s; o[8]=si*s; o[10]=co*s;
+  o[12]=tx; o[13]=ty; o[14]=tz; o[15]=1; return o;
+}
+
+/* ═══════════ 지형 — 셰이더와 JS가 같은 식을 씁니다 ═══════════
+   같은 높이 함수를 두 군데에 쓰는 건 위험한데, 인물이 지면에 붙어야 하므로
+   CPU에도 필요합니다. 그래서 GLSL 문자열 하나를 만들어 양쪽에 씁니다. */
+const PATH = `
+float pathX(float z){ return 9.0*sin(z*0.0068) + 4.0*sin(z*0.0026 + 2.0); }
+float dunes(vec2 p){
+  float y = 0.0;
+  y += 7.0*sin(p.x*0.0125 + 1.3)*cos(p.y*0.0102 - 0.4);   /* 풍경 전체의 큰 기복 */
+  y += 3.2*sin(p.x*0.0570 - p.y*0.0410 + 2.1);            /* 실제로 넘어가는 언덕 */
+  y += 1.00*sin(p.x*0.1300 + p.y*0.1050 - 1.1);
+  y += 0.28*sin(p.x*0.3100 - p.y*0.2700);
+  return y;
+}
+float height(vec2 p){
+  float d = abs(p.x - pathX(p.y));
+  /* 길은 살짝 다져진 정도입니다. 예전엔 완전히 평평한 골짜기로 팠는데,
+     그러면 언덕 "사이"로 지나가게 되고 언덕을 넘는 맛이 통째로 사라집니다.
+     기억에 남는 건 언덕을 넘는 것이지 언덕을 피하는 게 아닙니다. */
+  float corr = smoothstep(6.0, 40.0, d);
+  float base = dunes(p);
+  return mix(base*0.86 - 0.30, base, corr);
+}`;
+
+/* JS 쪽 — 위 GLSL과 계수가 같아야 합니다 */
+const pathX = z => 9.0*Math.sin(z*0.0068) + 4.0*Math.sin(z*0.0026 + 2.0);
+function dunes(x, z) {
+  return 7.0*Math.sin(x*0.0125+1.3)*Math.cos(z*0.0102-0.4)
+       + 3.2*Math.sin(x*0.0570 - z*0.0410 + 2.1)
+       + 1.00*Math.sin(x*0.1300 + z*0.1050 - 1.1)
+       + 0.28*Math.sin(x*0.3100 - z*0.2700);
+}
+function height(x, z) {
+  const d = Math.abs(x - pathX(z));
+  const t = Math.min(1, Math.max(0, (d - 6) / 34)), corr = t*t*(3-2*t);
+  const b = dunes(x, z);
+  return (b*0.86 - 0.30) * (1-corr) + b * corr;
+}
+
+/* ═══════════ WebGL ═══════════ */
+const cv = document.getElementById('gl');
+const gl = cv.getContext('webgl2', { antialias: true, alpha: false });
+if (!gl) {
+  document.body.innerHTML =
+    '<p style="color:#E8D9C0;font:16px/1.8 system-ui;padding:3rem">이 브라우저에 WebGL2가 없습니다. ' +
+    '크롬·엣지·파이어폭스 최신 버전에서 열어주세요.</p>';
+  throw new Error('no webgl2');
+}
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + src);
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+/* 하늘 — 화면 전체 삼각형 하나. 깊이 없이 먼저 칠합니다. */
+const skyProg = program(`#version 300 es
+out vec2 vUv;
+void main(){
+  vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2);
+  vUv = p; gl_Position = vec4(p*2.0-1.0, 0.999, 1.0);
+}`, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag;
+uniform vec3 uHaze, uHigh; uniform float uSunX;
+void main(){
+  float t = clamp(vUv.y, 0.0, 1.0);
+  vec3 c = mix(uHaze, uHigh, pow(t, 0.85));
+  /* 낮게 걸린 해 — 저니는 거의 항상 해가 지평선 근처에 있습니다 */
+  float d = distance(vec2(vUv.x, vUv.y*1.9), vec2(uSunX, 0.10));
+  c += vec3(1.00,0.72,0.34) * exp(-d*d*7.0) * 0.55;
+  frag = vec4(c, 1.0);
+}`);
+
+/* 지형·인물·스카프가 전부 같은 셰이더를 씁니다. 위치만 넘기고 법선은
+   프래그먼트에서 미분으로 구하므로, 무엇을 그리든 자동으로 플랫셰이딩입니다. */
+const litVS = `#version 300 es
+in vec3 aPos;
+uniform mat4 uVP, uModel;
+uniform vec2 uOrigin;
+uniform int uTerrain;
+out vec3 vW;
+${PATH}
+void main(){
+  vec3 w;
+  if (uTerrain == 1) { vec2 p = aPos.xz + uOrigin; w = vec3(p.x, height(p), p.y); }
+  else               { w = (uModel * vec4(aPos,1.0)).xyz; }
+  vW = w; gl_Position = uVP * vec4(w,1.0);
+}`;
+const litFS = `#version 300 es
+precision highp float;
+in vec3 vW; out vec4 frag;
+uniform vec3 uCam, uSun, uLit, uDark, uHaze;
+uniform float uFog, uGlit;
+void main(){
+  vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
+  if (n.y < 0.0) n = -n;
+  float d = max(dot(n, normalize(uSun)), 0.0);
+  vec3 c = mix(uDark, uLit, pow(d, 0.85));
+  float dist = length(vW - uCam);
+  /* 모래 결과 반짝임. 저니 사막의 절반은 이겁니다 — 없으면 그냥 갈색 언덕이고,
+     실제로 근경이 주황색 그라데이션처럼 텅 비어 보였습니다.
+     결은 지오메트리가 아니라 음영으로 냅니다: 정점을 안 건드리니 CPU와
+     높이를 맞출 필요가 없고, 멀리서 계단 현상도 안 납니다. */
+  if (uGlit > 0.0) {
+    float near = exp(-dist/160.0);
+    float r1 = sin(vW.x*0.42 + vW.z*0.13)*0.5 + 0.5;      /* 넓은 풍문(風紋) */
+    float r2 = sin(vW.x*0.29 - vW.z*0.97 + 1.7)*0.5 + 0.5;
+    float r3 = sin(vW.x*2.10 + vW.z*0.70 - 0.6)*0.5 + 0.5;
+    c *= 1.0 + (r1*0.20 + r2*0.15 + r3*0.06 - 0.205) * near;
+    float g = fract(sin(dot(floor(vW.xz*3.4), vec2(12.9898,78.233)))*43758.5453);
+    float spec = pow(max(dot(reflect(-normalize(uSun), n), normalize(uCam - vW)), 0.0), 22.0);
+    c += vec3(1.0,0.86,0.6) * step(0.984, g) * spec * uGlit * 30.0 * near;
+    c += vec3(1.0,0.84,0.58) * spec * uGlit * 0.34;
+  }
+  float f = 1.0 - exp(-dist*dist*uFog);
+  frag = vec4(mix(c, uHaze, clamp(f,0.0,1.0)), 1.0);
+}`;
+const lit = program(litVS, litFS);
+
+/* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
+   안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
+const farProg = program(`#version 300 es
+in vec3 aPos; uniform mat4 uVP, uModel; out vec3 vW;
+void main(){ vW = (uModel*vec4(aPos,1.0)).xyz; gl_Position = uVP*vec4(vW,1.0); }`,
+`#version 300 es
+precision highp float;
+in vec3 vW; out vec4 frag;
+uniform vec3 uHaze, uTint; uniform float uMix;
+void main(){
+  vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
+  float d = max(dot(n, normalize(vec3(0.5,0.55,0.66))), 0.0);
+  frag = vec4(mix(uHaze, uTint*(0.55+0.45*d), uMix), 1.0);
+}`);
+
+const U = (p, n) => gl.getUniformLocation(p, n);
+const uni = {
+  sky:  { haze: U(skyProg,'uHaze'), high: U(skyProg,'uHigh'), sunX: U(skyProg,'uSunX') },
+  lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
+          cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
+          haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit') },
+  far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
+          tint:U(farProg,'uTint'), mix:U(farProg,'uMix') }
+};
+
+function mesh(arr) {
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+  return { vao, n: arr.length / 3, buf };
+}
+
+/* ── 지형 격자. 카메라를 따라다니되 높이는 월드 좌표로 뽑으므로
+      언덕은 제자리에 있고 우리가 그 위를 지나갑니다.
+
+      간격이 일정한 격자를 쓰면 안 됩니다. 처음엔 1.35 간격 190칸(=128단위)이었는데,
+      그러면 128단위 앞에서 지형이 뚝 끊기고 그 자리가 지평선처럼 보입니다.
+      화면에 언덕이 한 겹밖에 안 남아서 사막이 아니라 평지가 됐습니다.
+      그래서 거듭제곱으로 등급을 매깁니다 — 발밑은 촘촘하고 멀수록 성기게, 620단위까지.
+      끝은 안개가 먹습니다. ── */
+const NX = 156, NZ = 200, XW = 430, ZN = -46, ZF = 620;
+/* 순수 거듭제곱은 쓰면 안 됩니다. t^1.9 로 하면 카메라 바로 앞 첫 칸의 z 간격이
+   0.02단위까지 줄어드는데, x 간격은 그 자리에서 1.4단위라 삼각형이 실오라기가 됩니다.
+   법선을 dFdx/dFdy 로 뽑기 때문에 그런 삼각형에서는 법선이 통째로 망가지고,
+   근경 전체가 음영 없는 주황색 물감처럼 발렸습니다.
+   그래서 선형을 조금 섞어 가까운 쪽 간격에 바닥을 깔아 줍니다. */
+const gx = i => { const u = i/NX*2 - 1, a = Math.abs(u);
+                  return Math.sign(u)*XW*(0.17*a + 0.83*a*a); };
+const gz = j => { const t = j/NZ; return ZN + (ZF - ZN)*(0.22*t + 0.78*Math.pow(t, 2.1)); };
+const terrain = (() => {
+  const v = [];
+  for (let i = 0; i < NX; i++) {
+    const x0 = gx(i), x1 = gx(i+1);
+    for (let j = 0; j < NZ; j++) {
+      const z0 = gz(j), z1 = gz(j+1);
+      v.push(x0,0,z0, x1,0,z0, x1,0,z1,  x0,0,z0, x1,0,z1, x0,0,z1);
+    }
+  }
+  return mesh(new Float32Array(v));
+})();
+
+/* ── 로브 인물. 다리가 없습니다 — 저니 주인공이 그렇고, 덕분에
+      "뒤에서 본 달리기"라는 세 번 실패한 문제가 통째로 사라집니다. ── */
+function revolve(profile, sides) {
+  const v = [];
+  for (let s = 0; s < sides; s++) {
+    const a0 = s/sides*Math.PI*2, a1 = (s+1)/sides*Math.PI*2;
+    const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+    for (let k = 0; k < profile.length-1; k++) {
+      const [r0,y0] = profile[k], [r1,y1] = profile[k+1];
+      const A=[r0*c0,y0,r0*s0], B=[r0*c1,y0,r0*s1], C=[r1*c1,y1,r1*s1], D=[r1*c0,y1,r1*s0];
+      v.push(...A,...B,...C, ...A,...C,...D);
+    }
+  }
+  return v;
+}
+/* 처음엔 높이 1.52에 최대 반경 0.46이라 1.7:1 — 달걀처럼 보였습니다.
+   저니 쪽은 3:1에 가깝고, 그 가늘고 긴 실루엣이 인물의 절반입니다. */
+const robeMesh = mesh(new Float32Array(revolve([
+  [0.00, 0.00],[0.27, 0.04],[0.32, 0.16],[0.29, 0.58],   /* 아랫자락 */
+  [0.22, 0.98],[0.185,1.26],[0.215,1.40],                /* 어깨 */
+  [0.185,1.60],[0.105,1.74],[0.00, 1.82]                 /* 후드 */
+], 10)));
+
+/* ── 스카프. 뒤에서 볼 때 실제로 읽히는 유일한 것이고,
+      문을 지날 때마다 길어집니다 = 성장 곡선이 실루엣에 보입니다. ── */
+const SCARF_N = 26;
+const scarf = (() => {
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, SCARF_N*6*3*4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+  return { vao, buf, data: new Float32Array(SCARF_N*6*3) };
+})();
+function buildScarf(t, len, wind) {
+  const d = scarf.data;
+  /* 뒤로 흐르되 위로 뜨고 옆으로 비껴야 합니다. 처음엔 아래로 늘어뜨렸더니
+     카메라가 등 뒤에 있어서 스카프가 인물 앞으로 쏟아져 얼굴(후드)을 가렸습니다.
+     바람이 들어올리는 쪽이 맞고, 그래야 실루엣도 안 가립니다. */
+  const pt = (i) => {
+    const u = i / SCARF_N;
+    return [ 0.30*u + Math.sin(t*2.2 - u*5.4)*0.26*u,
+             1.26 + 0.42*u + Math.sin(t*3.1 - u*4.2)*0.13*u,
+             -0.13 - u*len*0.78 + Math.cos(t*2.6 - u*4.8)*0.09*u ];
+  };
+  for (let i = 0; i < SCARF_N; i++) {
+    const a = pt(i), b = pt(i+1);
+    /* 리본이라야 합니다 — 0.15에서 시작했더니 화면에서 노란 막대기로 읽혔습니다 */
+    const wa = 0.26*(1-i/SCARF_N*0.72)+0.05, wb = 0.26*(1-(i+1)/SCARF_N*0.72)+0.05;
+    const A=[a[0]-wa,a[1],a[2]], B=[a[0]+wa,a[1]+wind*wa,a[2]];
+    const C=[b[0]+wb,b[1]+wind*wb,b[2]], D=[b[0]-wb,b[1],b[2]];
+    const o = i*18;
+    d[o]=A[0];d[o+1]=A[1];d[o+2]=A[2]; d[o+3]=B[0];d[o+4]=B[1];d[o+5]=B[2];
+    d[o+6]=C[0];d[o+7]=C[1];d[o+8]=C[2]; d[o+9]=A[0];d[o+10]=A[1];d[o+11]=A[2];
+    d[o+12]=C[0];d[o+13]=C[1];d[o+14]=C[2]; d[o+15]=D[0];d[o+16]=D[1];d[o+17]=D[2];
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, scarf.buf);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, d);
+}
+
+/* ── 멀리 있는 산 ── */
+const mountain = (() => {
+  const v = [], peaks = [[0,1,0.72],[-0.62,0.58,0.5],[0.55,0.66,0.55],[-1.25,0.4,0.42],[1.2,0.44,0.44]];
+  for (const [cx, hgt, w] of peaks)
+    for (let s = 0; s < 5; s++) {
+      const a0 = s/5*Math.PI*2, a1 = (s+1)/5*Math.PI*2;
+      v.push(cx,hgt,0,
+             cx+Math.cos(a0)*w, 0, Math.sin(a0)*w*0.7,
+             cx+Math.cos(a1)*w, 0, Math.sin(a1)*w*0.7);
+    }
+  return mesh(new Float32Array(v));
+})();
+
+/* ═══════════ 팔레트 ═══════════ */
+const P = {
+  haze: [0.62, 0.42, 0.26],
+  high: [0.10, 0.10, 0.19],
+  lit:  [0.94, 0.63, 0.28],
+  dark: [0.17, 0.11, 0.10],
+  sun:  [0.42, 0.42, -1.0],
+  mtn:  [0.30, 0.24, 0.31]
+};
+
+/* ═══════════ 상태 ═══════════ */
+/* 뛰는 게 아니라 걷는 속도입니다 — 기억에 남는 건 그냥 걸어가는 것이지
+   빨리 가는 게 아니라고 했고, 저니도 서두르는 법이 없습니다. */
+const SPEED = 10.5;
+let z = 0, lane = 0, keys = { l:false, r:false }, t0 = performance.now(), camBack = 6.2, camUp = 2.4;
+const crowd = [];
+for (let i = 0; i < 11; i++)
+  crowd.push({ z: 26 + i*13 + Math.random()*7, off: (Math.random()-0.5)*11, veer: 0, t: Math.random()*6 });
+
+/* 화면 가운데 자막 — docs/narrative.md 4장 · 5장 */
+const lineEl = document.getElementById('line');
+const CUES = [
+  { t:  2.0, s: '5년 뒤, 팔던 것이 죽기 시작했습니다' },
+  { t:  9.5, s: '' },
+  { t: 15.0, s: '굳이? 왜? — 다들 그렇게 물었습니다' },
+  { t: 23.0, s: '' },
+  { t: 27.0, s: '팔던 상품이 죽는 걸 봤고,\n대체할 상품을 만들 사람이 저밖에 없었습니다' },
+  { t: 35.0, s: '' }
+];
+let cueAt = 0;
+function cues(el) {
+  while (cueAt < CUES.length && el >= CUES[cueAt].t) {
+    const s = CUES[cueAt].s;
+    if (s) { lineEl.textContent = s; lineEl.classList.add('on'); }
+    else lineEl.classList.remove('on');
+    cueAt++;
+  }
+}
+lineEl.style.whiteSpace = 'pre-line';
+
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  keys.l = true;
+  if (e.key === 'ArrowRight') keys.r = true;
+});
+addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft')  keys.l = false;
+  if (e.key === 'ArrowRight') keys.r = false;
+});
+addEventListener('click', () => {
+  z = 0; lane = 0; cueAt = 0; t0 = performance.now();
+  lineEl.classList.remove('on');
+  crowd.forEach((c, i) => { c.z = 16 + i*7.5 + Math.random()*4; c.veer = 0; });
+});
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(innerWidth * dpr);
+  cv.height = Math.round(innerHeight * dpr);
+  gl.viewport(0, 0, cv.width, cv.height);
+}
+addEventListener('resize', resize); resize();
+
+gl.enable(gl.DEPTH_TEST);
+gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  const el = (now - t0)/1000;
+  cues(el);
+
+  /* 달리는 건 알아서. 방향만 사람이 잡습니다. */
+  z += SPEED * dt;
+  lane += ((keys.r?1:0) - (keys.l?1:0)) * 7.0 * dt;
+  lane = Math.max(-9, Math.min(9, lane));
+
+  const px = pathX(z) + lane, py = height(px, z);
+
+  /* 카메라 — 저니의 절반은 이것입니다. 한 컷으로 이어지되,
+     장면이 열릴 때 뒤로 빠지면서 풍경을 한 번 보여줍니다. */
+  const wide = Math.min(1, Math.max(0, (el - 8.5)/4.5)) * (1 - Math.min(1, Math.max(0, (el - 21)/5)));
+  const tb = 6.2 + wide*13.0, tu = 2.4 + wide*7.0;
+  camBack += (tb - camBack) * 0.9 * dt;
+  camUp   += (tu - camUp)   * 0.9 * dt;
+
+  const cz = z - camBack, cx = pathX(cz) + lane*0.82;
+  const cy = Math.max(height(cx, cz), py) + camUp;
+  const eye = [cx, cy, cz];
+  const look = [px, py + 1.05 + wide*0.6, z + 6];
+  const VP = mul(perspective(Math.PI/180*52, cv.width/cv.height, 0.4, 1400), lookAt(eye, look, [0,1,0]));
+
+  /* 하늘 */
+  gl.depthMask(false);
+  gl.useProgram(skyProg);
+  gl.uniform3fv(uni.sky.haze, P.haze); gl.uniform3fv(uni.sky.high, P.high);
+  gl.uniform1f(uni.sky.sunX, 0.5 - lane*0.006);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.depthMask(true);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+
+  /* 산 — 목표는 늘 보입니다 */
+  gl.useProgram(farProg);
+  gl.uniformMatrix4fv(uni.far.vp, false, VP);
+  gl.uniformMatrix4fv(uni.far.model, false, trs(pathX(z+900), -14, z + 900, 0, 150));
+  gl.uniform3fv(uni.far.haze, P.haze); gl.uniform3fv(uni.far.tint, P.mtn);
+  gl.uniform1f(uni.far.mix, 0.30);
+  gl.bindVertexArray(mountain.vao); gl.drawArrays(gl.TRIANGLES, 0, mountain.n);
+
+  /* 지형 */
+  gl.useProgram(lit);
+  gl.uniformMatrix4fv(uni.lit.vp, false, VP);
+  gl.uniform3fv(uni.lit.cam, eye); gl.uniform3fv(uni.lit.sun, P.sun);
+  gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.0000128);
+  gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
+  gl.uniform1f(uni.lit.glit, 1.0);
+  gl.uniform1i(uni.lit.terrain, 1);
+  /* 스냅하지 않습니다 — 등급 격자라 칸 크기가 일정하지 않고,
+     지형이 매끄러워서 정점이 미끄러져도 눈에 안 띕니다 */
+  gl.uniform2f(uni.lit.origin, cx, cz);
+  gl.bindVertexArray(terrain.vao); gl.drawArrays(gl.TRIANGLES, 0, terrain.n);
+
+  /* 무리 — 처음엔 같이 가다가 오른쪽 능선으로 넘어갑니다.
+     이름도 대화도 없이 사라지는 것, 저니가 하는 그대로입니다. */
+  gl.uniform1i(uni.lit.terrain, 0);
+  gl.uniform1f(uni.lit.glit, 0.0);
+  gl.uniform3fv(uni.lit.litc, [0.35,0.24,0.26]);
+  gl.uniform3fv(uni.lit.dark, [0.13,0.09,0.11]);
+  gl.bindVertexArray(robeMesh.vao);
+  for (const c of crowd) {
+    /* 그들도 걷습니다. 예전엔 z가 고정이라 내가 몇 초 만에 전부 추월했고,
+       그러면 "같이 출발했다"가 성립하지 않습니다 — 남겨두고 가는 게 아니라
+       그냥 서 있는 사람들을 지나치는 게 됩니다. */
+    c.z += SPEED * (0.97 - c.veer*0.25) * dt;
+    if (el > 12) c.veer = Math.min(1, c.veer + dt*0.20);
+    const cgx = pathX(c.z) + c.off + c.veer*36;
+    const cgy = height(cgx, c.z) + Math.abs(Math.sin((el + c.t)*3.0))*0.05;
+    if (c.z - z < 4) continue;              /* 코앞에서 화면을 가리는 것 하나가 장면을 다 망칩니다 */
+    gl.uniformMatrix4fv(uni.lit.model, false, trs(cgx, cgy, c.z, c.veer*0.9, 1));
+    gl.drawArrays(gl.TRIANGLES, 0, robeMesh.n);
+  }
+
+  /* 나 */
+  gl.uniform3fv(uni.lit.litc, [0.86,0.34,0.20]);
+  gl.uniform3fv(uni.lit.dark, [0.20,0.08,0.08]);
+  const bob = Math.abs(Math.sin(el*4.2))*0.05;
+  const me = trs(px, py + bob, z, -lane*0.05, 1);
+  gl.uniformMatrix4fv(uni.lit.model, false, me);
+  gl.drawArrays(gl.TRIANGLES, 0, robeMesh.n);
+
+  /* 스카프 */
+  buildScarf(el, 3.4, 0.35);
+  gl.uniform3fv(uni.lit.litc, [1.00,0.72,0.22]);
+  gl.uniform3fv(uni.lit.dark, [0.55,0.28,0.06]);
+  gl.uniformMatrix4fv(uni.lit.model, false, me);
+  gl.disable(gl.CULL_FACE);
+  gl.bindVertexArray(scarf.vao); gl.drawArrays(gl.TRIANGLES, 0, SCARF_N*6);
+  gl.enable(gl.CULL_FACE);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>

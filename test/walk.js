@@ -48,8 +48,15 @@ function el(tag) {
   return e;
 }
 
+/* index.html에 실제로 있는 id만 돌려줍니다. 예전 스텁은 물어보는 id를 전부
+   만들어 줬는데, 그러면 "지운 요소가 정말 지워졌는가"를 검사할 수 없습니다 —
+   계기판을 마크업에서 뺐는데도 스텁이 계속 만들어 줘서 통과했습니다.
+   덤으로 오타 난 id도 이제 여기서 걸립니다. */
+const REAL_IDS = new Set(
+  (fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/\bid="([^"]+)"/g) || [])
+    .map(s => s.slice(4, -1)));
 const byId = {};
-const id = n => byId[n] || (byId[n] = el('div'));
+const id = n => (REAL_IDS.has(n) ? (byId[n] || (byId[n] = el('div'))) : null);
 
 const recs = REC_NAMES.map(n => {
   const r = el('article'), b = el('b');
@@ -107,7 +114,7 @@ function tick(n) {
 
 const chEl = id('jn-ch'), stat = id('jn-stat'), cue = id('jn-cue');
 const panel = id('jn-panel'), veil = id('jn-veil');
-const cite = id('jn-g-cite'), crawl = id('jn-g-crawl');
+const tickEl = id('jn-tick'), bName = id('jn-b-name');
 const scenes = new Set();
 const notes = [];
 
@@ -125,13 +132,18 @@ notes.push('갈림길 이후 장면 = ' + chEl.textContent);
 
 /* 6~10장 — 달리면서 발행하고 끝까지, 문은 한 번씩만 */
 const opened = new Set();
-let citeWasQuestion = false, lanternFrame = -1, voidSeen = false, f = 0, done = false, tapped = 0;
+let revealSaid = '', lanternFrame = -1, voidSeen = false, f = 0, done = false, tapped = 0;
 for (let i = 0; i < 8000; i++) {
   f++; tick(1);
   scenes.add(chEl.textContent);
   if (f % 7 === 0)  { key('ArrowDown', true); key('ArrowDown', false); }
-  if (!cite.hidden && cite.lastChild.textContent === '?') citeWasQuestion = true;
-  if (lanternFrame < 0 && !crawl.hidden) lanternFrame = f;
+  /* 계기판을 뗐으므로 "?가 숫자가 된다" 대신 여섯 번째 문이 무슨 말을 하는지를 본다 —
+     7개월을 못 셌다는 이야기는 이제 숫자가 아니라 그 한 줄이 짊어진다.
+     #jn-live 가 아니라 배너 이름으로 잡는 이유: pickup() 이 live 를 먼저 쓰고
+     reveal() 이 같은 프레임 안에서 덮어써서, 프레임 끝에서는 이미 사라져 있다. */
+  if (lanternFrame < 0 && /aeo-log-analyzer/.test(bName.textContent)) lanternFrame = f;
+  if (!revealSaid && /읽히고 있었습니다|크롤러가 보입니다/.test(tickEl.textContent))
+    revealSaid = tickEl.textContent;
   if (!cue.hidden && /열리지 않습니다/.test(cue.textContent)) voidSeen = true;
 
   if (panel.hidden && !cue.hidden && /^Enter/.test(cue.textContent)) {
@@ -162,10 +174,10 @@ ok(failedAsserts.length === 0,
    '페이지 내부 ?selftest 통과' + (failedAsserts.length ? ' — 실패: ' + failedAsserts.join(' | ') : ''));
 ok(scenes.size === 10, '장면 10개를 전부 지난다 (' + scenes.size + ')');
 ok(done, '엔딩까지 완주한다 (' + f + '프레임)');
-ok(citeWasQuestion, '랜턴 전에는 인용 계기판이 ? 다');
 ok(lanternFrame > 0, '랜턴을 여섯 번째로 줍는다 (' + lanternFrame + '프레임)');
-ok(!crawl.hidden, '랜턴 이후 계측 계기판이 살아 있다');
-ok(cite.lastChild.textContent !== '?', '랜턴 이후 인용이 숫자가 된다');
+ok(!!revealSaid, '여섯 번째 문이 안 보이던 걸 말해준다 — "' + revealSaid + '"');
+ok(!byId['jn-g-cite'] && !byId['jn-g-crawl'] && !byId['jn-g-page'],
+   '달리는 동안 점수 계기판이 화면에 없다');
 ok(opened.size >= 7, '문을 열고 닫을 수 있다 (' + opened.size + '개)');
 ok(tapped > 0, '키보드 없이 탭으로도 문이 열린다 (' + tapped + '회)');
 ok(voidSeen, '열리지 않는 아홉 번째 문을 지난다');

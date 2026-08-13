@@ -670,12 +670,13 @@
           <div class="jn__hud" aria-hidden="true">
             <span class="ch" id="jn-ch">1 / 10</span>
             <span class="note" id="jn-note">저는 노출을 팔았습니다</span>
+            <!-- 발행/인용/계측/점유 카운터를 뗐습니다. 보는 사람에게 "발행 21"은
+                 아무 뜻이 없고, 이력서 위에서는 실제 실적처럼 읽힐 위험까지 있었습니다.
+                 세는 이야기는 숫자가 아니라 화면으로 합니다 — 7개월 동안 크롤러가
+                 보이지 않다가 여섯 번째 문에서 한꺼번에 켜지는 것, 그게 계기판입니다.
+                 남는 건 연도 하나뿐이고, 그건 이력이라 뜻이 있습니다. -->
             <span class="gauges">
               <span id="jn-g-year">연도 <b>2014</b></span>
-              <span id="jn-g-page" hidden>발행 <b>0</b></span>
-              <span id="jn-g-cite" hidden>인용 <b>?</b></span>
-              <span id="jn-g-sov" hidden>점유 <b>0%</b></span>
-              <span id="jn-g-crawl" hidden>계측 <b>0</b></span>
             </span>
           </div>
           <p class="jn__tick" id="jn-tick" aria-hidden="true"></p>
@@ -1612,13 +1613,11 @@
     var bLine = document.getElementById('jn-b-line');
     var bVerb = document.getElementById('jn-b-verb');
     var padPlant = document.getElementById('jn-pad-plant');
-    var GAUGE = {
-      year:  document.getElementById('jn-g-year'),
-      crawl: document.getElementById('jn-g-crawl'),
-      page:  document.getElementById('jn-g-page'),
-      cite:  document.getElementById('jn-g-cite'),
-      sov:   document.getElementById('jn-g-sov')
-    };
+    /* the only readout left is the year, because a year is biography.
+       stats below are still counted — the ending uses them and the reveal line
+       needs to know how many citations happened while you could not see them —
+       but nothing counts up on screen while you run. */
+    var GAUGE = { year: document.getElementById('jn-g-year') };
     var card     = document.getElementById('jn-card');
     var cardLine = document.getElementById('jn-card-line');
     var cardTag  = document.getElementById('jn-card-tag');
@@ -1789,21 +1788,16 @@
          line here, and this one used to land after them and wipe the ending */
       live.textContent = t.rec + ' 획득 — ' + t.verb;
 
-      if (t.grant === 'plant')  { GAUGE.page.hidden = false; padLabels(); }
-      /* MetaPorter builds the reporting layer, so the dial appears — but the
-         needle reads "?" because nothing is measuring it yet. That gap is the
-         seven months, and it is the single most honest thing in the game. */
-      if (t.grant === 'ledger')  GAUGE.cite.hidden = false;
-      if (t.grant === 'radar')   GAUGE.sov.hidden = false;
+      if (t.grant === 'plant') padLabels();
       if (t.grant === 'lantern') reveal();
       if (t.grant === 'clinic')  finish();
     }
 
-    /* the turn of the whole piece: everything that was already happening becomes
-       visible at once, and the citation dial stops reading "?" */
+    /* The turn of the whole piece. It used to be a dial flipping from "?" to a
+       number, which meant nothing to anyone who had not read the story first.
+       Now it is what it always should have been: everything that was already
+       happening becomes visible at once, and the line names what just changed. */
     function reveal() {
-      GAUGE.crawl.hidden = false;
-      GAUGE.cite.hidden = false;
       flash.classList.add('on');
       setTimeout(function () { flash.classList.remove('on'); }, 40);
       kick(8);
@@ -2018,14 +2012,6 @@
       hud();
     }
 
-    function sov() {
-      var mine = 0, theirs = 0, i;
-      for (i = 0; i < pages.length; i++)
-        if (pages[i].z > camZ && pages[i].z < camZ + VIEW) mine++;
-      for (i = 0; i < rivals.length; i++)
-        if (rivals[i].z > camZ && rivals[i].z < camZ + VIEW) theirs++;
-      return mine + theirs ? Math.round(mine / (mine + theirs) * 100) : 0;
-    }
 
     /* ---------- render ----------
        Painter's algorithm over one sorted list. Everything in the world is a
@@ -2217,15 +2203,23 @@
       g.fillStyle = hg; g.fillRect(-8, HORIZON - 150, W + 16, 154);
       g.fillStyle = 'rgba(255,200,110,.85)'; g.fillRect(-8, HORIZON - 1.5, W + 16, 2.5);
 
-      /* the paved road: still there, decaying past the fork, and it stops. that
-         is the whole of 4장 drawn rather than narrated. */
+      /* MY road is one unbroken surface from the first metre to the last, drawn
+         the same way the whole time. It used to be two branches that swapped at
+         p.z = FORK_Z - 60, and the swap changed where the road started and
+         stopped in mid-stride — the view visibly jumped just before the fork.
+         There is one camera in this piece and there is one road under it. */
+      drawRoad(myCx, -40, TRACK + 60, 1);
+
+      /* the paved road is only a SEPARATE thing once it has separated. Drawn
+         from z 0 it sat exactly on top of my road for the whole prologue, so
+         every line was painted twice and the road thinned out at the fork for
+         no reason anyone could name. It decays, and then it stops — that is
+         the whole of 4장 drawn rather than narrated. */
       var pavedEnd = ROAD_END + 260;
-      if (camZ < pavedEnd) {
+      if (camZ + VIEW > FORK_Z && camZ < pavedEnd) {
         var pa = p.z < FORK_Z ? 1 : Math.max(.16, 1 - (p.z - FORK_Z) / 420);
-        drawRoad(pavedCx, -20, pavedEnd, pa);
+        drawRoad(pavedCx, FORK_Z, pavedEnd, pa);
       }
-      if (p.z > FORK_Z - 60) drawRoad(myCx, FORK_Z - 40, TRACK + 60, 1);
-      else drawRoad(myCx, -20, FORK_Z + 40, 1);
       drawLamps();
 
       /* ---- one sorted list, far to near ---- */
@@ -2307,9 +2301,12 @@
       }
       g.globalAlpha = 1;
 
-      /* night lifts with every door, and hardest at the lantern, because that is
-         when I could finally see */
-      var dark = Math.max(.02, .30 - .032 * got - (have.lantern ? .10 : 0));
+      /* Night lifts with every door, and hardest at the lantern. But the swing
+         has to stay small: this used to run .30 -> .008, and "how much of the
+         world you can see" changing that much across a run reads as the view
+         itself changing. One camera means one exposure too — the lantern is
+         allowed to be the one visible step, and nothing else is. */
+      var dark = Math.max(.04, .21 - .011 * got - (have.lantern ? .055 : 0));
       g.fillStyle = 'rgba(0,0,0,' + dark.toFixed(3) + ')';
       g.fillRect(-8, -8, W + 16, H + 16);
 
@@ -2356,11 +2353,6 @@
         noteEl.textContent = s.line;
       }
       setG(GAUGE.year, s.year);
-      setG(GAUGE.crawl, String(stats.crawl));
-      setG(GAUGE.page,  String(stats.pages));
-      /* the whole point of the middle of the run: the dial exists and reads "?" */
-      setG(GAUGE.cite,  have.lantern ? String(stats.cited) : '?');
-      setG(GAUGE.sov,   sov() + '%');
       stat.textContent = got + ' / 8 문 · ' + Math.round(p.z / TRACK * 100) + '%';
 
       var n = nearTool();
@@ -2421,11 +2413,11 @@
       veil.innerHTML =
         '<h3>저는 여전히 마케터입니다</h3>' +
         '<p class="lede">다만 이제, 팔 것을 직접 만듭니다.</p>' +
+        /* one number, and it is the only one that means anything to a reader:
+           how much of this you actually opened. 발행/인용/계측 were game score
+           dressed as business metrics — off the end screen too. */
         '<div class="jn__score">' +
-          '<span>발행<b>' + stats.pages + '</b></span>' +
-          '<span>인용<b>' + stats.cited + '</b></span>' +
-          '<span>계측<b>' + stats.crawl + '</b></span>' +
-          '<span>문<b>' + stats.doors + '/8</b></span>' +
+          '<span>열어본 문<b>' + stats.doors + ' / 8</b></span>' +
         '</div>' +
         '<p>노출 말고 환자를 세겠다고 자리를 옮긴 게 10년 전입니다. 지금도 같은 일을 합니다 — ' +
         '세는 대상이 환자에서 <b>인용</b>으로 바뀌었을 뿐입니다. ' +
@@ -2456,8 +2448,7 @@
           if (el) el.scrollIntoView({ block: 'start' });
         });
       });
-      live.textContent = '완주. 발행 ' + stats.pages + ' · 인용 ' + stats.cited +
-                         ' · 계측 ' + stats.crawl + ' · 문 ' + stats.doors + '개.';
+      live.textContent = '완주. 문 8개 중 ' + stats.doors + '개를 열어봤습니다.';
     }
 
     /* ---------- loop ---------- */
@@ -2649,18 +2640,31 @@
         plantCd = 0; p.z = sz; running = sr;
       })();
 
-      /* the citation dial must read "?" until the lantern and a number after —
-         that gap IS the seven months, so it is worth a test of its own */
+      /* Nothing counts up on screen. The only readout is the year, because a
+         year is biography and "발행 21" is not — on a CV a live score also reads
+         as a real business number, which is worse than useless. */
       (function () {
-        var wasL = have.lantern, wasC = stats.cited;
-        stats.cited = 17;
-        have.lantern = false; hud();
-        console.assert(GAUGE.cite.lastChild.textContent === '?',
-                       'citations read ? before the lantern');
-        have.lantern = true; hud();
-        console.assert(GAUGE.cite.lastChild.textContent === '17',
-                       'and read the real number after it');
-        have.lantern = wasL; stats.cited = wasC; hud();
+        console.assert(Object.keys(GAUGE).length === 1 && !!GAUGE.year,
+                       'the year is the only gauge');
+        hud();
+        console.assert(!document.getElementById('jn-g-cite') &&
+                       !document.getElementById('jn-g-page') &&
+                       !document.getElementById('jn-g-crawl'),
+                       'the score counters are gone from the markup too');
+      })();
+
+      /* The seven blind months are still told, just not by a dial: citations
+         accrue while you cannot see them, and the sixth door says how many.
+         If that number ever stops being spoken, the whole point is gone. */
+      (function () {
+        var wasC = stats.cited, wasT = tickEl.textContent;
+        stats.cited = 17; reveal();
+        console.assert(/17/.test(tickEl.textContent),
+                       'the reveal names what was happening unseen: ' + tickEl.textContent);
+        stats.cited = 0; reveal();
+        console.assert(!/\d/.test(tickEl.textContent) || /크롤러/.test(tickEl.textContent),
+                       'and still says something sensible if nothing was cited');
+        stats.cited = wasC; tickEl.textContent = wasT;
       })();
 
       /* a page with subtitles has to come back round sooner, or MediSTT grants
