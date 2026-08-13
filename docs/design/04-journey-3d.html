@@ -396,16 +396,22 @@ const lit = program(litVS.replace('uniform vec3 uCam;',
 /* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
    안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
 const farProg = program(`#version 300 es
-in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uCam; out vec3 vW;
-void main(){ vec3 w = (uModel*vec4(aPos,1.0)).xyz; vW = w - uCam; gl_Position = uVP*vec4(w,1.0); }`,
+in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uCam; out vec3 vW; out float vLY;
+void main(){ vec3 w = (uModel*vec4(aPos,1.0)).xyz; vW = w - uCam; vLY = aPos.y;
+  gl_Position = uVP*vec4(w,1.0); }`,
 `#version 300 es
 precision highp float;
-in vec3 vW; out vec4 frag;
+in vec3 vW; in float vLY; out vec4 frag;
 uniform vec3 uHaze, uTint; uniform float uMix;
 void main(){
   vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
   float d = max(dot(n, normalize(vec3(0.5,0.55,0.66))), 0.0);
-  frag = vec4(mix(uHaze, uTint*(0.55+0.45*d), uMix), 1.0);
+  /* 종이 오리감의 정체: 균일하게 뿌연 삼각형. 진짜 먼 산은 발치가 대기에
+     잠기고 봉우리로 갈수록 또렷해집니다 — 그 수직 그라데이션 하나가
+     산을 공기 안에 앉힙니다. */
+  float ground = smoothstep(0.02, 0.55, vLY);
+  float k = uMix * (0.35 + 0.9*ground);
+  frag = vec4(mix(uHaze, uTint*(0.50+0.50*d), clamp(k, 0.0, 1.0)), 1.0);
 }`);
 
 const U = (p, n) => gl.getUniformLocation(p, n);
@@ -444,7 +450,7 @@ function mesh(arr) {
    갈아치우고, 바닥 전체가 잘게 기어다닙니다 — 어지러움의 제일 큰 원인이었습니다.
    일정 간격이면 카메라를 칸 단위로 스냅할 수 있고, 그러면 삼각형이 월드에
    완전히 고정돼 흔들림이 0이 됩니다. 정점은 더 쓰지만 그건 싼 값입니다. */
-const CELL = 2.6, NX = 262, NZ = 192, ZBACK = 40;
+const CELL = 2.2, NX = 390, NZ = 272, ZBACK = 40;   /* 능선 실루엣이 각지지 않을 밀도 */
 const terrain = (() => {
   const v = [], hx = NX*CELL/2;
   for (let i = 0; i < NX; i++) {
@@ -483,7 +489,7 @@ const FIG_COL = [];
 for (let i=0;i<=FIG_NS;i++){
   const h = Math.sin(i*127.1+3.7)*43758.5453, r1 = h-Math.floor(h);
   const h2 = Math.sin(i*269.5+1.3)*24634.6345, r2 = h2-Math.floor(h2);
-  FIG_COL.push({ crease:(r1-0.5)*0.13 + (i%4===0?0.055:0), hem:r2*0.085 });
+  FIG_COL.push({ crease:(r1-0.5)*0.17 + (i%4===0?0.07:0), hem:r2*0.085 });   /* 멀리서도 실루엣이 패이게 */
 }
 FIG_COL[FIG_NS] = FIG_COL[0];
 const FIG_SIL = [
@@ -702,7 +708,7 @@ void main(){
   /* 지형과 같은 3.5단 명암 끊기 — 로브가 조각이 아니라 셀이 됩니다 */
   float q=key*3.5;
   key=mix(key, (floor(q)+smoothstep(0.30,0.70,fract(q)))/3.5, 0.55);
-  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.34,0.28,0.50), n.y*0.5+0.5);
+  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.37,0.29,0.43), n.y*0.5+0.5);
   float rim=pow(1.0-max(dot(n,V),0.0),3.2);
   float ao=1.0-0.5*vAo;
   vec3 c=base*(amb*ao+vec3(1.30,0.82,0.45)*key)*(1.0+rim*1.2);
@@ -755,7 +761,7 @@ void main(){
   c += texture(uBloom, vUv).rgb * 0.50;
   c = aces(c * 1.04);
   float l = dot(c, vec3(0.299,0.587,0.114));
-  c = mix(c * vec3(0.95,0.91,1.09), c * vec3(1.05,0.98,0.91), smoothstep(0.15, 0.75, l));
+  c = mix(c * vec3(0.97,0.93,1.05), c * vec3(1.05,0.98,0.91), smoothstep(0.15, 0.75, l));
   c = mix(vec3(l), c, 1.14);
 
   /* 화면 단계 포스터라이즈·윤곽선은 걷어냈습니다 — 하늘과 안개까지 통째로
@@ -816,7 +822,7 @@ const uniFig = {
    전부 사막 팔레트의 가족입니다 — 로브의 적은 노을의 적이고,
    무리의 보라는 그늘의 보라입니다. 남의 색을 데려오지 않습니다. */
 const FIG_ME    = { c0:[0.72,0.19,0.13], c1:[1.0,0.74,0.42], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
-const FIG_CROWD = { c0:[0.36,0.30,0.44], c1:[0.4,0.36,0.45], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.05] };
+const FIG_CROWD = { c0:[0.40,0.31,0.40], c1:[0.44,0.37,0.43], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.05] };
 
 /* ── 신전 ──
    만든 것 하나에 유적 하나. 모래에 반쯤 묻혀 있고, 멀리서는 능선 위의 실루엣으로
@@ -867,6 +873,25 @@ const templeGlow = (() => {
 /* 벽의 문양 — 상인방 위 띠에 새겨진 빛나는 눈금. 저니 유적의 빛나는 룬을
    이 포트폴리오의 언어(계측 눈금)로 바꾼 것. 은은해야 합니다 — 문간 빛보다
    밝으면 어디로 들어가야 하는지가 흐려집니다. */
+/* 모래 둔덕 — 신전 밑단을 사막이 삼키고 있는 치마. 이게 없으면 벽과 모래가
+   만나는 선이 칼같이 끊겨 "배경에 올려놓은 모형"이 됩니다. 반경을 각도마다
+   불규칙하게 흔들어 바람이 쌓은 모양으로. */
+const templeSkirt = (() => {
+  const v = [], N = 22;
+  for (let i = 0; i < N; i++) {
+    const a0 = i/N*Math.PI*2, a1 = (i+1)/N*Math.PI*2;
+    const rOut = (a) => 9.6 + 2.2*Math.sin(a*3.1 + 1.2) + 1.1*Math.sin(a*7.3);
+    const rIn  = 5.4;
+    const hIn  = (a) => 1.5 + 0.55*Math.sin(a*2.3 + 0.6);
+    const P0 = [Math.cos(a0)*rOut(a0), -0.55, Math.sin(a0)*rOut(a0)];
+    const P1 = [Math.cos(a1)*rOut(a1), -0.55, Math.sin(a1)*rOut(a1)];
+    const P2 = [Math.cos(a1)*rIn, hIn(a1), Math.sin(a1)*rIn];
+    const P3 = [Math.cos(a0)*rIn, hIn(a0), Math.sin(a0)*rIn];
+    v.push(...P0, ...P1, ...P2, ...P0, ...P2, ...P3);
+  }
+  return mesh(new Float32Array(v));
+})();
+
 const templeGlyphs = (() => {
   const v = [];
   for (let i = 0; i < 9; i++) {
@@ -907,7 +932,7 @@ const P = {
      그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
      아무리 굴곡이 있어도 흙더미로 보입니다. */
   lit:  [0.99, 0.63, 0.25],
-  dark: [0.185, 0.115, 0.205],
+  dark: [0.20, 0.125, 0.175],   /* 보라가 '색보정'이 아니라 '보라색 물체'로 읽혀서 웜 모브로 물림 */
   sun:  [0.42, 0.42, -1.0],
   mtn:  [0.30, 0.24, 0.31]
 };
@@ -1369,7 +1394,7 @@ function frame(now) {
      같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
      이유가 이 두 상수였습니다. */
   gl.uniform3fv(uni.lit.litc, [0.88,0.56,0.28]);
-  gl.uniform3fv(uni.lit.dark, [0.23,0.145,0.235]);
+  gl.uniform3fv(uni.lit.dark, [0.235,0.15,0.20]);
   gl.bindVertexArray(templeMesh.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
@@ -1382,6 +1407,17 @@ function frame(now) {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
     gl.drawArrays(gl.TRIANGLES, 0, templeGlow.n);
   }
+  /* 모래 둔덕 — 사막과 같은 모래색, 지형과 같은 그늘.
+     이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
+  gl.uniform1f(uni.lit.emit, 0.0);
+  gl.uniform3fv(uni.lit.litc, [0.97, 0.615, 0.245]);
+  gl.uniform3fv(uni.lit.dark, [0.21, 0.13, 0.175]);
+  gl.bindVertexArray(templeSkirt.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
+    gl.drawArrays(gl.TRIANGLES, 0, templeSkirt.n);
+  }
+  gl.uniform1f(uni.lit.emit, 1.0);
   /* 벽의 눈금 문양 — 문간 빛보다 어둡게 */
   gl.uniform3fv(uni.lit.litc, [0.48, 0.28, 0.10]);
   gl.bindVertexArray(templeGlyphs.vao);
