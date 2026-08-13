@@ -151,6 +151,10 @@ float dunes(vec2 p){
   float y = 0.0;
   y += 7.0*sin(p.x*0.0125 + 1.3)*cos(p.y*0.0102 - 0.4);   /* 풍경 전체의 큰 기복 */
   y += 3.2*sin(p.x*0.0570 - p.y*0.0410 + 2.1);            /* 실제로 넘어가는 언덕 */
+  /* 등성이 — 사인 언덕은 어디나 둥글어서 사막이 아니라 구릉이 됩니다.
+     1-|sin| 은 마루가 접혀서, 플랫셰이딩이 그 자리에 칼같은 빛/그늘 경계를
+     만듭니다. 저니 사막의 그 초승달 능선입니다. */
+  y += 1.7*(1.0 - abs(sin(p.x*0.0310 - p.y*0.0170 + 0.8)));
   y += 1.00*sin(p.x*0.1300 + p.y*0.1050 - 1.1);
   y += 0.28*sin(p.x*0.3100 - p.y*0.2700);
   return y;
@@ -161,6 +165,7 @@ float height(vec2 p){ return dunes(p); }`;
 function height(x, z) {
   return 7.0*Math.sin(x*0.0125+1.3)*Math.cos(z*0.0102-0.4)
        + 3.2*Math.sin(x*0.0570 - z*0.0410 + 2.1)
+       + 1.7*(1.0 - Math.abs(Math.sin(x*0.0310 - z*0.0170 + 0.8)))   /* 등성이 — GLSL과 동일 */
        + 1.00*Math.sin(x*0.1300 + z*0.1050 - 1.1)
        + 0.28*Math.sin(x*0.3100 - z*0.2700);
 }
@@ -275,10 +280,20 @@ void main(){
     float r2 = sin(vW.x*0.29 - vW.z*0.97 + 1.7)*0.5 + 0.5;
     float r3 = sin(vW.x*2.10 + vW.z*0.70 - 0.6)*0.5 + 0.5;
     c *= 1.0 + (r1*0.20 + r2*0.15 + r3*0.06 - 0.205) * near;
-    float g = fract(sin(dot(floor(vW.xz*3.4), vec2(12.9898,78.233)))*43758.5453);
+    /* 바람 — 모래 결이 표면 위를 흘러갑니다. 두 사인의 곱이라 물결이 아니라
+       띄엄띄엄 지나가는 모래 바람으로 읽히고, 수평면에만 얹어 언덕 벽면이
+       일렁이는 것을 막습니다. 사막이 "살아 있다"는 인상은 대부분 이겁니다. */
+    float wg = smoothstep(0.55, 0.9, n.y) * near;
+    float w1 = sin(vW.x*0.55 + vW.z*1.35 - uTime*2.1);
+    float w2 = sin(vW.x*0.13 - vW.z*0.31 + uTime*0.5);
+    c *= 1.0 + w1*max(0.0,w2)*0.055*wg;
+    /* 반짝이는 티끌이어야지 조명판이면 안 됩니다 — 3.4 셀 · 2% · 세기 30 은
+       사막이 LED 전광판이 됐습니다. 알갱이는 잘게, 드물게, 은은하게. */
+    float g = fract(sin(dot(floor(vW.xz*9.0), vec2(12.9898,78.233)))*43758.5453);
     float spec = pow(max(dot(reflect(-normalize(uSun), n), normalize(uCam - vW)), 0.0), 22.0);
-    c += vec3(1.0,0.86,0.6) * step(0.984, g) * spec * uGlit * 30.0 * near;
-    c += vec3(1.0,0.84,0.58) * spec * uGlit * 0.34;
+    c += vec3(1.0,0.86,0.6) * step(0.994, g) * spec * uGlit * 7.0 * near;
+    /* 해를 향해 걸을 때 사막 전체에 깔리는 반짝임 띠 — 저니의 그 바다 같은 면 */
+    c += vec3(1.0,0.80,0.50) * spec * uGlit * 0.55;
   }
   /* 접지 그림자 — 인물 발밑의 부드러운 타원. 06 시트에서 "이게 없으면 무엇을
      해도 떠 보인다"라고 적어 놓고 정작 사막에는 이식을 빼먹었습니다. 그게
@@ -293,7 +308,7 @@ void main(){
 const lit = program(litVS.replace('uniform vec3 uCam;',
   'uniform vec3 uCam;'),
   litFS.replace('uniform float uFog, uGlit, uEmit;',
-  'uniform float uFog, uGlit, uEmit, uPY;\nuniform vec2 uPXZ;'));
+  'uniform float uFog, uGlit, uEmit, uPY, uTime;\nuniform vec2 uPXZ;'));
 
 /* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
    안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
@@ -316,7 +331,7 @@ const uni = {
   lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
           cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
           haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit'),
-          pxz:U(lit,'uPXZ'), py:U(lit,'uPY') },
+          pxz:U(lit,'uPXZ'), py:U(lit,'uPY'), time:U(lit,'uTime') },
   far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
           tint:U(farProg,'uTint'), mix:U(farProg,'uMix'), cam:U(farProg,'uCam') }
 };
@@ -630,8 +645,11 @@ const mountain = (() => {
 const P = {
   haze: [0.62, 0.42, 0.26],
   high: [0.10, 0.10, 0.19],
-  lit:  [0.94, 0.63, 0.28],
-  dark: [0.17, 0.11, 0.10],
+  /* 저니 사막의 절반은 색 대비입니다: 해가 닿는 면은 진한 주황,
+     그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
+     아무리 굴곡이 있어도 흙더미로 보입니다. */
+  lit:  [0.99, 0.63, 0.25],
+  dark: [0.185, 0.115, 0.205],
   sun:  [0.42, 0.42, -1.0],
   mtn:  [0.30, 0.24, 0.31]
 };
@@ -913,6 +931,7 @@ function frame(now) {
   gl.uniform3fv(uni.lit.cam, eye); gl.uniform3fv(uni.lit.sun, P.sun);
   gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.0000128);
   gl.uniform2f(uni.lit.pxz, px, pz); gl.uniform1f(uni.lit.py, py);
+  gl.uniform1f(uni.lit.time, el);
   gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
   gl.uniform1f(uni.lit.glit, 1.0);
   gl.uniform1i(uni.lit.terrain, 1);
