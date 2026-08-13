@@ -639,7 +639,7 @@ const P = {
    그리고 알아서 걷지 않습니다. 자동으로 흘러가면 게임이 아니라 영상이고,
    무엇보다 "내가 움직인 결과"가 아닌 화면 이동이 멀미의 제일 큰 원인입니다. */
 const SPEED = 10.5, TURN = 1.55;
-let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0;
+let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0, spdK = 1;
 let keys = { f:false, l:false, r:false };
 let camBack = 6.4, camUp = 2.6;
 const MOUNTAIN = { x: 40, z: 1500 };            /* 월드에 못박힌 목표. 저니의 산입니다 */
@@ -720,7 +720,7 @@ const K = (e, d) => {
 addEventListener('keydown', e => K(e, true));
 addEventListener('keyup',   e => K(e, false));
 addEventListener('click', () => {
-  P0 = { x: 0, z: 0 }; yaw = camYaw = 0; moved = 0; cueAt = 0;
+  P0 = { x: 0, z: 0 }; yaw = camYaw = 0; moved = 0; cueAt = 0; walkA = 0; spdK = 1;
   lineEl.classList.remove('on');
   crowd.forEach((c, i) => {
     c.x = (Math.random()-0.5)*22; c.z = 26 + i*13 + Math.random()*7;
@@ -751,12 +751,24 @@ function frame(now) {
   if (keys.l) yaw -= TURN * dt;
   if (keys.r) yaw += TURN * dt;
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
-  walkA += ((keys.f ? 1 : 0) - walkA) * Math.min(1, 6*dt);   /* 출발·정지를 부드럽게 */
-  const ph = moved * 1.75;                                    /* 걸음 위상 = 거리 */
+  walkA += ((keys.f ? 1 : 0) - walkA) * Math.min(1, 4*dt);   /* 출발·정지를 부드럽게 */
+  const ph = moved * 1.45;                                    /* 걸음 위상 = 거리 */
+
+  /* 경사가 속도를 정합니다 — 사막이니까. 오르막은 무겁고(최저 0.55배)
+     내리막은 모래에 실려 내려갑니다(최대 1.5배). 급히 바뀌지 않도록 걸러서,
+     언덕 하나를 넘는 것이 "느려졌다가 훅 풀리는" 한 호흡이 됩니다. */
+  const slopeF = (height(P0.x + fx*1.4, P0.z + fz*1.4) - height(P0.x - fx*0.4, P0.z - fz*0.4)) / 1.8;
+  spdK += (Math.max(.55, Math.min(1.5, 1 - slopeF*1.7)) - spdK) * Math.min(1, 2.5*dt);
+  const glide = Math.max(0, Math.min(1, -slopeF*2.6));        /* 내리막 미끄러짐 정도 */
+
   if (keys.f) {
-    const pulse = 0.78 + 0.40 * Math.abs(Math.sin(ph));
-    P0.x += fx * SPEED * pulse * dt; P0.z += fz * SPEED * pulse * dt;
-    moved += SPEED * pulse * dt;
+    /* 맥동은 있되 들리지 않게: 0.4 진폭 |sin| 은 로봇 걸음이었습니다.
+       sin² 라 꺾임이 없고, 내리막에선 맥동 자체가 잦아들며 활강이 됩니다. */
+    const s2 = Math.sin(ph)*Math.sin(ph);
+    const pulse = (0.93 + 0.13*s2) * (1 - glide*0.5) + glide*1.06;
+    const v = SPEED * spdK * pulse;
+    P0.x += fx * v * dt; P0.z += fz * v * dt;
+    moved += v * dt;
   }
   cues(moved);
   hintEl.style.opacity = moved > 6 ? 0 : 1;
@@ -776,11 +788,13 @@ function frame(now) {
   enterEl.classList.toggle('on', !!nearT);
 
   const px = P0.x, pz = P0.z, py = height(px, pz);
-  /* 걸음의 몸: 위아래 바운스(걸음당 한 번) · 좌우 흔들림(두 걸음에 한 번) ·
-     앞으로 살짝 기울기. 전부 위상 ph(거리)에 묶여 있어 발과 땅이 밀리지 않습니다. */
-  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.055;
-  const rock  = walkA * Math.sin(ph) * 0.045;            /* 좌우 롤 */
-  const pitchG= walkA * 0.055;                           /* 전진 기울기 */
+  /* 걸음의 몸: 바운스·흔들림 모두 반으로 줄이고 내리막에선 더 잦아듭니다 —
+     활강 중에 몸이 뚝딱거리면 그 순간 걷기가 아니라 기계가 됩니다.
+     전부 위상 ph(거리)에 묶여 있어 발과 땅이 밀리지 않습니다. */
+  const calm  = 1 - glide*0.6;
+  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.038 * calm;
+  const rock  = walkA * Math.sin(ph) * 0.026 * calm;     /* 좌우 롤 */
+  const pitchG= walkA * (0.045 + glide*0.05);            /* 내리막에선 살짝 뒤로 실림 */
   /* 지형 기울기 따라 눕기 — 언덕을 오르는데 몸이 수직이면 그게 곧 "떠 있음"입니다 */
   const gAlong = (height(px+fx*.6, pz+fz*.6) - height(px-fx*.6, pz-fz*.6)) / 1.2;
   const gSide  = (height(px+fz*.6, pz-fx*.6) - height(px-fz*.6, pz+fx*.6)) / 1.2;
