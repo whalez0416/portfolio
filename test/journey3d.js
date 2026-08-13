@@ -40,15 +40,16 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
   ok(/최희준|광고대행사/.test(s.text), '도입·1장: ' + s.text.slice(0, 60));
   ok(s.badge === '2014', '연도 2014');
 
-  /* 5장 — 갈라짐 */
-  await tp(0, 68, 0); await walk(1200);
+  /* 5장 — 갈라짐. 격자 밀도를 올린 뒤 소프트웨어 렌더러가 느려져 "걸어서 문턱
+     넘기"가 실시간으로 안 됩니다 — 문턱 너머로 바로 놓고 프레임만 기다립니다. */
+  await tp(0, 71.5, 0); await walk(300); await sleep(900);
   s = await S();
   ok(/굳이|내려섰습니다|업계는/.test(s.text), '5장 비트: ' + s.text.slice(0, 60));
   const veered = await p.evaluate(() => crowd.filter(c => c.veer > 0 || c.hes !== undefined).length);
   ok(veered >= 1, '무리가 갈라지기 시작 (' + veered + '명)');
 
   /* 유적 설명 비트 — 세계관을 게임이 직접 말하는 줄 */
-  await tp(0, 80, 0); await walk(800);
+  await tp(0, 84, 0); await walk(300); await sleep(900);
   s = await S();
   ok(/유적들|만든 도구/.test(s.text), '유적 설명: ' + s.text.slice(0, 60));
 
