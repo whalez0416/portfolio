@@ -93,14 +93,57 @@
     margin-top: 3rem; font: 300 13px/1.8 "Pretendard Variable", Pretendard, system-ui, sans-serif;
     letter-spacing: .2em; color: rgba(255,240,220,.34);
   }
+
+  /* 엔딩 — 산기슭. 이력서를 읽는 세 부류에게 각자의 문을 보여줍니다. */
+  #fin {
+    position: fixed; inset: 0; z-index: 6; overflow: auto;
+    display: none; place-items: center; padding: 8vh 8vw; text-align: center;
+    background: radial-gradient(120% 90% at 50% 42%, rgba(28,16,10,.93), rgba(8,5,5,.985));
+    font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+    opacity: 0; transition: opacity 2.2s;
+  }
+  #fin.on { display: grid; opacity: 1; }
+  #fin h2 { font-weight: 300; font-size: clamp(1.7rem,3.4vw,2.7rem); letter-spacing: -.01em;
+            color: #FFF6E6; margin: 0 0 .6rem; }
+  #fin .lede { font-weight: 300; font-size: clamp(1rem,1.6vw,1.25rem); color: #FFB84D;
+               letter-spacing: .04em; margin: 0 0 2.6rem; }
+  #fin .cnt { font: 300 13px/1.8 ui-monospace, Consolas, monospace; letter-spacing: .3em;
+              color: rgba(255,240,220,.4); margin-bottom: 2.8rem; }
+  #fin .doors { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+  #fin .doors div {
+    border: 1px solid rgba(255,238,210,.22); padding: 1.1rem 1.5rem; min-width: 13rem;
+    text-align: left;
+  }
+  #fin .doors b { display: block; font-weight: 500; font-size: 1rem; color: #FFF6E6;
+                  letter-spacing: .06em; margin-bottom: .35rem; }
+  #fin .doors span { font-weight: 300; font-size: .82rem; line-height: 1.7;
+                     color: rgba(255,240,220,.55); }
+  #fin button {
+    font: 300 14px/1 "Pretendard Variable", Pretendard, system-ui, sans-serif;
+    letter-spacing: .22em; color: rgba(255,240,220,.75);
+    background: none; border: 1px solid rgba(255,238,210,.3); padding: .8rem 2.2rem;
+    cursor: pointer;
+  }
+  #fin button:hover { color: #FFF6E6; border-color: rgba(255,238,210,.6); }
 </style>
 
 <canvas id="gl"></canvas>
 <div class="say"><b id="line"></b></div>
-<div class="badge">04 · JOURNEY TONE · 갈림길 · 신전</div>
+<div class="badge">2014</div>
 <div class="hint" id="hint">↑ 걷기 &nbsp;·&nbsp; ← → 방향 &nbsp;·&nbsp; 산 쪽으로, 유적을 찾아보세요</div>
 <div class="enter" id="enter"></div>
 <canvas id="nav" width="232" height="232"></canvas>
+<div id="fin"><div>
+  <h2>저는 여전히 마케터입니다</h2>
+  <p class="lede">다만 이제, 팔 것을 직접 만듭니다.</p>
+  <p class="cnt" id="fin-cnt"></p>
+  <div class="doors">
+    <div><b>채용</b><span>이런 걸 만드는 사람이<br>필요하시면</span></div>
+    <div><b>영업</b><span>병원에 맞춰 만든 것들입니다<br>돌려보고 싶으시면</span></div>
+    <div><b>창업 · 투자</b><span>이 밸류체인을 제품으로<br>만드는 이야기라면</span></div>
+  </div>
+  <button id="fin-again" type="button">다시 걷기</button>
+</div></div>
 <div class="room" id="room"><div>
   <h2 id="room-name"></h2>
   <p class="why" id="room-why"></p>
@@ -139,6 +182,7 @@ function mul(a, b) {                       /* a * b */
   }
   return o;
 }
+function ident(){const o=M4();o[0]=o[5]=o[10]=o[15]=1;return o;}
 function rotX(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
   o[0]=1;o[5]=c;o[6]=s;o[9]=-s;o[10]=c;o[15]=1;return o;}
 function rotZ(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
@@ -521,9 +565,11 @@ function buildFigure(walk, ph, plain) {
   return m;
 }
 let flow = 1;
-function buildScarfMesh(t, drive) {
+function buildScarfMesh(t, drive, grow) {
   flow += (drive - flow) * 0.05;             /* 걷기 시작/멈춤에 천천히 반응 */
-  const m=new FMesh(), N=26, L=2.1*(0.45+0.55*flow);
+  /* 신전을 하나 들어가 볼 때마다 스카프가 조금씩 길어집니다 —
+     성장이 HUD 숫자가 아니라 실루엣에 보이는 것, 이 게임의 원칙입니다. */
+  const m=new FMesh(), N=26, L=(2.1 + (grow||0))*(0.45+0.55*flow);
   const pts=[], up=[];
   for(let i=0;i<=N;i++){
     const u=i/N;
@@ -570,6 +616,22 @@ function dynSlot(capVerts) {
 const slotMe    = dynSlot(4000);
 const slotCrowd = dynSlot(4000);
 const slotScarf = dynSlot(400);
+const slotMotes = dynSlot(600);
+
+/* 앰버 티끌 — 랜턴 이후의 사막. 크롤러들입니다.
+   자리는 시드 고정, 내 주위를 천천히 떠다닙니다. */
+function buildMotes(el2, cx2, cz2) {
+  const m = new FMesh();
+  for (let i = 0; i < 24; i++) {
+    const r = 7 + (i*97 % 23), a0 = i*2.399 + el2*(0.05 + (i%5)*0.012);
+    const x = cx2 + Math.cos(a0)*r, z = cz2 + Math.sin(a0)*r;
+    const y = height(x, z) + 1.0 + Math.sin(el2*0.8 + i*1.7)*0.45 + (i%3)*0.5;
+    const s = 0.055 + (i%4)*0.02;
+    m.tri([x-s,y,z],[x+s,y,z],[x,y+s*2.2,z], 0, 2);
+    m.tri([x,y,z-s],[x,y,z+s],[x,y+s*2.2,z], 0, 2);
+  }
+  return m;
+}
 
 /* 인물 전용 셰이더 — 06에서 확정한 조명 그대로 + 이 장면의 안개 */
 const figProg = program(`#version 300 es
@@ -676,6 +738,15 @@ const templeGlow = (() => {
   box(v, 0, 2.6, 2.2, 1.55, 2.7, 0.05);
   return mesh(new Float32Array(v));
 })();
+/* 빈 문틀 — 기둥 둘, 가운데가 끊긴 상인방 */
+const voidMesh = (() => {
+  const v = [];
+  box(v, -2.1, 2.0, 0, 0.42, 2.4, 0.42);
+  box(v,  2.1, 2.0, 0, 0.42, 2.4, 0.42);
+  box(v, -1.55, 4.55, 0, 0.75, 0.32, 0.38);   /* 상인방 왼쪽 토막 */
+  box(v,  1.62, 4.49, 0, 0.68, 0.30, 0.36);   /* 오른쪽 토막 — 살짝 어긋나 있음 */
+  return mesh(new Float32Array(v));
+})();
 
 /* ── 멀리 있는 산 ── */
 const mountain = (() => {
@@ -721,21 +792,51 @@ const MOUNTAIN = { x: 20, z: 700 };             /* 월드에 못박힌 목표. �
 
 /* 프로토타입에는 셋만 세워 둡니다. 본편에서는 여덟 개고, 안의 본문은
    index.html 의 .rec 한 벌에서 꺼내 씁니다 — 여기에 복제하지 않습니다. */
+/* 여덟 신전 — 커밋 순서대로, 산으로 가는 길을 따라 좌우로 흩어져 있습니다.
+   랜턴(aeo-log-analyzer)은 여섯 번째입니다. 다섯을 만들고 나서야 증명할 방법이
+   없다는 걸 알았고, 그 순서를 바꾸면 이 이야기 전체가 무너집니다.
+   본문은 docs/programs.md 에서 잘라 왔고, 본편에서는 .rec 한 벌에서 꺼내 씁니다. */
 const TEMPLES = [
-  { x:   4, z: 60, yaw: 0.05, name: 'aeo_sync',
+  { x:   8, z: 150, yaw: 0.10, name: 'aeo_sync',
     why: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
     body: '표준화와 고유함은 반대말인데 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.\n' +
           '의료라서 틀리면 안 되고 심의 대상이라, 자동 생성 후 사람이 검수하는 순서를 뒤집어\n' +
-          '검수를 파이프라인 안에 넣었습니다.' },
-  { x: -36, z: 120, yaw: 0.5, name: 'MediSTT',
+          '검수를 파이프라인 안에 넣었습니다. 189페이지 발행 · 운영 중.' },
+  { x: -42, z: 218, yaw: 0.45, name: 'MediSTT',
     why: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
-    body: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
-  { x:  44, z: 158, yaw: -0.6, name: 'aeo-log-analyzer',
+    body: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.\n유일하게 상용까지 간 도구입니다.' },
+  { x:  38, z: 275, yaw: -0.35, name: 'MetaPorter',
+    why: '메타는 병원이 운영하기에 까다로운 매체입니다.',
+    body: '제한이 많아 캠페인이 자주 튕기고, 목표가 제각각이라 성과를 한 장으로 읽기 어렵습니다.\n' +
+          '병원을 추가할 때 코드는 고치지 않습니다 — 설정 파일 하나입니다.' },
+  { x: -28, z: 338, yaw: 0.50, name: 'SERP Sentinel',
+    why: '순위 변동은 산출물이 아니라 수단입니다.',
+    body: '설계서 첫 장에 목적을 못박고 시작했습니다. 안 그러면 기능만 늘어납니다.' },
+  { x:  52, z: 398, yaw: -0.50, name: 'KPIY',
+    why: '정확해야 하는 곳에는 검색이 아니라 실행을 붙였습니다.',
+    body: 'LLM이 숫자를 지어내면 경영 보고서로 쓸 수 없습니다.\n' +
+          '계산은 pandas가 하고 AI는 해석만 합니다. 청구 8.3만 건.' },
+  { x:   2, z: 462, yaw: 0.00, name: 'aeo-log-analyzer', lantern: true,
     why: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
     body: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.\n' +
-          'AI 봇은 JavaScript를 실행하지 않아 Google Analytics에 아무것도 안 잡힙니다.' }
+          'AI 봇은 JavaScript를 실행하지 않아 GA에는 아무것도 안 잡힙니다.\n' +
+          '이 도구만 MIT로 열었습니다 — 재는 방법은 공개해야 기준이 됩니다.' },
+  { x: -32, z: 532, yaw: 0.40, name: 'NetTier',
+    why: '추정은 틀리지만 실측은 안 틀립니다.',
+    body: '되돌릴 수 없는 작업은 사람 손에 남겼습니다 — 업로드 자동화 금지.\n147페이지 라이브.' },
+  { x:   6, z: 645, yaw: -0.10, name: 'Hospify',
+    why: '못 지킬 약속은, 자리를 비워둡니다.',
+    body: '가격 보증(Price Lock)을 다 만들어 놓고 폐기했습니다. 병원이 지킬 수 없는 약속이라서.\n' +
+          '19커밋 중 절반이 포지션 전환과 카피 축소입니다.' }
 ];
 TEMPLES.forEach(t => { t.y = height(t.x, t.z) - 1.1; });   /* 모래에 반쯤 묻힘 */
+
+/* 아홉 번째 — 문이 아닌 문틀. Price Lock 은 만들어졌고, 그리고 지워졌습니다.
+   상인방이 가운데가 끊긴 빈 틀이 Hospify 가는 길에 서 있고, 지나갈 수는 있지만
+   아무 데로도 이어지지 않습니다. 이 사막에서 유일하게 아무 일도 일어나지 않는
+   물건이고, 그게 요점입니다. */
+const VOIDF = { x: 18, z: 588, yaw: 0.05 };
+VOIDF.y = height(VOIDF.x, VOIDF.z) - 0.4;
 let inside = null, nearT = null;
 
 /* 월드 → 신전 로컬. 문간은 로컬 -z 입니다. */
@@ -760,27 +861,41 @@ for (let i = 0; i < 11; i++)
   crowd.push({ x: (Math.random()-0.5)*14, z: 12 + i*6 + Math.random()*4,
                yaw: (Math.random()-0.5)*0.10, veer: 0, t: Math.random()*6 });
 
-/* 화면 가운데 자막 — docs/narrative.md 4장 · 5장 */
+/* ── 열 장면 대본 — docs/narrative.md 전편 ──
+   진행도는 시간도 걸음 수도 아니라 "산 쪽으로 얼마나 나아갔는가"(z 최고점)입니다.
+   길이 정해져 있지 않은 사막이라 거리(moved)로 재면 옆으로 헤맨 것까지
+   이야기가 앞서 나가고, z 로 재면 이야기와 지형이 붙습니다.
+   각 줄은 7초 떠 있다가 스스로 내려갑니다 — '' 큐를 손으로 박던 것을 대체. */
 const lineEl = document.getElementById('line');
 const hintEl = document.getElementById('hint');
 hintEl.style.transition = 'opacity 1.4s';
-/* 시간이 아니라 "걸어온 거리"로 넘깁니다. 서 있는데 이야기가 혼자
-   진행되면, 걷는 것이 서사와 아무 상관이 없다고 말하는 셈입니다. */
-const CUES = [
-  { t:   8, s: '5년 뒤, 팔던 것이 죽기 시작했습니다' },
-  { t:  45, s: '' },
-  { t:  74, s: '굳이? 왜? — 다들 그렇게 물었습니다' },
-  { t: 110, s: '' },
-  { t: 130, s: '팔던 상품이 죽는 걸 봤고,\n대체할 상품을 만들 사람이 저밖에 없었습니다' },
-  { t: 170, s: '' }
+const SCRIPT = [
+  { z:   4, year: '2014',    s: '저는 노출을 팔았습니다' },
+  { z:  22, year: '2015~',   s: '환자를 늘린다길래, 자리를 옮겼습니다' },
+  { z:  40, year: '2020',    s: '잘 되고 있을 때, 그만 배우기로 했습니다' },
+  { z:  58, year: '2025',    s: '5년 뒤, 팔던 것이 죽기 시작했습니다' },
+  { z:  76, year: '2025',    s: '굳이? 왜? — 다들 그렇게 물었습니다' },
+  { z: 128, year: '2025-12', s: '제일 먼저 만든 게, 제일 모호한 것이었습니다' },
+  { z: 196, year: '2026-05', s: '손으로 하던 것을 하나씩 떼어냈습니다' },
+  { z: 438, year: '2026-07', s: '증명할 방법이 없다는 걸 알았습니다' },
+  { z: 514, year: '2026-08', s: '제가 없어도 돌아가야 도구입니다' },
+  { z: 576, year: '2026-08', s: '안 만든 것도 저입니다' }
 ];
-let cueAt = 0;
-function cues(el) {
-  while (cueAt < CUES.length && el >= CUES[cueAt].t) {
-    const s = CUES[cueAt].s;
-    if (s) { lineEl.textContent = s; lineEl.classList.add('on'); }
-    else lineEl.classList.remove('on');
-    cueAt++;
+let scriptAt = 0, lineHideAt = 0, zProg = 0;
+const badgeEl = document.querySelector('.badge');
+function sayLine(s, secs) {
+  lineEl.textContent = s; lineEl.classList.add('on');
+  lineHideAt = performance.now()*0.001 + (secs || 7);
+}
+function cues() {
+  zProg = Math.max(zProg, P0.z);
+  while (scriptAt < SCRIPT.length && zProg >= SCRIPT[scriptAt].z) {
+    const c = SCRIPT[scriptAt++];
+    sayLine(c.s);
+    badgeEl.textContent = c.year;
+  }
+  if (lineHideAt && performance.now()*0.001 > lineHideAt) {
+    lineEl.classList.remove('on'); lineHideAt = 0;
   }
 }
 lineEl.style.whiteSpace = 'pre-line';
@@ -847,6 +962,9 @@ function goIn(t) {
   keys.f = keys.l = keys.r = false;      /* 안에서는 조작을 요구하지 않습니다 */
   enterEl.classList.remove('on');
 }
+let lantern = false, ended = false;
+const finEl = document.getElementById('fin');
+document.getElementById('fin-again').addEventListener('click', () => location.reload());
 function goOut() {
   /* 들어온 문 앞으로 돌려세웁니다 — 제자리에 두면 문지방 위라서
      나오자마자 다시 들어가지는 무한문이 됩니다 */
@@ -854,12 +972,20 @@ function goOut() {
     const t = inside;
     P0.x = t.x - 8.4*Math.sin(t.yaw); P0.z = t.z - 8.4*Math.cos(t.yaw);
     yaw = t.yaw + Math.PI; camYaw = yaw;
+    /* 여섯 번째 신전에서 나오는 순간이 이 이야기의 전환점입니다.
+       사막에 앰버 티끌이 떠오릅니다 — 그동안에도 계속 지나다니고 있었는데,
+       이제야 보이는 것들. 원작(2D)의 랜턴 켜짐을 이 사막의 언어로 옮긴 것. */
+    if (t.lantern && !lantern) {
+      lantern = true;
+      sayLine('그동안, 계속 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다', 8);
+    }
   }
   inside = null; roomEl.classList.remove('on');
 }
 
 const K = (e, d) => {
   const k = e.key;
+  if (ended) return;                     /* 엔딩 뒤에는 "다시 걷기" 버튼뿐 */
   if (inside) {                          /* 안에 있는 동안은 나가는 것 말고 아무것도 안 받습니다 */
     if (d && (k === 'Enter' || k === 'Escape')) { goOut(); e.preventDefault(); }
     return;
@@ -948,7 +1074,15 @@ function frame(now) {
     const l = templeLocal(P0.x, P0.z, t);
     if (Math.abs(l.x) < 1.5 && l.z > -4.3 && l.z < 3.5) { goIn(t); break; }
   }
-  cues(moved);
+  /* 산기슭 — 끝. Hospify 를 지나 산 아래 이르면 이야기가 닫힙니다 */
+  if (!ended && !inside && Math.hypot(P0.x - MOUNTAIN.x, P0.z - (MOUNTAIN.z - 12)) < 26) {
+    ended = true;
+    keys.f = keys.l = keys.r = false;
+    document.getElementById('fin-cnt').textContent =
+      '들어가 본 신전 ' + TEMPLES.filter(t => t.seen).length + ' / 8';
+    finEl.classList.add('on');
+  }
+  cues();
   hintEl.style.opacity = moved > 6 ? 0 : 1;
   navCv.classList.toggle('on', moved > 4 && !inside);
   if (moved > 4 && !inside) drawNav();
@@ -964,8 +1098,11 @@ function frame(now) {
       if (d < 16 && front > 1 && d < best) { best = d; nearT = t; }
     }
   }
-  enterEl.innerHTML = nearT ? (nearT.name + ' <kbd>⏎</kbd> 들어가기') : '';
-  enterEl.classList.toggle('on', !!nearT);
+  /* 빈 문틀 앞 — 이름도 ⏎ 도 없이 그 한 줄만 */
+  const vd = Math.hypot(P0.x - VOIDF.x, P0.z - VOIDF.z);
+  enterEl.innerHTML = nearT ? (nearT.name + ' <kbd>⏎</kbd> 들어가기')
+                    : vd < 9 ? '이 문은 열리지 않습니다 — 만들어 놓고 지웠습니다' : '';
+  enterEl.classList.toggle('on', !!nearT || vd < 9);
 
   const px = P0.x, pz = P0.z, py = height(px, pz);
   /* 걸음의 몸: 바운스·흔들림 모두 반으로 줄이고 내리막에선 더 잦아듭니다 —
@@ -992,7 +1129,7 @@ function frame(now) {
   camYaw += Math.atan2(Math.sin(yaw - camYaw), Math.cos(yaw - camYaw)) * Math.min(1, 3.0*dt);
   const cfx = Math.sin(camYaw), cfz = Math.cos(camYaw);
 
-  const wide = Math.min(1, Math.max(0, (moved - 43)/25)) * (1 - Math.min(1, Math.max(0, (moved - 105)/28)));
+  const wide = Math.min(1, Math.max(0, (zProg - 62)/22)) * (1 - Math.min(1, Math.max(0, (zProg - 108)/26)));
   camBack += (7.8 + wide*12.0 - camBack) * 0.8 * dt;
   camUp   += (3.0 + wide*6.0  - camUp)   * 0.8 * dt;
 
@@ -1061,6 +1198,12 @@ function frame(now) {
     gl.drawArrays(gl.TRIANGLES, 0, templeGlow.n);
   }
   gl.uniform1f(uni.lit.emit, 0.0);
+  /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 색도 신전보다 죽은 회색 */
+  gl.uniform3fv(uni.lit.litc, [0.42,0.36,0.34]);
+  gl.uniform3fv(uni.lit.dark, [0.12,0.10,0.12]);
+  gl.bindVertexArray(voidMesh.vao);
+  gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
+  gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
 
   /* ── 인물들 — 06의 조각과 조명으로 ── */
   gl.useProgram(figProg);
@@ -1085,9 +1228,9 @@ function frame(now) {
      오른쪽으로 결단하듯 꺾어 능선을 넘어갑니다. 떠나는 자는 걸음도 빨라집니다.
      그리고 딱 한 명 — 맨 앞의 하나가 멈춰 서서 나를 돌아봅니다.
      "굳이? 왜?"를 몸으로 묻고, 대답을 기다리지 않고 무리를 따라갑니다. */
-  const SPLIT = 74;
+  const SPLIT = 76;                            /* "굳이? 왜?" 자막과 같은 지점(z) */
   for (const c of crowd) {
-    if (moved > SPLIT) {
+    if (zProg > SPLIT) {
       if (c === crowd[0] && c.hes === undefined) c.hes = 2.6;   /* 묻는 사람 */
       if (c.hes > 0) c.hes -= dt;
       else {
@@ -1126,10 +1269,19 @@ function frame(now) {
   gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
 
   /* 스카프 — 서 있으면 가라앉습니다. 바람은 내가 만드는 거니까 */
-  slotScarf.set(buildScarfMesh(el, walkA > .5 ? 1 + glide*0.5 : 0.28));
+  const seenN = TEMPLES.filter(t => t.seen).length;
+  slotScarf.set(buildScarfMesh(el, walkA > .5 ? 1 + glide*0.5 : 0.28, seenN*0.22));
   gl.uniformMatrix4fv(uniFig.m, false, me);
   gl.bindVertexArray(slotScarf.vao);
   gl.drawArrays(gl.TRIANGLES, 0, slotScarf.n);
+
+  /* 랜턴 이후 — 크롤러 티끌 */
+  if (lantern) {
+    slotMotes.set(buildMotes(el, px, pz));
+    gl.uniformMatrix4fv(uniFig.m, false, ident());
+    gl.bindVertexArray(slotMotes.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, slotMotes.n);
+  }
   gl.enable(gl.CULL_FACE);
 
   /* 비네트 — 반드시 맨 마지막, 깊이 무시, 블렌드로 */
