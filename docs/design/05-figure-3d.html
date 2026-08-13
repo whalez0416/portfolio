@@ -1,0 +1,429 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>05 · 인물 3D — 후보 셋과 빛</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!--
+  인물 후보 셋을 같은 빛 아래 나란히 놓고 고르기 위한 시트입니다.
+  01-directions.html 로 화풍을 고른 방식과 같습니다 — 설명 말고 그림으로 정합니다.
+
+  빛도 여기서 같이 정합니다. 그림자 없는 인물은 아무리 잘 만들어도 떠 보이므로
+  조형과 빛을 따로 볼 수가 없습니다. 04 프로토타입의 빛은 방향광 하나뿐이었고,
+  그래서 신전도 인물도 종이처럼 납작했습니다.
+
+  이 시트가 04 대비 새로 넣은 것:
+    · 하늘/땅 반구 환경광 — 그늘이 새까맣지 않고 하늘색을 머금습니다
+    · 림라이트 — 실루엣 가장자리가 배경에서 떨어집니다
+    · 접지 그림자 + 바닥에 드리우는 그림자 — 인물이 모래 위에 놓입니다
+    · 옷자락 AO — 아래로 갈수록 어두워져 부피가 생깁니다
+    · 발광 문양 + 블룸 흉내
+    · 법선을 미분이 아니라 진짜 면 법선으로 넘깁니다 (04 의 부호 버그가 원천 차단)
+-->
+<style>
+  html,body { margin:0; background:#0B0908; color:#F5EFE4;
+              font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif; }
+  header { padding: 30px 34px 6px; }
+  h1 { font-size: 15px; font-weight: 500; letter-spacing:.26em; margin:0 0 10px; color:#FFB84D;
+       font-family: ui-monospace, Consolas, monospace; }
+  header p { margin:0; max-width:52rem; font-weight:300; font-size:14px; line-height:2;
+             color:rgba(245,239,228,.6); }
+  .row { display:flex; gap:0; padding: 14px 0 0; flex-wrap:wrap; }
+  .cell { flex:1 1 360px; position:relative; }
+  .cell canvas { display:block; width:100%; height:auto; background:#171009; }
+  .cap { padding: 14px 26px 26px; }
+  .cap b { display:block; font-size:19px; font-weight:600; letter-spacing:-.01em; margin-bottom:8px; }
+  .cap b i { font-style:normal; color:#FFB84D; font-family:ui-monospace,Consolas,monospace;
+             font-size:12px; letter-spacing:.2em; margin-right:10px; }
+  .cap p { margin:0; font-size:13.5px; line-height:2; font-weight:300; color:rgba(245,239,228,.58); }
+  .cap u { text-decoration:none; color:#FFD9A0; }
+  .strip { padding: 8px 34px 40px; }
+  .strip h2 { font-size:12px; font-weight:500; letter-spacing:.24em; color:#FFB84D; margin:26px 0 4px;
+              font-family: ui-monospace, Consolas, monospace; }
+  .strip p { margin:0 0 12px; font-size:13px; font-weight:300; line-height:1.9; color:rgba(245,239,228,.5); }
+  .strip canvas { display:block; width:100%; height:auto; background:#171009; }
+  .foot { padding: 0 34px 60px; font-size:13px; font-weight:300; line-height:2.1;
+          color:rgba(245,239,228,.5); max-width:56rem; }
+  .foot b { color:#F5EFE4; font-weight:500; }
+  kbd { font:inherit; border:1px solid rgba(245,239,228,.3); padding:.05em .45em; border-radius:2px; }
+</style>
+
+<header>
+  <h1>05 · 인물 3D — 후보 셋</h1>
+  <p>같은 빛, 같은 크기, 같은 걸음. 다른 건 조형뿐입니다.
+     게임에서 실제로 보이는 건 <b>등 뒤</b>이므로 가운데 줄이 판단 기준이고,
+     3/4 는 참고용입니다. 맨 아래 띠는 실제 게임 크기입니다 —
+     거기서 안 읽히면 크게 봤을 때 아무리 예뻐도 소용없습니다.</p>
+</header>
+
+<div class="row" id="row"></div>
+<div class="strip">
+  <h2>실제 게임 크기</h2>
+  <p>화면 높이의 약 1/6. 이 크기에서 셋이 구분되는지가 전부입니다.</p>
+  <canvas id="small" width="1600" height="230"></canvas>
+  <h2>실루엣만</h2>
+  <p>빛을 끄고 그림자만. 조형이 실제로 다른지, 아니면 색만 다른지 여기서 드러납니다.</p>
+  <canvas id="sil" width="1600" height="230"></canvas>
+</div>
+<div class="foot">
+  <p><b>빛은 이렇게 잡았습니다.</b> 04 프로토타입은 방향광 하나뿐이라 그늘이 새까맣고
+  인물이 바닥에서 떠 있었습니다. 여기서는 낮게 깔린 해(키) + 하늘·땅 반구 환경광 +
+  뒤쪽 림라이트 세 개를 씁니다. 그늘이 하늘색을 머금고, 실루엣 가장자리가 배경에서 떨어지고,
+  접지 그림자가 인물을 모래 위에 놓습니다. <b>이 셋 중 접지 그림자가 제일 큽니다</b> —
+  없으면 무엇을 해도 떠 보입니다.</p>
+  <p>법선은 미분이 아니라 진짜 면 법선을 넘깁니다. 04 에서 벽이 검은 점으로 자글거리던
+  버그가 여기서는 원천적으로 안 납니다.</p>
+</div>
+
+<script>
+/* ═══════════ 행렬 ═══════════ */
+const M4=()=>new Float32Array(16);
+function perspective(f_,a,n,f){const t=1/Math.tan(f_/2),o=M4();
+  o[0]=t/a;o[5]=t;o[11]=-1;o[10]=(f+n)/(n-f);o[14]=2*f*n/(n-f);return o;}
+function lookAt(e,c,u){let zx=e[0]-c[0],zy=e[1]-c[1],zz=e[2]-c[2];
+  let l=Math.hypot(zx,zy,zz)||1;zx/=l;zy/=l;zz/=l;
+  let xx=u[1]*zz-u[2]*zy,xy=u[2]*zx-u[0]*zz,xz=u[0]*zy-u[1]*zx;
+  l=Math.hypot(xx,xy,xz)||1;xx/=l;xy/=l;xz/=l;
+  const yx=zy*xz-zz*xy,yy=zz*xx-zx*xz,yz=zx*xy-zy*xx,o=M4();
+  o[0]=xx;o[1]=yx;o[2]=zx;o[4]=xy;o[5]=yy;o[6]=zy;o[8]=xz;o[9]=yz;o[10]=zz;
+  o[12]=-(xx*e[0]+xy*e[1]+xz*e[2]);o[13]=-(yx*e[0]+yy*e[1]+yz*e[2]);
+  o[14]=-(zx*e[0]+zy*e[1]+zz*e[2]);o[15]=1;return o;}
+function mul(a,b){const o=M4();for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;
+  for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s;}return o;}
+function rotY(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
+  o[0]=c;o[2]=-s;o[8]=s;o[10]=c;o[5]=1;o[15]=1;return o;}
+const TAU=Math.PI*2;
+
+/* ═══════════ 지오메트리 — 위치 + 진짜 면 법선 ═══════════
+   미분으로 법선을 뽑으면 수직면에서 부호가 잡음에 맡겨집니다(04에서 겪음).
+   면 법선을 직접 넣으면 그 문제가 아예 없고, 셰이더도 단순해집니다. */
+function Mesh(){ this.p=[]; this.n=[]; this.a=[]; }   /* a = AO/발광 등 정점 속성 */
+Mesh.prototype.tri=function(A,B,C,ao){
+  const ux=B[0]-A[0],uy=B[1]-A[1],uz=B[2]-A[2];
+  const vx=C[0]-A[0],vy=C[1]-A[1],vz=C[2]-A[2];
+  let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+  const l=Math.hypot(nx,ny,nz)||1; nx/=l;ny/=l;nz/=l;
+  for(const P of [A,B,C]){ this.p.push(P[0],P[1],P[2]); this.n.push(nx,ny,nz); }
+  const f = ao||(()=>0);
+  for(const P of [A,B,C]) this.a.push(typeof f==='function'?f(P):f);
+};
+Mesh.prototype.quad=function(A,B,C,D,ao){ this.tri(A,B,C,ao); this.tri(A,C,D,ao); };
+
+/* 옷자락 AO — 아래로 갈수록 어두워집니다. 부피는 여기서 나옵니다. */
+const hemAO = h => P => Math.max(0, 1 - P[1]/h);
+
+/* 회전체. profile = [[반지름, 높이], ...] */
+function revolve(m, profile, sides, ao, wobble) {
+  for (let s=0; s<sides; s++) {
+    const a0=s/sides*TAU, a1=(s+1)/sides*TAU;
+    const w0 = wobble ? 1+wobble*Math.cos(a0*wobble.k||a0*5) : 1;
+    for (let k=0;k<profile.length-1;k++){
+      const [r0,y0]=profile[k], [r1,y1]=profile[k+1];
+      const A=[r0*Math.cos(a0),y0,r0*Math.sin(a0)], B=[r0*Math.cos(a1),y0,r0*Math.sin(a1)];
+      const C=[r1*Math.cos(a1),y1,r1*Math.sin(a1)], D=[r1*Math.cos(a0),y1,r1*Math.sin(a0)];
+      m.quad(A,B,C,D,ao);
+    }
+  }
+}
+/* 톱니 옷단 — 저니 로브의 아랫단이 삼각으로 갈라진 그 느낌 */
+function scallop(m, r, y, drop, teeth, ao) {
+  for (let i=0;i<teeth;i++){
+    const a0=i/teeth*TAU, a1=(i+1)/teeth*TAU, am=(a0+a1)/2;
+    const A=[r*Math.cos(a0),y,r*Math.sin(a0)], B=[r*Math.cos(a1),y,r*Math.sin(a1)];
+    const T=[r*0.96*Math.cos(am),y-drop,r*0.96*Math.sin(am)];
+    m.tri(A,B,T,ao); m.tri(B,A,T,ao);          /* 양면 */
+  }
+}
+/* 리본(스카프) */
+function ribbon(m, pts, w0, w1) {
+  for (let i=0;i<pts.length-1;i++){
+    const t0=i/(pts.length-1), t1=(i+1)/(pts.length-1);
+    const wa=w0+(w1-w0)*t0, wb=w0+(w1-w0)*t1;
+    const a=pts[i], b=pts[i+1];
+    const A=[a[0]-wa,a[1],a[2]], B=[a[0]+wa,a[1]+wa*0.35,a[2]];
+    const C=[b[0]+wb,b[1]+wb*0.35,b[2]], D=[b[0]-wb,b[1],b[2]];
+    m.quad(A,B,C,D,()=>0); m.quad(D,C,B,A,()=>0);
+  }
+}
+
+/* ═══════════ 후보 셋 ═══════════ */
+const VARIANTS = [
+  { id:'A', name:'순례자',
+    tag:'저니에 제일 가까움',
+    note:'가늘고 긴 로브에 뾰족한 후드, 톱니 옷단, 긴 스카프. 안전하고 아름답지만 <u>저니를 그대로 가져온 것처럼 보일 위험</u>이 있습니다.',
+    robe:[[0,0],[.30,.05],[.345,.17],[.325,.52],[.255,.92],[.205,1.20],[.235,1.34],[.205,1.55],[.115,1.71],[0,1.80]],
+    hem:{r:.345,y:.17,drop:.16,teeth:11}, sash:null, glyph:'line', scarf:{len:3.5,w:.15},
+    body:[.62,.13,.11], accent:[.95,.36,.18] },
+
+  { id:'B', name:'측량사',
+    tag:'이 포트폴리오의 것',
+    note:'같은 로브인데 <u>옷단이 눈금</u>입니다. 허리에 계측기를 차고, 스카프는 짧고 넓습니다. 화풍 B(계측 그리드)와 같은 말을 인물이 합니다 — <u>재는 사람</u>. 저니를 닮되 남의 것이 아닙니다.',
+    robe:[[0,0],[.29,.05],[.34,.16],[.315,.50],[.25,.90],[.20,1.18],[.245,1.32],[.215,1.52],[.12,1.69],[0,1.78]],
+    hem:{r:.34,y:.16,drop:.10,teeth:24}, sash:{r:.265,y:.88,h:.075}, glyph:'ticks',
+    scarf:{len:2.3,w:.21},
+    body:[.55,.14,.12], accent:[1.0,.68,.16] },
+
+  { id:'C', name:'짐꾼',
+    tag:'묵직한 쪽',
+    note:'어깨가 넓고 키가 낮습니다. 등에 진 것이 실루엣에 그대로 보이고, 문을 지날 때마다 커집니다. <u>가벼운 순례자가 아니라 뭔가를 지고 가는 사람</u>으로 읽힙니다.',
+    robe:[[0,0],[.33,.05],[.385,.18],[.36,.52],[.315,.88],[.29,1.10],[.335,1.22],[.285,1.40],[.155,1.55],[0,1.63]],
+    hem:{r:.385,y:.18,drop:.07,teeth:8}, sash:{r:.30,y:.82,h:.09}, glyph:null,
+    pack:{r:.30,y:1.02,d:.30}, scarf:{len:1.5,w:.13},
+    body:[.30,.22,.26], accent:[1.0,.70,.22] }
+];
+
+function buildFigure(v) {
+  const m = new Mesh(), ao = hemAO(1.5);
+  revolve(m, v.robe, 14, ao);
+  if (v.hem) scallop(m, v.hem.r, v.hem.y, v.hem.drop, v.hem.teeth, ()=>0.85);
+  if (v.sash) revolve(m, [[v.sash.r,v.sash.y],[v.sash.r*1.04,v.sash.y+v.sash.h/2],
+                          [v.sash.r,v.sash.y+v.sash.h]], 14, ()=>0.15);
+  if (v.pack) {   /* 등에 진 것 — 뒤쪽 반구 */
+    const p = new Mesh();
+    revolve(p, [[0,0],[v.pack.r*.7,v.pack.r*.35],[v.pack.r,v.pack.r*.9],
+                [v.pack.r*.85,v.pack.r*1.5],[0,v.pack.r*1.75]], 10, ()=>0.25);
+    for (let i=0;i<p.p.length;i+=3){
+      m.p.push(p.p[i], p.p[i+1]+v.pack.y, p.p[i+2]*0.62 - v.pack.d);
+      m.n.push(p.n[i], p.n[i+1], p.n[i+2]);
+    }
+    m.a.push(...p.a);
+  }
+  return m;
+}
+/* 발광 문양 — 로브 표면에 붙는 작은 판들 */
+function buildGlyph(v) {
+  const m = new Mesh();
+  if (!v.glyph) return m;
+  const R = y => {                       /* 그 높이에서의 로브 반지름 */
+    for (let k=0;k<v.robe.length-1;k++){
+      const [r0,y0]=v.robe[k],[r1,y1]=v.robe[k+1];
+      if (y>=y0&&y<=y1) return r0+(r1-r0)*(y-y0)/(Math.max(1e-4,y1-y0));
+    }
+    return .3;
+  };
+  const put=(a,y,w,h)=>{
+    const r=R(y)*1.012, c=Math.cos(a), s=Math.sin(a);
+    const tx=-s, tz=c;                   /* 접선 */
+    const A=[r*c-tx*w,y-h,r*s-tz*w], B=[r*c+tx*w,y-h,r*s+tz*w];
+    const C=[r*c+tx*w,y+h,r*s+tz*w], D=[r*c-tx*w,y+h,r*s-tz*w];
+    m.quad(A,B,C,D,()=>1); m.quad(D,C,B,A,()=>1);
+  };
+  if (v.glyph==='line') for (let i=0;i<8;i++) put(i/8*TAU, .62+ (i%2)*.10, .012, .085);
+  if (v.glyph==='ticks') for (let i=0;i<26;i++) {
+    const major = i%5===0;
+    put(i/26*TAU, .215, .009, major?.055:.030);   /* 옷단의 눈금 */
+  }
+  return m;
+}
+function buildScarf(v, t) {
+  const m = new Mesh(), N=22, pts=[];
+  for (let i=0;i<=N;i++){
+    const u=i/N;
+    pts.push([ .62*u + Math.sin(t*2.0-u*5.0)*0.24*u,
+               1.20 + 0.30*u + Math.sin(t*2.9-u*4.0)*0.12*u,
+               -0.10 - u*v.scarf.len*0.6 + Math.cos(t*2.4-u*4.4)*0.09*u ]);
+  }
+  ribbon(m, pts, v.scarf.w, v.scarf.w*0.30);
+  return m;
+}
+
+/* ═══════════ WebGL ═══════════ */
+/* layout(location=N) 을 반드시 씁니다. 컴파일러가 자리를 마음대로 배정하면
+   법선 버퍼가 AO 자리에, AO 가 법선 자리에 꽂혀도 그림은 "그럴듯하게 틀리게"
+   나옵니다 — 실제로 몸 색이 전부 크림색으로 씻겨 나왔습니다. */
+const VS=`#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNor;
+layout(location=2) in float aAo;
+uniform mat4 uVP, uM;
+out vec3 vN; out vec3 vP; out float vAo;
+void main(){ vec4 w=uM*vec4(aPos,1.0); vP=w.xyz;
+  vN=mat3(uM)*aNor; vAo=aAo; gl_Position=uVP*w; }`;
+
+const FS=`#version 300 es
+precision highp float;
+in vec3 vN; in vec3 vP; in float vAo; out vec4 frag;
+uniform vec3 uCam,uKey,uKeyC,uSkyC,uGndC,uRimC,uBase,uAcc;
+uniform float uAoK, uEmit, uSil;
+void main(){
+  if (uSil > 0.5) { frag = vec4(0.06,0.045,0.04,1.0); return; }   /* 실루엣 모드 */
+  if (uEmit > 0.5) { frag = vec4(uAcc*1.6, 1.0); return; }        /* 발광 문양 */
+  vec3 n = normalize(vN);
+  vec3 V = normalize(uCam - vP);
+
+  float key = max(dot(n, normalize(uKey)), 0.0);
+  /* 반구 환경광 — 위는 하늘색, 아래는 모래 반사. 그늘이 새까맣지 않게 하는 건
+     이것 하나이고, 04 에는 이게 없어서 그림자 쪽이 죽은 검정이었습니다. */
+  vec3 amb = mix(uGndC, uSkyC, n.y*0.5+0.5);
+  /* 림 — 실루엣 가장자리를 배경에서 떼어냅니다 */
+  float rim = pow(1.0 - max(dot(n,V),0.0), 3.0);
+
+  float ao = 1.0 - uAoK*vAo;
+  /* 림은 곱으로 얹습니다. 더하기로 얹었더니 면 전체에 흰빛이 깔려
+     몸 색이 전부 크림색으로 씻겼습니다 — 색은 uBase 가 정합니다. */
+  vec3 c = uBase*(amb*ao + uKeyC*key) * (1.0 + rim*1.4);
+  c += uRimC * rim * rim * 0.22;
+  /* 톤매핑 — Reinhard 는 채도를 눌러 죽이므로 살짝만 겁니다 */
+  c = c/(c*0.55+vec3(1.0));
+  c = pow(c, vec3(1.0/2.2));
+  frag = vec4(c,1.0);
+}`;
+
+/* 바닥 — 접지 그림자가 여기 찍힙니다 */
+const GVS=`#version 300 es
+layout(location=0) in vec3 aPos; uniform mat4 uVP; out vec3 vP;
+void main(){ vP=aPos; gl_Position=uVP*vec4(aPos,1.0); }`;
+const GFS=`#version 300 es
+precision highp float;
+in vec3 vP; out vec4 frag;
+uniform vec3 uSand,uHaze; uniform vec2 uShadow; uniform float uShadowR, uSil;
+void main(){
+  vec3 c = uSil>0.5 ? vec3(0.10,0.082,0.072) : uSand;
+  float r1 = sin(vP.x*3.1+vP.z*0.9)*0.5+0.5;
+  float r2 = sin(vP.x*1.1-vP.z*3.4+1.7)*0.5+0.5;
+  c *= 1.0 + (r1*0.07 + r2*0.05 - 0.06);
+  /* 접지 그림자. 이게 없으면 인물이 무엇을 해도 떠 보입니다. */
+  float d = length((vP.xz-uShadow)/vec2(uShadowR, uShadowR*1.45));
+  c *= 1.0 - 0.72*exp(-d*d*2.2);
+  float f = clamp(length(vP.xz)/13.0, 0.0, 1.0);
+  c = mix(c, uHaze, f*f);
+  c = c/(c+vec3(1.0)); c = pow(c, vec3(1.0/2.2));
+  frag=vec4(c,1.0);
+}`;
+
+const PAL = {
+  /* 키라이트는 앞에서 옵니다 — 게임 카메라가 노을을 향해 걷는 방향이라,
+     인물 등이 보이는 이 시점에서는 얼굴 쪽이 밝고 등이 어둡습니다.
+     1.55 는 과노출이었습니다. 색은 조명이 아니라 몸이 정합니다. */
+  key:[0.45,0.35,0.82], keyC:[1.00,0.74,0.46],
+  skyC:[0.26,0.30,0.46], gndC:[0.38,0.23,0.12],
+  rimC:[1.00,0.62,0.26], sand:[0.58,0.36,0.18], haze:[0.48,0.30,0.18]
+};
+
+function makeGL(cv){
+  const gl = cv.getContext('webgl2',{antialias:true,alpha:false});
+  if(!gl) return null;
+  const mk=(vs,fs)=>{const P=gl.createProgram();
+    for(const [t,s] of [[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){
+      const sh=gl.createShader(t); gl.shaderSource(sh,s); gl.compileShader(sh);
+      if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      gl.attachShader(P,sh);}
+    gl.linkProgram(P);
+    if(!gl.getProgramParameter(P,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(P));
+    return P;};
+  const prog=mk(VS,FS), gprog=mk(GVS,GFS);
+  const U=(p,n)=>gl.getUniformLocation(p,n);
+  const buf=(m)=>{
+    const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+    const put=(data,loc,size)=>{const b=gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER,b);
+      gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0);};
+    put(m.p,0,3); put(m.n,1,3); put(m.a.length?m.a:new Array(m.p.length/3).fill(0),2,1);
+    gl.bindVertexArray(null);
+    return {vao,n:m.p.length/3};
+  };
+  const ground=(()=>{const m=new Mesh(); const S=16;
+    m.quad([-S,0,-S],[S,0,-S],[S,0,S],[-S,0,S]);
+    const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(m.p),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
+    gl.bindVertexArray(null); return {vao,n:m.p.length/3};})();
+  gl.enable(gl.DEPTH_TEST);
+  return {gl,prog,gprog,U,buf,ground};
+}
+
+function drawScene(ctx, cv, items, cam, sil) {
+  const {gl,prog,gprog,U,ground}=ctx;
+  gl.viewport(0,0,cv.width,cv.height);
+  gl.clearColor(0.09,0.062,0.035,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  const VP = mul(perspective(Math.PI/180*30, cv.width/cv.height, 0.3, 60),
+                 lookAt(cam.eye, cam.at, [0,1,0]));
+
+  gl.useProgram(gprog);
+  gl.uniformMatrix4fv(U(gprog,'uVP'),false,VP);
+  gl.uniform3fv(U(gprog,'uSand'),PAL.sand); gl.uniform3fv(U(gprog,'uHaze'),PAL.haze);
+  gl.uniform2f(U(gprog,'uShadow'), items[0].sx||0, items[0].sz||0);
+  gl.uniform1f(U(gprog,'uShadowR'), 0.55);
+  gl.uniform1f(U(gprog,'uSil'), sil?1:0);
+  gl.bindVertexArray(ground.vao); gl.drawArrays(gl.TRIANGLES,0,ground.n);
+
+  gl.useProgram(prog);
+  gl.uniformMatrix4fv(U(prog,'uVP'),false,VP);
+  gl.uniform3fv(U(prog,'uCam'),cam.eye);
+  gl.uniform3fv(U(prog,'uKey'),PAL.key); gl.uniform3fv(U(prog,'uKeyC'),PAL.keyC);
+  gl.uniform3fv(U(prog,'uSkyC'),PAL.skyC); gl.uniform3fv(U(prog,'uGndC'),PAL.gndC);
+  gl.uniform3fv(U(prog,'uRimC'),PAL.rimC);
+  gl.uniform1f(U(prog,'uSil'), sil?1:0);
+  for (const it of items) {
+    gl.uniformMatrix4fv(U(prog,'uM'),false,it.M);
+    gl.uniform3fv(U(prog,'uBase'),it.base); gl.uniform3fv(U(prog,'uAcc'),it.acc);
+    gl.uniform1f(U(prog,'uAoK'), it.aoK===undefined?0.55:it.aoK);
+    gl.uniform1f(U(prog,'uEmit'), it.emit?1:0);
+    gl.bindVertexArray(it.mesh.vao); gl.drawArrays(gl.TRIANGLES,0,it.mesh.n);
+  }
+}
+
+/* ═══════════ 화면 구성 ═══════════ */
+const row = document.getElementById('row');
+const built = VARIANTS.map(v => ({ v, figure: buildFigure(v), glyph: buildGlyph(v) }));
+
+const cells = built.map(({v,figure,glyph}) => {
+  const cell = document.createElement('div'); cell.className='cell';
+  const cv = document.createElement('canvas'); cv.width=760; cv.height=880;
+  cell.appendChild(cv);
+  const cap = document.createElement('div'); cap.className='cap';
+  cap.innerHTML = '<b><i>'+v.id+'</i>'+v.name+' — '+v.tag+'</b><p>'+v.note+'</p>';
+  cell.appendChild(cap);
+  row.appendChild(cell);
+  const ctx = makeGL(cv);
+  if (!ctx) { cell.innerHTML='<p style="padding:2rem;color:#E8D9C0">WebGL2가 필요합니다.</p>'; return null; }
+  return { v, cv, ctx, fig: ctx.buf(figure), gly: glyph.p.length?ctx.buf(glyph):null };
+}).filter(Boolean);
+
+const smallCv = document.getElementById('small'), silCv = document.getElementById('sil');
+const smallCtx = makeGL(smallCv), silCtx = makeGL(silCv);
+const strips = [smallCtx, silCtx].filter(Boolean).map(ctx => ({
+  ctx, figs: built.map(b => ({ v:b.v, fig:ctx.buf(b.figure), gly:b.glyph.p.length?ctx.buf(b.glyph):null }))
+}));
+
+let t0 = performance.now();
+function frame(now) {
+  const t = (now - t0)/1000;
+  const spin = Math.sin(t*0.32)*0.62;          /* 등 뒤 <-> 3/4 사이를 천천히 오갑니다 */
+
+  for (const c of cells) {
+    const sc = buildScarf(c.v, t);
+    const sm = c.ctx.buf(sc);
+    const bob = Math.abs(Math.sin(t*2.9))*0.035;
+    const M = mul(rotY(spin), (()=>{const o=M4();o[0]=o[5]=o[10]=o[15]=1;o[13]=bob;return o;})());
+    const items = [
+      { mesh:c.fig, M, base:c.v.body, acc:c.v.accent, sx:0, sz:0 },
+      { mesh:sm,    M, base:c.v.accent, acc:c.v.accent, aoK:0.1 }
+    ];
+    if (c.gly) items.push({ mesh:c.gly, M, base:c.v.accent, acc:c.v.accent, emit:true });
+    drawScene(c.ctx, c.cv, items, { eye:[0,1.30,4.15], at:[0,0.86,0] }, false);
+    c.ctx.gl.deleteVertexArray(sm.vao);
+  }
+
+  strips.forEach((s, si) => {
+    const cv = si===0 ? smallCv : silCv;
+    const items = [];
+    s.figs.forEach((f, i) => {
+      const x = (i-1)*2.6;
+      const M = mul((()=>{const o=M4();o[0]=o[5]=o[10]=o[15]=1;o[12]=x;return o;})(), rotY(spin*0.4));
+      const sc = buildScarf(f.v, t + i*0.7);
+      const sm = s.ctx.buf(sc);
+      items.push({ mesh:f.fig, M, base:f.v.body, acc:f.v.accent, sx:x, sz:0 });
+      items.push({ mesh:sm, M, base:f.v.accent, acc:f.v.accent, aoK:0.1, _tmp:true });
+      if (f.gly) items.push({ mesh:f.gly, M, base:f.v.accent, acc:f.v.accent, emit:true });
+    });
+    drawScene(s.ctx, cv, items, { eye:[0,1.55,9.2], at:[0,0.85,0] }, si===1);
+    items.forEach(it => { if (it._tmp) s.ctx.gl.deleteVertexArray(it.mesh.vao); });
+  });
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+document.fonts && document.fonts.ready.then(()=>{ document.title='ready · 05 인물 3D'; });
+</script>
