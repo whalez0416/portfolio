@@ -688,15 +688,16 @@ void main(){
   if (vCi>=2) { frag=vec4(mix(base,uHaze,fog),1.0); return; }  /* 발광·어둠은 그대로 */
   vec3 n=normalize(vN); vec3 V=normalize(uCam-vP);
   if (dot(n,V)<0.0) n=-n;
-  /* 해는 앞(+z 노을)에 있으므로 등 뒤 시점에선 역광 — 06의 게임 조명 그대로 */
+  /* 톤 통일의 핵심: 인물이 자기만의 톤매핑·감마를 따로 갖고 있었습니다.
+     지형과 다른 반응 곡선 = 다른 세계의 재질 = "오려붙인 캐릭터 뭉탱이".
+     지형과 같은 선형 공간에서, 같은 태양(uSun 방향·색), 같은 보라 그늘을 씁니다.
+     그늘의 색이 같아야 한 그림입니다. */
   float key=max(dot(n,normalize(vec3(0.15,0.28,0.95))),0.0);
-  vec3 amb=mix(vec3(0.40,0.24,0.12), vec3(0.30,0.32,0.50), n.y*0.5+0.5);
+  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.34,0.28,0.50), n.y*0.5+0.5);
   float rim=pow(1.0-max(dot(n,V),0.0),3.2);
   float ao=1.0-0.5*vAo;
-  vec3 c=base*(amb*ao+vec3(1.05,0.66,0.38)*key)*(1.0+rim*1.5);
-  c+=vec3(1.15,0.62,0.22)*rim*rim*0.30;
-  c=c/(c*0.55+vec3(1.0));
-  c=pow(c,vec3(1.0/2.2));
+  vec3 c=base*(amb*ao+vec3(1.30,0.82,0.45)*key)*(1.0+rim*1.2);
+  c+=vec3(1.25,0.66,0.24)*rim*rim*0.30;
   frag=vec4(mix(c,uHaze,fog),1.0);
 }`);
 /* 비네트 — 마지막에 화면 가장자리를 조용히 눌러 주는 한 겹.
@@ -720,9 +721,11 @@ const uniFig = {
   fog:U(figProg,'uFog'),
   c0:U(figProg,'uC0'), c1:U(figProg,'uC1'), c2:U(figProg,'uC2'), c3:U(figProg,'uC3')
 };
-/* 나: 짙은 적 로브 + 모래색 띠 + 앰버 눈금 · 무리: 회청, 띠 없음 */
-const FIG_ME    = { c0:[0.485,0.115,0.095], c1:[0.82,0.62,0.38], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
-const FIG_CROWD = { c0:[0.235,0.205,0.285], c1:[0.3,0.3,0.35],   c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.05] };
+/* 나: 적 로브 + 모래색 띠 + 앰버 눈금 · 무리: 회보라, 띠 없음.
+   전부 사막 팔레트의 가족입니다 — 로브의 적은 노을의 적이고,
+   무리의 보라는 그늘의 보라입니다. 남의 색을 데려오지 않습니다. */
+const FIG_ME    = { c0:[0.72,0.19,0.13], c1:[1.0,0.74,0.42], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
+const FIG_CROWD = { c0:[0.36,0.30,0.44], c1:[0.4,0.36,0.45], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.05] };
 
 /* ── 신전 ──
    만든 것 하나에 유적 하나. 모래에 반쯤 묻혀 있고, 멀리서는 능선 위의 실루엣으로
@@ -1266,8 +1269,11 @@ function frame(now) {
   /* 신전 */
   gl.uniform1i(uni.lit.terrain, 0);
   gl.uniform1f(uni.lit.glit, 0.0);
-  gl.uniform3fv(uni.lit.litc, [0.72,0.55,0.37]);
-  gl.uniform3fv(uni.lit.dark, [0.16,0.12,0.13]);
+  /* 신전은 사막과 같은 돌입니다: 볕 면은 모래의 주황 가족, 그늘은 지형과
+     같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
+     이유가 이 두 상수였습니다. */
+  gl.uniform3fv(uni.lit.litc, [0.88,0.56,0.28]);
+  gl.uniform3fv(uni.lit.dark, [0.23,0.145,0.235]);
   gl.bindVertexArray(templeMesh.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
@@ -1288,9 +1294,9 @@ function frame(now) {
     gl.drawArrays(gl.TRIANGLES, 0, templeGlyphs.n);
   }
   gl.uniform1f(uni.lit.emit, 0.0);
-  /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 색도 신전보다 죽은 회색 */
-  gl.uniform3fv(uni.lit.litc, [0.42,0.36,0.34]);
-  gl.uniform3fv(uni.lit.dark, [0.12,0.10,0.12]);
+  /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
+  gl.uniform3fv(uni.lit.litc, [0.52,0.38,0.30]);
+  gl.uniform3fv(uni.lit.dark, [0.16,0.11,0.17]);
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
@@ -1375,7 +1381,7 @@ function frame(now) {
   /* 신전 깃발 — 로브보다 바랜 천 색 */
   slotBanner.set(buildBanners(el));
   if (slotBanner.n) {
-    gl.uniform3fv(uniFig.c0, [0.60, 0.20, 0.13]);
+    gl.uniform3fv(uniFig.c0, [0.80, 0.26, 0.16]);   /* 로브와 같은 적 가족, 조금 바램 */
     gl.uniformMatrix4fv(uniFig.m, false, ident());
     gl.bindVertexArray(slotBanner.vao);
     gl.drawArrays(gl.TRIANGLES, 0, slotBanner.n);
