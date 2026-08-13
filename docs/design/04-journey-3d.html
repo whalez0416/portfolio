@@ -404,7 +404,9 @@ const figR = y => {
 /* plain=true 는 무리용: 옷단 띠·눈금 없음. 그 차이가 곧 "나"입니다. */
 function buildFigure(walk, ph, plain) {
   const m = new FMesh();
-  const kick = walk * 0.55;
+  /* 0.55 는 옷단이 너무 들려 속이 훤히 보였습니다 — 차임은 실루엣 가장자리에서
+     읽히면 충분하고, 속을 보여주는 순간 손해만 봅니다. */
+  const kick = walk * 0.28;
   const Y0=.03, Y1=1.47;
   const hemKick = (a,y) => {
     const back = Math.max(0, Math.cos(a-Math.PI/2));
@@ -423,10 +425,12 @@ function buildFigure(walk, ph, plain) {
   const hemAO = Pt => Math.max(0, 1 - Pt[1]/1.35);
   for (let i=0;i<FIG_NS;i++) for (let j=0;j<FIG_NY;j++)
     m.quad(P(i,j), P(i+1,j), P(i+1,j+1), P(i,j+1), hemAO, 0);
-  /* 옷단 안쪽의 어둠 — 이게 없으면 바닥에 붙은 원뿔로 읽힙니다 */
+  /* 옷단 안쪽 — 로브색에 짙은 AO. 처음엔 얼굴 구멍과 같은 새까만 색(c3)을
+     썼는데, 걸으면서 옷단이 들릴 때마다 시커먼 속이 드러나 유령처럼 보였습니다.
+     천의 안쪽은 어두운 "천"이지 공허가 아닙니다. */
   for (let i=0;i<FIG_NS;i++){
     const A=P(i,0), B=P(i+1,0);
-    m.quad(B, A, [A[0]*.55,.015,A[2]*.55], [B[0]*.55,.015,B[2]*.55], 0, 3);
+    m.quad(B, A, [A[0]*.55,.015,A[2]*.55], [B[0]*.55,.015,B[2]*.55], .85, 0);
   }
   if (!plain) {
     for (let i=0;i<FIG_NS;i++){

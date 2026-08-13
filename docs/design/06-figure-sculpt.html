@@ -86,7 +86,7 @@ Mesh.prototype.quad=function(A,B,C,D,ao,ci){ this.tri(A,B,C,ao,ci); this.tri(A,C
    walk: 0(정지)~1(걷기), ph: 걸음 위상 */
 function buildFigure(walk, ph) {
   const m = new Mesh();
-  const kick = walk * 0.55;                       /* 옷자락이 뒤로 차이는 정도 */
+  const kick = walk * 0.28;   /* 0.55는 속이 훤히 보여 유령이 됐음 — 가장자리에서만 읽히게 */
 
   /* ---- 로브 — 종이 아니라 사다리꼴 ----
      체스 말로 보였던 진짜 이유 넷을 여기서 고칩니다.
@@ -140,7 +140,7 @@ function buildFigure(walk, ph) {
   for (let i=0;i<NS;i++){
     const A=P(i,0), B=P(i+1,0);
     const inA=[A[0]*.55, .015, A[2]*.55], inB=[B[0]*.55, .015, B[2]*.55];
-    m.quad(B, A, inA, inB, 0, 3);
+    m.quad(B, A, inA, inB, .85, 0);   /* 안쪽은 어두운 "천"이지 공허(c3)가 아님 */
   }
 
   /* ---- 옷단 띠 — 두 번째 톤 + 계측 눈금. 얇게: 넓으면 전등갓 테두리가 됩니다 ---- */
