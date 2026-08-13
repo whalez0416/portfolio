@@ -670,6 +670,24 @@ const TEMPLES = [
 ];
 TEMPLES.forEach(t => { t.y = height(t.x, t.z) - 1.1; });   /* 모래에 반쯤 묻힘 */
 let inside = null, nearT = null;
+
+/* 월드 → 신전 로컬. 문간은 로컬 -z 입니다. */
+function templeLocal(x, z, t) {
+  const dx = x - t.x, dz = z - t.z;
+  const c = Math.cos(t.yaw), s = Math.sin(t.yaw);
+  return { x: c*dx - s*dz, z: s*dx + c*dz };
+}
+/* 신전 발자국 안이면 막힘 — 문간 복도(|x|<1.5, 앞쪽)만 뚫려 있습니다 */
+function templeBlock(x, z) {
+  for (const t of TEMPLES) {
+    const l = templeLocal(x, z, t);
+    if (Math.abs(l.x) < 6.0 && Math.abs(l.z) < 6.0) {
+      if (Math.abs(l.x) < 1.5 && l.z < -2.0) continue;   /* 문간으로는 들어갈 수 있음 */
+      return true;
+    }
+  }
+  return false;
+}
 const crowd = [];
 for (let i = 0; i < 11; i++)
   crowd.push({ x: (Math.random()-0.5)*14, z: 12 + i*6 + Math.random()*4,
@@ -710,7 +728,16 @@ function goIn(t) {
   keys.f = keys.l = keys.r = false;      /* 안에서는 조작을 요구하지 않습니다 */
   enterEl.classList.remove('on');
 }
-function goOut() { inside = null; roomEl.classList.remove('on'); }
+function goOut() {
+  /* 들어온 문 앞으로 돌려세웁니다 — 제자리에 두면 문지방 위라서
+     나오자마자 다시 들어가지는 무한문이 됩니다 */
+  if (inside) {
+    const t = inside;
+    P0.x = t.x - 8.4*Math.sin(t.yaw); P0.z = t.z - 8.4*Math.cos(t.yaw);
+    yaw = t.yaw + Math.PI; camYaw = yaw;
+  }
+  inside = null; roomEl.classList.remove('on');
+}
 
 const K = (e, d) => {
   const k = e.key;
@@ -766,17 +793,41 @@ function frame(now) {
      내리막은 모래에 실려 내려갑니다(최대 1.5배). 급히 바뀌지 않도록 걸러서,
      언덕 하나를 넘는 것이 "느려졌다가 훅 풀리는" 한 호흡이 됩니다. */
   const slopeF = (height(P0.x + fx*1.4, P0.z + fz*1.4) - height(P0.x - fx*0.4, P0.z - fz*0.4)) / 1.8;
-  spdK += (Math.max(.55, Math.min(1.5, 1 - slopeF*1.7)) - spdK) * Math.min(1, 2.5*dt);
   const glide = Math.max(0, Math.min(1, -slopeF*2.6));        /* 내리막 미끄러짐 정도 */
+  /* 활강은 걷기가 아니라 다른 상태입니다: 오르막 최저 0.55배는 천천히 걸리고,
+     내리막은 2.1배까지 빠르게 붙습니다 — 모래가 밀어주는 건 즉각적이어야
+     "미끄러진다"로 느껴지고, 천천히 붙으면 그냥 빨리 걷기가 됩니다. */
+  spdK += (Math.max(.55, Math.min(2.1, 1 - slopeF*2.1)) - spdK)
+          * Math.min(1, (glide > .1 ? 5.0 : 2.5)*dt);
+  const steer = (keys.r?1:0) - (keys.l?1:0);
 
   if (keys.f) {
     /* 맥동은 있되 들리지 않게: 0.4 진폭 |sin| 은 로봇 걸음이었습니다.
-       sin² 라 꺾임이 없고, 내리막에선 맥동 자체가 잦아들며 활강이 됩니다. */
+       sin² 라 꺾임이 없고, 활강에선 걸음 자체가 사라집니다 — 발이 땅을 안 딛으니까. */
+    const ox = P0.x, oz = P0.z;
     const s2 = Math.sin(ph)*Math.sin(ph);
-    const pulse = (0.93 + 0.13*s2) * (1 - glide*0.5) + glide*1.06;
+    const pulse = (0.93 + 0.13*s2) * (1 - glide*0.7) + glide*1.15;
     const v = SPEED * spdK * pulse;
     P0.x += fx * v * dt; P0.z += fz * v * dt;
+    /* 활강 중 조향은 걷는 회전이 아니라 카빙 — 옆으로 실제로 흘러갑니다 */
+    if (glide > .05 && steer) {
+      P0.x += fz * steer * glide * v * 0.30 * dt;
+      P0.z += -fx * steer * glide * v * 0.30 * dt;
+    }
+    /* 돌은 돌입니다 — 벽은 막히고, 축을 나눠 풀어서 벽을 따라 미끄러집니다.
+       막힌 채로 서 버리면 벽에 붙을 때마다 걸음이 뚝 끊깁니다. */
+    if (templeBlock(P0.x, P0.z)) {
+      if (!templeBlock(P0.x, oz)) P0.z = oz;
+      else if (!templeBlock(ox, P0.z)) P0.x = ox;
+      else { P0.x = ox; P0.z = oz; }
+    }
     moved += v * dt;
+  }
+  /* 문으로 걸어 들어가면 그대로 들어가집니다 — Enter 를 기다리지 않습니다.
+     문 앞에서 키를 누르는 건 "읽으시겠습니까"이고, 문지방을 넘는 건 이미 대답입니다. */
+  if (!inside) for (const t of TEMPLES) {
+    const l = templeLocal(P0.x, P0.z, t);
+    if (Math.abs(l.x) < 1.5 && l.z > -4.3 && l.z < 3.5) { goIn(t); break; }
   }
   cues(moved);
   hintEl.style.opacity = moved > 6 ? 0 : 1;
@@ -799,10 +850,11 @@ function frame(now) {
   /* 걸음의 몸: 바운스·흔들림 모두 반으로 줄이고 내리막에선 더 잦아듭니다 —
      활강 중에 몸이 뚝딱거리면 그 순간 걷기가 아니라 기계가 됩니다.
      전부 위상 ph(거리)에 묶여 있어 발과 땅이 밀리지 않습니다. */
-  const calm  = 1 - glide*0.6;
-  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.038 * calm;
-  const rock  = walkA * Math.sin(ph) * 0.026 * calm;     /* 좌우 롤 */
-  const pitchG= walkA * (0.045 + glide*0.05);            /* 내리막에선 살짝 뒤로 실림 */
+  const calm  = 1 - glide*0.85;                          /* 활강 중엔 걸음의 몸짓이 거의 사라짐 */
+  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.038 * calm - glide*0.05;  /* 모래에 살짝 가라앉음 */
+  const rock  = walkA * Math.sin(ph) * 0.026 * calm
+              + steer * glide * 0.10;                    /* 카빙 — 조향 쪽으로 기욺 */
+  const pitchG= walkA * (0.045 + glide*0.12);            /* 활강에선 몸이 실림 */
   /* 지형 기울기 따라 눕기 — 언덕을 오르는데 몸이 수직이면 그게 곧 "떠 있음"입니다 */
   const gAlong = (height(px+fx*.6, pz+fz*.6) - height(px-fx*.6, pz-fz*.6)) / 1.2;
   const gSide  = (height(px+fz*.6, pz-fx*.6) - height(px-fz*.6, pz+fx*.6)) / 1.2;
@@ -937,7 +989,7 @@ function frame(now) {
   gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
 
   /* 스카프 — 서 있으면 가라앉습니다. 바람은 내가 만드는 거니까 */
-  slotScarf.set(buildScarfMesh(el, walkA > .5 ? 1 : 0.28));
+  slotScarf.set(buildScarfMesh(el, walkA > .5 ? 1 + glide*0.5 : 0.28));
   gl.uniformMatrix4fv(uniFig.m, false, me);
   gl.bindVertexArray(slotScarf.vao);
   gl.drawArrays(gl.TRIANGLES, 0, slotScarf.n);
