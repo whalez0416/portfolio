@@ -700,21 +700,100 @@ void main(){
   c+=vec3(1.25,0.66,0.24)*rim*rim*0.30;
   frag=vec4(mix(c,uHaze,fog),1.0);
 }`);
-/* 비네트 — 마지막에 화면 가장자리를 조용히 눌러 주는 한 겹.
-   03-runner-frame 부터 이 마감이 있었는데 3D 로 오면서 빠졌습니다.
-   시선이 가운데(인물과 지평선)로 모이고, 화면이 "완성된 프레임"이 됩니다. */
-const vigProg = program(`#version 300 es
+/* ══════════ 후처리 ══════════
+   게임사가 하는 그 층입니다. 장면을 화면에 바로 내보내지 않고 텍스처로 받아서
+     ① 밝은 곳 추출(1/4 해상도) → ② 가로·세로 블러 → 블룸
+     ③ ACES 필름 톤매핑 — 하이라이트가 타지 않고 필름처럼 말립니다
+     ④ 컬러 그레이딩 — 그늘은 보라로, 하이라이트는 노을로 미는 스플릿 톤
+     ⑤ 색수차(가장자리) + 필름 그레인 + 비네트
+   장면 셰이더들은 전부 선형 공간에 두고, 감마는 여기서 딱 한 번 갑니다. */
+const fsVS = `#version 300 es
 out vec2 vUv;
 void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2);
-  vUv = p; gl_Position = vec4(p*2.0-1.0, 0.0, 1.0); }`,
-`#version 300 es
+  vUv = p; gl_Position = vec4(p*2.0-1.0, 0.0, 1.0); }`;
+const brightProg = program(fsVS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag; uniform sampler2D uTex;
+void main(){
+  vec3 c = texture(uTex, vUv).rgb;
+  float l = dot(c, vec3(0.299,0.587,0.114));
+  frag = vec4(c * smoothstep(0.52, 0.95, l), 1.0);
+}`);
+const blurProg = program(fsVS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag; uniform sampler2D uTex; uniform vec2 uDir;
+void main(){
+  vec3 c = texture(uTex, vUv).rgb * 0.227;
+  vec2 o1 = uDir*1.3846, o2 = uDir*3.2308;
+  c += (texture(uTex, vUv+o1).rgb + texture(uTex, vUv-o1).rgb) * 0.3162;
+  c += (texture(uTex, vUv+o2).rgb + texture(uTex, vUv-o2).rgb) * 0.0702;
+  frag = vec4(c, 1.0);
+}`);
+const finalProg = program(fsVS, `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 frag;
+uniform sampler2D uTex, uBloom; uniform float uT;
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.51*x+0.06)+0.14), 0.0, 1.0); }
 void main(){
-  float d = distance(vUv, vec2(0.5, 0.46));
-  float v = smoothstep(0.55, 1.05, d);
-  frag = vec4(0.02, 0.01, 0.03, v*0.42);
+  vec2 d = vUv - vec2(0.5, 0.46);
+  float r2 = dot(d,d);
+  /* 색수차 — "아주 살짝"이 0.13이면 60픽셀입니다. 프리즘이 아니라 렌즈여야 합니다 */
+  vec2 ca = d * r2 * 0.012;
+  vec3 c;
+  c.r = texture(uTex, vUv + ca).r;
+  c.g = texture(uTex, vUv).g;
+  c.b = texture(uTex, vUv - ca).b;
+  c += texture(uBloom, vUv).rgb * 0.55;
+  /* 장면 셰이더들은 눈으로 맞춘 표시 공간 값입니다 — 여기서 감마를 또 얹으면
+     전부 우유에 빠집니다. ACES 만 살짝: 하이라이트를 필름처럼 말고 끝. */
+  c = aces(c * 1.04);
+  /* 스플릿 톤 — 어두움은 보라로, 밝음은 노을로 */
+  float l = dot(c, vec3(0.299,0.587,0.114));
+  c = mix(c * vec3(0.95,0.91,1.09), c * vec3(1.05,0.98,0.91), smoothstep(0.15, 0.75, l));
+  c = mix(vec3(l), c, 1.10);                   /* 채도 */
+  /* 비네트 + 그레인 */
+  c *= 1.0 - 0.38*smoothstep(0.30, 1.05, r2*2.4);
+  float g = fract(sin(dot(gl_FragCoord.xy + fract(uT)*61.0, vec2(12.9898,78.233)))*43758.5453);
+  c += (g - 0.5) * 0.028;
+  frag = vec4(c, 1.0);
 }`);
+const uniPost = {
+  bT: U(brightProg,'uTex'),
+  uT: U(blurProg,'uTex'), uD: U(blurProg,'uDir'),
+  fT: U(finalProg,'uTex'), fB: U(finalProg,'uBloom'), fTime: U(finalProg,'uT')
+};
+let post = null;
+function makePost() {
+  if (post) { for (const k of ['ms','msD','fS','fB1','fB2','fB3']) if (post[k+'_del']) post[k+'_del'](); }
+  const W2 = cv.width, H2 = cv.height, W4 = Math.max(2, W2>>2), H4 = Math.max(2, H2>>2);
+  const samples = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+  const rbC = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, rbC);
+  gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA8, W2, H2);
+  const rbD = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, rbD);
+  gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, W2, H2);
+  const fboMS = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fboMS);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rbC);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbD);
+  const mkTex = (w, h) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    return { t, f };
+  };
+  const scene = mkTex(W2, H2), b1 = mkTex(W4, H4), b2 = mkTex(W4, H4);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  post = { fboMS, scene, b1, b2, W2, H2, W4, H4 };
+}
 
 const uniFig = {
   vp:U(figProg,'uVP'), m:U(figProg,'uM'), cam:U(figProg,'uCam'), haze:U(figProg,'uHaze'),
@@ -1099,6 +1178,7 @@ function resize() {
   cv.width = Math.round(innerWidth * dpr);
   cv.height = Math.round(innerHeight * dpr);
   gl.viewport(0, 0, cv.width, cv.height);
+  makePost();                                  /* 후처리 버퍼도 화면 크기를 따라감 */
 }
 addEventListener('resize', resize); resize();
 
@@ -1231,6 +1311,10 @@ function frame(now) {
      겹치지 않은 벽면끼리도 지글거립니다. 카메라는 인물보다 7.8 뒤에 있으니
      1.2 로 밀어도 잘리는 게 없고, 정밀도는 다섯 배쯤 벌어집니다. */
   const VP = mul(perspective(Math.PI/180*44, cv.width/cv.height, 1.2, 2400), lookAt(eye, look, [0,1,0]));
+
+  /* 장면 전체를 MSAA 프레임버퍼로 — 화면에는 후처리를 거쳐서만 나갑니다 */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.fboMS);
+  gl.viewport(0, 0, post.W2, post.H2);
 
   /* 하늘 */
   gl.depthMask(false);
@@ -1388,13 +1472,40 @@ function frame(now) {
   }
   gl.enable(gl.CULL_FACE);
 
-  /* 비네트 — 반드시 맨 마지막, 깊이 무시, 블렌드로 */
+  /* ── 후처리 체인 ── */
   gl.disable(gl.DEPTH_TEST);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.useProgram(vigProg);
+  /* MSAA 를 일반 텍스처로 해상 */
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.fboMS);
+  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, post.scene.f);
+  gl.blitFramebuffer(0, 0, post.W2, post.H2, 0, 0, post.W2, post.H2, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+  /* 밝은 곳 추출 (1/4 해상도) */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.b1.f);
+  gl.viewport(0, 0, post.W4, post.H4);
+  gl.useProgram(brightProg);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, post.scene.t);
+  gl.uniform1i(uniPost.bT, 0);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-  gl.disable(gl.BLEND);
+  /* 가로 블러 → 세로 블러 */
+  gl.useProgram(blurProg);
+  gl.uniform1i(uniPost.uT, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.b2.f);
+  gl.bindTexture(gl.TEXTURE_2D, post.b1.t);
+  gl.uniform2f(uniPost.uD, 1/post.W4, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.b1.f);
+  gl.bindTexture(gl.TEXTURE_2D, post.b2.t);
+  gl.uniform2f(uniPost.uD, 0, 1/post.H4);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  /* 합성 — 톤매핑·그레이딩·색수차·그레인·비네트, 감마는 여기서 한 번 */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, post.W2, post.H2);
+  gl.useProgram(finalProg);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, post.scene.t);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, post.b1.t);
+  gl.uniform1i(uniPost.fT, 0); gl.uniform1i(uniPost.fB, 1);
+  gl.uniform1f(uniPost.fTime, el);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
   gl.enable(gl.DEPTH_TEST);
 
   requestAnimationFrame(frame);
