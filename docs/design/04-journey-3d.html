@@ -46,12 +46,58 @@
     font: 400 12px/1.7 ui-monospace, Consolas, monospace;
     letter-spacing: .16em; color: rgba(255,240,220,.30);
   }
+
+  /* 신전 앞에 섰을 때만 뜨는 한 줄. 이게 이 게임의 유일한 UI입니다. */
+  .enter {
+    position: fixed; left: 0; right: 0; bottom: 16%; text-align: center;
+    font: 300 clamp(15px,1.5vw,20px)/1.8 "Pretendard Variable", Pretendard, system-ui, sans-serif;
+    letter-spacing: .16em; color: rgba(255,236,204,.92); pointer-events: none;
+    opacity: 0; transition: opacity .8s; text-shadow: 0 2px 24px rgba(0,0,0,.9);
+  }
+  .enter.on { opacity: 1; }
+  .enter kbd {
+    font: inherit; border: 1px solid rgba(255,236,204,.5); padding: .05em .5em; margin: 0 .3em;
+  }
+
+  /* 신전 안 — 읽는 자리. 조작을 요구하지 않습니다. */
+  .room {
+    position: fixed; inset: 0; z-index: 5; overflow: auto;
+    display: none; place-items: center; padding: 8vh 8vw;
+    background: radial-gradient(120% 90% at 50% 40%, rgba(30,17,10,.94), rgba(9,6,5,.985));
+    font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+    opacity: 0; transition: opacity 1.1s;
+  }
+  .room.on { display: grid; opacity: 1; }
+  .room > div { max-width: 46rem; }
+  .room h2 {
+    font: 400 13px/1.8 ui-monospace, Consolas, monospace;
+    letter-spacing: .34em; color: #FFB84D; margin: 0 0 2.2rem;
+  }
+  .room .why {
+    font-weight: 300; font-size: clamp(1.3rem, 2.7vw, 2.1rem); line-height: 1.55;
+    letter-spacing: -.01em; color: #FFF6E6; margin: 0 0 2rem;
+  }
+  .room p {
+    font-weight: 300; font-size: clamp(.95rem, 1.25vw, 1.1rem); line-height: 2.1;
+    color: rgba(255,240,220,.62); margin: 0; white-space: pre-line;
+  }
+  .room .out {
+    margin-top: 3rem; font: 300 13px/1.8 "Pretendard Variable", Pretendard, system-ui, sans-serif;
+    letter-spacing: .2em; color: rgba(255,240,220,.34);
+  }
 </style>
 
 <canvas id="gl"></canvas>
 <div class="say"><b id="line"></b></div>
-<div class="badge">04 · JOURNEY TONE · 갈림길</div>
-<div class="hint" id="hint">↑ 걷기 &nbsp;·&nbsp; ← → 방향 &nbsp;·&nbsp; 산 쪽으로 가보세요</div>
+<div class="badge">04 · JOURNEY TONE · 갈림길 · 신전</div>
+<div class="hint" id="hint">↑ 걷기 &nbsp;·&nbsp; ← → 방향 &nbsp;·&nbsp; 산 쪽으로, 유적을 찾아보세요</div>
+<div class="enter" id="enter"></div>
+<div class="room" id="room"><div>
+  <h2 id="room-name"></h2>
+  <p class="why" id="room-why"></p>
+  <p id="room-body"></p>
+  <p class="out">⏎ 또는 Esc — 나가기</p>
+</div></div>
 
 <script>
 /* ═══════════ 최소 행렬 ═══════════ */
@@ -172,26 +218,48 @@ const litVS = `#version 300 es
 in vec3 aPos;
 uniform mat4 uVP, uModel;
 uniform vec2 uOrigin;
+uniform vec3 uCam;
 uniform int uTerrain;
-out vec3 vW;
+out vec3 vW;    /* 월드 좌표 — 안개와 모래 결처럼 저주파에만 씁니다 */
+out vec3 vRel;  /* 카메라 기준 좌표 — 법선은 반드시 이걸로 뽑습니다 */
 ${PATH}
 void main(){
   vec3 w;
   if (uTerrain == 1) { vec2 p = aPos.xz + uOrigin; w = vec3(p.x, height(p), p.y); }
   else               { w = (uModel * vec4(aPos,1.0)).xyz; }
-  vW = w; gl_Position = uVP * vec4(w,1.0);
+  vW = w; vRel = w - uCam;
+  gl_Position = uVP * vec4(w,1.0);
 }`;
 const litFS = `#version 300 es
 precision highp float;
-in vec3 vW; out vec4 frag;
+in vec3 vW; in vec3 vRel; out vec4 frag;
 uniform vec3 uCam, uSun, uLit, uDark, uHaze;
-uniform float uFog, uGlit;
+uniform float uFog, uGlit, uEmit;
 void main(){
-  vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
-  if (n.y < 0.0) n = -n;
+  float dE = length(vRel);
+  /* 스스로 빛나는 면 — 신전 입구에서 새어 나오는 빛입니다.
+     빛 계산을 태우면 문간이 그냥 어두운 구멍이 되고, 멀리서 "저기 뭔가 있다"가
+     안 보입니다. 저니의 유적은 항상 입구가 빛나고 있어서 눈에 걸립니다. */
+  if (uEmit > 0.5) {
+    float fE = 1.0 - exp(-dE*dE*uFog*0.35);
+    frag = vec4(mix(uLit, uHaze, clamp(fE,0.0,1.0)), 1.0);
+    return;
+  }
+  /* 카메라 기준 좌표로 뽑습니다. 월드 좌표(z가 130, 300, 1000 으로 커짐)로 뽑으면
+     한 픽셀당 변화량이 float32 해상도(값 x 2^-23)에 묻혀 법선이 난수가 되고,
+     넓은 벽이 검은 점으로 자글자글 뒤덮입니다. 처음엔 z-파이팅인 줄 알았는데,
+     아무것도 겹치지 않은 기둥에서도 똑같이 나서 아닌 걸 알았습니다.
+     걸어갈수록 심해지는 종류라 더 나빴습니다. */
+  vec3 n = normalize(cross(dFdx(vRel), dFdy(vRel)));
+  /* cross(dFdx, dFdy) 는 방향만 맞고 부호는 화면상 감김에 따라 뒤집힙니다.
+     예전엔 n.y < 0 이면 뒤집었는데, 벽처럼 수직인 면은 n.y 가 0 이라
+     그 보정이 아무 일도 안 하고 부호가 반올림 잡음에 맡겨졌습니다 —
+     한 픽셀은 해를 보고 옆 픽셀은 등지면서, 신전 벽이 검은 점으로 자글거렸습니다.
+     보이는 면의 법선은 반드시 카메라 쪽을 향합니다. 그것만 강제하면 됩니다. */
+  if (dot(n, vRel) > 0.0) n = -n;
   float d = max(dot(n, normalize(uSun)), 0.0);
   vec3 c = mix(uDark, uLit, pow(d, 0.85));
-  float dist = length(vW - uCam);
+  float dist = dE;
   /* 모래 결과 반짝임. 저니 사막의 절반은 이겁니다 — 없으면 그냥 갈색 언덕이고,
      실제로 근경이 주황색 그라데이션처럼 텅 비어 보였습니다.
      결은 지오메트리가 아니라 음영으로 냅니다: 정점을 안 건드리니 CPU와
@@ -215,8 +283,8 @@ const lit = program(litVS, litFS);
 /* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
    안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
 const farProg = program(`#version 300 es
-in vec3 aPos; uniform mat4 uVP, uModel; out vec3 vW;
-void main(){ vW = (uModel*vec4(aPos,1.0)).xyz; gl_Position = uVP*vec4(vW,1.0); }`,
+in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uCam; out vec3 vW;
+void main(){ vec3 w = (uModel*vec4(aPos,1.0)).xyz; vW = w - uCam; gl_Position = uVP*vec4(w,1.0); }`,
 `#version 300 es
 precision highp float;
 in vec3 vW; out vec4 frag;
@@ -232,9 +300,9 @@ const uni = {
   sky:  { haze: U(skyProg,'uHaze'), high: U(skyProg,'uHigh'), sunX: U(skyProg,'uSunX') },
   lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
           cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
-          haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit') },
+          haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit') },
   far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
-          tint:U(farProg,'uTint'), mix:U(farProg,'uMix') }
+          tint:U(farProg,'uTint'), mix:U(farProg,'uMix'), cam:U(farProg,'uCam') }
 };
 
 function mesh(arr) {
@@ -347,6 +415,53 @@ function buildScarf(t, len, wind, drive) {
   gl.bufferSubData(gl.ARRAY_BUFFER, 0, d);
 }
 
+/* ── 신전 ──
+   만든 것 하나에 유적 하나. 모래에 반쯤 묻혀 있고, 멀리서는 능선 위의 실루엣으로
+   먼저 보이고, 가까이 가면 문간에서 빛이 새어 나옵니다. 들어가면 안에 기록이 있습니다.
+
+   길가에 세운 문틀이 아니라 묻힌 유적인 게 중요합니다 — 문틀은 지나가면서 스치는
+   것이고, 유적은 찾아가서 들어가는 것입니다. 만든 것을 보여주는 방식으로는 뒤가 맞습니다.
+
+   상자 하나하나의 감김 방향에 목숨이 걸려 있습니다. 지형에서 이미 한 번
+   뒤집혀서 절반이 안 보였으므로, 여기서는 면마다 바깥쪽으로 CCW를 맞춰 둡니다. */
+function box(v, cx, cy, cz, a, bb, c) {
+  const X=(s)=>cx+s*a, Y=(s)=>cy+s*bb, Z=(s)=>cz+s*c;
+  const p=(sx,sy,sz)=>[X(sx),Y(sy),Z(sz)];
+  const q=(A,B,C,D)=>{ v.push(...A,...B,...C, ...A,...C,...D); };
+  q(p(1,-1,-1),p(1,1,-1),p(1,1,1),p(1,-1,1));       /* +X */
+  q(p(-1,-1,1),p(-1,1,1),p(-1,1,-1),p(-1,-1,-1));   /* -X */
+  q(p(-1,1,-1),p(-1,1,1),p(1,1,1),p(1,1,-1));       /* +Y */
+  q(p(-1,-1,1),p(-1,-1,-1),p(1,-1,-1),p(1,-1,1));   /* -Y */
+  q(p(-1,-1,1),p(1,-1,1),p(1,1,1),p(-1,1,1));       /* +Z */
+  q(p(1,-1,-1),p(-1,-1,-1),p(-1,1,-1),p(1,1,-1));   /* -Z */
+}
+const templeMesh = (() => {
+  const v = [];
+  /* 같은 평면을 공유하는 면이 하나도 없어야 합니다. 처음엔 옆벽과 뒷벽의 +z 면이
+     둘 다 z=5.2 에 있었고, 상인방 옆면과 앞벽 안쪽 면도 둘 다 x=±1.8 이었습니다.
+     그러면 깊이값이 같아 매 픽셀이 둘 중 아무거나 이기고, 벽 전체가 지글거립니다.
+     의도적으로 파고들게 두되 면끼리 겹치지는 않게 잡습니다. */
+  box(v,  0,-1.6, 0,    6.4, 2.6, 6.4);     /* 기단 — 아랫부분은 모래에 묻힙니다 */
+  box(v,  0, 3.0, 4.7,  5.3, 3.6, 0.62);    /* 뒷벽  z 4.08..5.32 */
+  box(v, -4.85,3.0, 0,  0.58,3.6, 4.55);    /* 옆벽  z -4.55..4.55 (뒷벽 안쪽) */
+  box(v,  4.85,3.0, 0,  0.58,3.6, 4.55);
+  box(v, -3.62,3.0,-4.75,1.77,3.6, 0.6);    /* 앞벽 — 가운데를 비워 문간을 냅니다 */
+  box(v,  3.62,3.0,-4.75,1.77,3.6, 0.6);
+  box(v,  0, 6.15,-4.75,1.95,0.52,0.66);    /* 상인방 — 앞벽을 조금 파고듭니다 */
+  box(v,  0, 7.05, 0,   5.72,0.6, 5.72);    /* 지붕 슬래브 */
+  box(v, -7.25,3.4,-7.1,0.62,4.0, 0.62);    /* 앞에 선 기둥 둘 */
+  box(v,  7.25,3.4,-7.1,0.62,4.0, 0.62);
+  box(v,  0, 0.55,-7.5, 3.05,0.52,1.42);    /* 계단 */
+  return mesh(new Float32Array(v));
+})();
+/* 문간 안쪽에서 새어 나오는 빛. 문틀에 딱 맞춰 밝은 판을 끼우면 빛이 아니라
+   노란 포스터로 보입니다 — 안쪽으로 물려서 어둑한 방이 켜져 있는 것처럼 둡니다. */
+const templeGlow = (() => {
+  const v = [];
+  box(v, 0, 2.6, 2.2, 1.55, 2.7, 0.05);
+  return mesh(new Float32Array(v));
+})();
+
 /* ── 멀리 있는 산 ── */
 const mountain = (() => {
   const v = [], peaks = [[0,1,0.72],[-0.62,0.58,0.5],[0.55,0.66,0.55],[-1.25,0.4,0.42],[1.2,0.44,0.44]];
@@ -381,6 +496,25 @@ let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0;
 let keys = { f:false, l:false, r:false };
 let camBack = 6.4, camUp = 2.6;
 const MOUNTAIN = { x: 40, z: 1500 };            /* 월드에 못박힌 목표. 저니의 산입니다 */
+
+/* 프로토타입에는 셋만 세워 둡니다. 본편에서는 여덟 개고, 안의 본문은
+   index.html 의 .rec 한 벌에서 꺼내 씁니다 — 여기에 복제하지 않습니다. */
+const TEMPLES = [
+  { x:   6, z: 132, yaw: 0.05, name: 'aeo_sync',
+    why: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
+    body: '표준화와 고유함은 반대말인데 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.\n' +
+          '의료라서 틀리면 안 되고 심의 대상이라, 자동 생성 후 사람이 검수하는 순서를 뒤집어\n' +
+          '검수를 파이프라인 안에 넣었습니다.' },
+  { x: -78, z: 268, yaw: 0.5, name: 'MediSTT',
+    why: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
+    body: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
+  { x:  96, z: 352, yaw: -0.6, name: 'aeo-log-analyzer',
+    why: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
+    body: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.\n' +
+          'AI 봇은 JavaScript를 실행하지 않아 Google Analytics에 아무것도 안 잡힙니다.' }
+];
+TEMPLES.forEach(t => { t.y = height(t.x, t.z) - 1.1; });   /* 모래에 반쯤 묻힘 */
+let inside = null, nearT = null;
 const crowd = [];
 for (let i = 0; i < 11; i++)
   crowd.push({ x: (Math.random()-0.5)*22, z: 26 + i*13 + Math.random()*7,
@@ -411,8 +545,25 @@ function cues(el) {
 }
 lineEl.style.whiteSpace = 'pre-line';
 
+const enterEl = document.getElementById('enter'), roomEl = document.getElementById('room');
+function goIn(t) {
+  inside = t;
+  document.getElementById('room-name').textContent = t.name;
+  document.getElementById('room-why').textContent = t.why;   /* 문장에 이미 따옴표가 있어 겹따옴표가 됩니다 */
+  document.getElementById('room-body').textContent = t.body;
+  roomEl.classList.add('on');
+  keys.f = keys.l = keys.r = false;      /* 안에서는 조작을 요구하지 않습니다 */
+  enterEl.classList.remove('on');
+}
+function goOut() { inside = null; roomEl.classList.remove('on'); }
+
 const K = (e, d) => {
   const k = e.key;
+  if (inside) {                          /* 안에 있는 동안은 나가는 것 말고 아무것도 안 받습니다 */
+    if (d && (k === 'Enter' || k === 'Escape')) { goOut(); e.preventDefault(); }
+    return;
+  }
+  if (d && k === 'Enter' && nearT) { goIn(nearT); e.preventDefault(); return; }
   if (k === 'ArrowLeft'  || k === 'a' || k === 'A') keys.l = d;
   else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = d;
   else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === ' ') keys.f = d;
@@ -457,6 +608,20 @@ function frame(now) {
   cues(moved);
   hintEl.style.opacity = moved > 6 ? 0 : 1;
 
+  /* 제일 가까운 신전. 문간 쪽에서 다가와야 들어갈 수 있습니다 — 뒷벽에
+     붙어서 들어가지는 것보다, 돌아 들어가는 편이 유적답습니다. */
+  nearT = null;
+  if (!inside) {
+    let best = 1e9;
+    for (const t of TEMPLES) {
+      const dx = P0.x - t.x, dz = P0.z - t.z, d = Math.hypot(dx, dz);
+      const front = -(dx*Math.sin(t.yaw) + dz*Math.cos(t.yaw));   /* 문간은 로컬 -z */
+      if (d < 16 && front > 1 && d < best) { best = d; nearT = t; }
+    }
+  }
+  enterEl.innerHTML = nearT ? (nearT.name + ' <kbd>⏎</kbd> 들어가기') : '';
+  enterEl.classList.toggle('on', !!nearT);
+
   const px = P0.x, pz = P0.z, py = height(px, pz);
   const walk = keys.f ? Math.abs(Math.sin(el*3.1))*0.055 : 0;
 
@@ -482,7 +647,10 @@ function frame(now) {
 
   const eye = [cx, camY, cz];
   const look = [px + cfx*16, groundAvg(px, pz, cfx, cfz) + 1.9 + wide*1.2, pz + cfz*16];
-  const VP = mul(perspective(Math.PI/180*44, cv.width/cv.height, 0.4, 2600), lookAt(eye, look, [0,1,0]));
+  /* 근평면 0.4 · 원평면 2600 은 비율이 6500:1 이라 깊이 정밀도가 남아나지 않고,
+     겹치지 않은 벽면끼리도 지글거립니다. 카메라는 인물보다 7.8 뒤에 있으니
+     1.2 로 밀어도 잘리는 게 없고, 정밀도는 다섯 배쯤 벌어집니다. */
+  const VP = mul(perspective(Math.PI/180*44, cv.width/cv.height, 1.2, 2400), lookAt(eye, look, [0,1,0]));
 
   /* 하늘 */
   gl.depthMask(false);
@@ -498,6 +666,7 @@ function frame(now) {
   gl.useProgram(farProg);
   gl.uniformMatrix4fv(uni.far.vp, false, VP);
   gl.uniformMatrix4fv(uni.far.model, false, trs(MOUNTAIN.x, -30, MOUNTAIN.z, 0, 190));
+  gl.uniform3fv(uni.far.cam, eye);
   gl.uniform3fv(uni.far.haze, P.haze); gl.uniform3fv(uni.far.tint, P.mtn);
   gl.uniform1f(uni.far.mix, 0.30);
   gl.bindVertexArray(mountain.vao); gl.drawArrays(gl.TRIANGLES, 0, mountain.n);
@@ -515,10 +684,27 @@ function frame(now) {
   gl.uniform2f(uni.lit.origin, Math.round(cx/CELL)*CELL, Math.round(cz/CELL)*CELL);
   gl.bindVertexArray(terrain.vao); gl.drawArrays(gl.TRIANGLES, 0, terrain.n);
 
-  /* 무리 — 처음엔 같이 가다가 오른쪽 능선으로 넘어갑니다.
-     이름도 대화도 없이 사라지는 것, 저니가 하는 그대로입니다. */
+  /* 신전 */
   gl.uniform1i(uni.lit.terrain, 0);
   gl.uniform1f(uni.lit.glit, 0.0);
+  gl.uniform3fv(uni.lit.litc, [0.72,0.55,0.37]);
+  gl.uniform3fv(uni.lit.dark, [0.16,0.12,0.13]);
+  gl.bindVertexArray(templeMesh.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y, t.z, t.yaw, 1));
+    gl.drawArrays(gl.TRIANGLES, 0, templeMesh.n);
+  }
+  gl.uniform1f(uni.lit.emit, 1.0);
+  gl.uniform3fv(uni.lit.litc, [0.86, 0.52, 0.19]);
+  gl.bindVertexArray(templeGlow.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y, t.z, t.yaw, 1));
+    gl.drawArrays(gl.TRIANGLES, 0, templeGlow.n);
+  }
+  gl.uniform1f(uni.lit.emit, 0.0);
+
+  /* 무리 — 처음엔 같이 가다가 능선 너머로 넘어갑니다.
+     이름도 대화도 없이 사라지는 것, 저니가 하는 그대로입니다. */
   gl.uniform3fv(uni.lit.litc, [0.35,0.24,0.26]);
   gl.uniform3fv(uni.lit.dark, [0.13,0.09,0.11]);
   gl.bindVertexArray(robeMesh.vao);
