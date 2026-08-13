@@ -265,13 +265,27 @@
   .jn__hud .gauges b { color: var(--ink); font-weight: 700; }
   .jn__hud .gauges span[hidden] { display: none; }
 
-  /* event ticker — what just happened, then it fades */
+  /* 저니식 자막 — 계기판은 거의 없는데 서사만 화면 가운데 뜹니다.
+     얇고, 자간 넓고, 아주 천천히 나타났다 사라집니다. 이게 요점입니다. */
   .jn__tick {
-    position: absolute; left: .8rem; top: 2.3rem; margin: 0; pointer-events: none;
-    font-family: var(--mono); font-size: var(--f--2); color: var(--sig);
-    text-shadow: 0 1px 2px #000; opacity: 0; transition: opacity .4s;
+    position: absolute; inset: 0; margin: 0; pointer-events: none;
+    display: grid; place-items: center; padding: 0 8%;
+    text-align: center; white-space: pre-line;
+    font-weight: 300; font-size: clamp(.9rem, 2vw, 1.55rem); line-height: 1.6;
+    letter-spacing: .04em; color: #FFF6E6;
+    text-shadow: 0 2px 40px rgba(0,0,0,.85), 0 0 90px rgba(0,0,0,.6);
+    opacity: 0; transition: opacity 2.2s ease;
   }
   .jn__tick.on { opacity: 1; }
+
+  /* 나침반 — 신전에서 나오면 어디가 어디인지 모르게 됩니다.
+     지도가 아니라 얇은 원판 하나: 진행 방향이 늘 위, 산이 침, 신전이 점. */
+  .jn__nav {
+    position: absolute; top: .7rem; right: .7rem; width: 88px; height: 88px;
+    opacity: 0; transition: opacity 1.2s; pointer-events: none;
+  }
+  .jn__nav.on { opacity: .9; }
+  @media (max-width: 560px) { .jn__nav { width: 62px; height: 62px; } }
 
   /* pickup banner — never pauses the walk */
   .jn__banner {
@@ -294,7 +308,7 @@
     font-size: var(--f--2); display: block; margin-top: .3rem;
   }
   @media (prefers-reduced-motion: reduce) {
-    .jn__banner, .jn__tick { transition: none; }
+    .jn__banner, .jn__tick, .jn__nav { transition: none; }
   }
 
   .jn__cue {
@@ -323,7 +337,7 @@
      showing its own scoreboard over a stale "Enter — 기록 읽기" cue */
   /* pointer-events too, not just opacity: the cue is a real button now, and an
      invisible button that still takes clicks is worse than a visible one */
-  .jn__stage:has(> .jn__veil:not([hidden])) :is(.jn__hud, .jn__tick, .jn__cue, .jn__banner) {
+  .jn__stage:has(> .jn__veil:not([hidden])) :is(.jn__hud, .jn__tick, .jn__cue, .jn__banner, .jn__nav) {
     opacity: 0; pointer-events: none;
   }
   .jn__veil h3 {
@@ -652,10 +666,10 @@
       <div class="band__head">
         <h2>읽지 말고, 걸어보세요</h2>
         <p><b>길은 제 이력이고, 길가의 문은 제가 만든 것들입니다.</b>
-          노출을 팔던 무리와 같은 길에서 출발합니다. 앞만 보고 달리는 무리의 등이 보이고,
-          갈림길에서 <b>왼쪽으로 내려서면</b> 저 혼자 다른 길에 남습니다 — 시점은 처음부터 끝까지 하나입니다.
-          문은 지나온 순서가 곧 만든 순서라, <b>크롤러는 여섯 번째 문을 지나기 전까지 보이지 않습니다</b> —
-          7개월을 그렇게 만들었습니다. 문은 안 열고 끝까지 달려도 됩니다.</p>
+          노출을 팔던 무리와 같은 길에서 출발합니다. 앞만 보고 걷는 무리의 등이 보이고,
+          어느 지점에서 무리가 한꺼번에 꺾어 갈 때 저는 산 쪽으로 계속 걷습니다 — 시점은 처음부터 끝까지 하나입니다.
+          유적은 놓인 순서가 곧 만든 순서라, <b>여섯 번째 유적을 나오기 전까지는 아무것도 보이지 않습니다</b> —
+          7개월을 그렇게 만들었습니다. 하나도 안 들어가고 산까지 걸어도 됩니다.</p>
       </div>
 
       <div class="jn">
@@ -664,8 +678,8 @@
           <span class="count" id="jn-stat">대기 중</span>
         </div>
         <div class="jn__stage">
-          <canvas id="jn" width="960" height="540"
-                  aria-label="열 장면짜리 이력 게임. 등 뒤에서 보는 시점 하나로 처음부터 끝까지 달립니다. 무리와 같은 길에서 출발해 갈림길에서 왼쪽으로 내려서면 제 길로 갈라집니다. 좌우 화살표로 방향을 잡고 아래 화살표로 페이지를 발행하며, 길 위의 문 여덟 개는 지나가면 자동으로 열리고 Enter로 읽을 수 있는 선택 사항입니다. 진행 상황은 소리 없이 화면 아래 안내 영역으로 읽어 드리고, 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
+          <canvas id="jn" width="960" height="540" tabindex="0"
+                  aria-label="열 장면짜리 이력 게임. 등 뒤에서 보는 시점 하나로 사막을 걸어 지평선의 산까지 갑니다. 위 화살표로 걷고 좌우 화살표로 방향을 잡습니다. 모래에 묻힌 유적 여덟 개가 제가 만든 도구들이고, 문간을 넘거나 Enter를 누르면 들어가 읽을 수 있는 선택 사항입니다. 진행 상황은 소리 없이 화면 아래 안내 영역으로 읽어 드리고, 같은 내용이 아래 ‘대표 프로젝트’에 글로도 있습니다."></canvas>
 
           <div class="jn__hud" aria-hidden="true">
             <span class="ch" id="jn-ch">1 / 10</span>
@@ -680,6 +694,7 @@
             </span>
           </div>
           <p class="jn__tick" id="jn-tick" aria-hidden="true"></p>
+          <canvas class="jn__nav" id="jn-nav" width="232" height="232" aria-hidden="true"></canvas>
           <!-- a button, not a caption: on touch there is no Enter key, and this
                is the only thing on screen that offers to open a door -->
           <button class="jn__cue" id="jn-cue" type="button" hidden></button>
@@ -703,14 +718,15 @@
             <h3>여기까지가 최희준입니다</h3>
             <p class="lede">저는 노출을 팔다가, 환자를 세겠다고 자리를 옮겼습니다.
               10년이 넘었고 지금도 같은 일을 합니다 — 세는 대상만 바뀌었습니다.</p>
-            <p>열 장면을 달려서 지나갑니다. <b>등 뒤에서 보는 시점 하나</b>로 끝까지 갑니다 —
-              중간에 바뀌지 않습니다. 달리는 건 알아서 하고, 당신이 하는 건 <b>방향</b>과 <b>발행</b> 두 개뿐입니다.
-              길 위의 문 여덟 개는 제가 만든 것들인데, <b>하나도 안 열고 끝까지 달려도 됩니다.</b></p>
+            <p>열 장면을 걸어서 지나갑니다. <b>등 뒤에서 보는 시점 하나</b>로 끝까지 갑니다 —
+              중간에 바뀌지 않습니다. 정해진 길은 없고, 방향은 지평선의 <b>산</b>이 줍니다.
+              모래에 반쯤 묻힌 <b>유적 여덟</b>이 제가 만든 것들인데,
+              <b>하나도 안 들어가고 산까지 걸어도 됩니다.</b></p>
             <p class="keys">
+              <span><kbd>↑</kbd> 걷기</span>
               <span><kbd>←</kbd><kbd>→</kbd> 방향</span>
-              <span>갈림길에서 <kbd>←</kbd> 왼쪽으로</span>
-              <span><kbd>↓</kbd> 발행</span>
-              <span><kbd>Enter</kbd> 문 읽기</span>
+              <span>산 쪽으로</span>
+              <span><kbd>Enter</kbd> 유적 읽기</span>
             </p>
             <button class="btn" id="jn-go" type="button">달리기 시작</button>
           </div>
@@ -725,13 +741,12 @@
         <div class="jn__pad">
           <button type="button" data-key="l" aria-label="왼쪽으로">◀</button>
           <button type="button" data-key="r" aria-label="오른쪽으로">▶</button>
-          <button type="button" data-key="d" id="jn-pad-plant" aria-label="페이지 발행">▼ 발행</button>
+          <button type="button" data-key="u" id="jn-pad-walk" aria-label="걷기">▲ 걷기</button>
         </div>
         <div class="jn__legend">
-          <b>방향</b> <kbd>←</kbd><kbd>→</kbd> — 달리는 건 알아서 합니다 &nbsp;|&nbsp;
-          <b>갈림길</b> <kbd>←</kbd> 왼쪽으로 내려서면 제 길입니다 &nbsp;|&nbsp;
-          <b>발행</b> <kbd>↓</kbd> — 여섯 번째 문 전까지는 읽혔는지 알 수 없습니다 &nbsp;|&nbsp;
-          <b>문</b> <kbd>Enter</kbd> 또는 화면 아래 앰버 버튼 탭 — 선택입니다 &nbsp;|&nbsp;
+          <b>걷기</b> <kbd>↑</kbd> — 직접 걷습니다 &nbsp;|&nbsp;
+          <b>방향</b> <kbd>←</kbd><kbd>→</kbd> — 길은 정해져 있지 않습니다. 저 산 쪽으로 &nbsp;|&nbsp;
+          <b>유적</b> 문간을 넘으면 들어가집니다. <kbd>Enter</kbd> 또는 앰버 버튼 탭 — 선택입니다 &nbsp;|&nbsp;
           달리기 싫으시면 그냥 스크롤하세요 — 같은 내용이 아래에 전부 글로 있습니다.
         </div>
       </div>
@@ -1342,1086 +1357,1175 @@
   box.addEventListener('input', run);
   run();
 
-  /* ================= JOURNEY — 등 뒤에서 보는 한 시점 =================
-     One camera, the whole way. The piece is twelve years on one road, so it is
-     one shot: no top-down prologue, no tilt, no handover. Everything in the
-     world is (x, z) in world units and goes through the same projection.
+  /* ================= JOURNEY — 사막 한 컷 =================
+     등 뒤에서 보는 시점 하나로 처음부터 끝까지 갑니다. 길이 제 12년이고,
+     길 위의 유적 여덟이 제가 만든 것들입니다.
 
-     The mechanic IS the argument. Every door you run through grants exactly one
-     verb, and the verb is the claim it makes: you cannot count what you cannot
-     see, so the citation dial reads "?" until the sixth door.
+     엔진(지형·인물·신전·후처리)은 docs/design/04-journey-3d.html 에서 그대로
+     옮겨 왔습니다 — 그 파일이 화풍의 원본이고, 여기서는 DOM 만 이력서 쪽에
+     맞춰 다시 물렸습니다. 고칠 일이 있으면 저쪽을 먼저 고치세요.
 
-     Art direction B (docs/design/01-directions.html): you are running on an
-     instrument. The rungs under your feet are the measuring surface, and that
-     is character description, not decoration.
+     의존성은 여전히 0입니다. WebGL2 는 라이브러리가 아니라 브라우저 기본
+     기능이고, 텍스처도 모델도 외부 파일이 아니라 전부 코드에서 만듭니다.
 
-     The eight records below this canvas stay the single source of truth; the
-     game only has to make you want to read them. */
+     본문은 한 벌뿐입니다 — 신전 안의 글은 아래 '대표 프로젝트'의 .rec 를
+     그대로 꺼내 씁니다. 게임 안에 설명을 복제하지 마세요.
+
+     계측기(aeo-log-analyzer)는 여섯 번째입니다. 앞으로 당기면 8장이 무너집니다. */
 
   var jnc = document.getElementById('jn');
   if (jnc && jnc.getContext) (function () {
-    var g = jnc.getContext('2d');
+/* ═══════════ 최소 행렬 ═══════════ */
+const TAU = Math.PI * 2;
+const M4 = () => new Float32Array(16);
+function perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), o = M4();
+  o[0] = f / aspect; o[5] = f; o[11] = -1;
+  o[10] = (far + near) / (near - far); o[14] = 2 * far * near / (near - far);
+  return o;
+}
+function lookAt(e, c, up) {
+  let zx = e[0]-c[0], zy = e[1]-c[1], zz = e[2]-c[2];
+  let l = Math.hypot(zx,zy,zz) || 1; zx/=l; zy/=l; zz/=l;
+  let xx = up[1]*zz - up[2]*zy, xy = up[2]*zx - up[0]*zz, xz = up[0]*zy - up[1]*zx;
+  l = Math.hypot(xx,xy,xz) || 1; xx/=l; xy/=l; xz/=l;
+  const yx = zy*xz - zz*xy, yy = zz*xx - zx*xz, yz = zx*xy - zy*xx;
+  const o = M4();
+  o[0]=xx; o[1]=yx; o[2]=zx; o[4]=xy; o[5]=yy; o[6]=zy; o[8]=xz; o[9]=yz; o[10]=zz;
+  o[12]=-(xx*e[0]+xy*e[1]+xz*e[2]);
+  o[13]=-(yx*e[0]+yy*e[1]+yz*e[2]);
+  o[14]=-(zx*e[0]+zy*e[1]+zz*e[2]);
+  o[15]=1; return o;
+}
+function mul(a, b) {                       /* a * b */
+  const o = M4();
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+    let s = 0; for (let k = 0; k < 4; k++) s += a[k*4+r] * b[c*4+k];
+    o[c*4+r] = s;
+  }
+  return o;
+}
+function ident(){const o=M4();o[0]=o[5]=o[10]=o[15]=1;return o;}
+function rotX(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
+  o[0]=1;o[5]=c;o[6]=s;o[9]=-s;o[10]=c;o[15]=1;return o;}
+function rotZ(t){const c=Math.cos(t),s=Math.sin(t),o=M4();
+  o[0]=c;o[1]=s;o[4]=-s;o[5]=c;o[10]=1;o[15]=1;return o;}
+function trs(tx, ty, tz, ry, s) {
+  const co = Math.cos(ry), si = Math.sin(ry), o = M4();
+  o[0]=co*s; o[2]=-si*s; o[5]=s; o[8]=si*s; o[10]=co*s;
+  o[12]=tx; o[13]=ty; o[14]=tz; o[15]=1; return o;
+}
 
-    /* ---------- the camera ----------
-       proj() is the whole visual identity in three lines. Sizes are ALWAYS
-       worldSize * p.s — a formula like `p.s / F * 40` explodes up close and
-       turns the nearest lamp into a beach ball. */
-    var W = 960, H = 540, HORIZON = H * .42, F = 570;
-    var CAM_H = 1.85, ROAD_HW = 3.6, NEAR = 1.7, TAU = Math.PI * 2;
-    var VIEW = 210;                     /* how far ahead anything is drawn */
+/* ═══════════ 지형 — 셰이더와 JS가 같은 식을 씁니다 ═══════════
+   같은 높이 함수를 두 군데에 쓰는 건 위험한데, 인물이 지면에 붙어야 하므로
+   CPU에도 필요합니다. 그래서 GLSL 문자열 하나를 만들어 양쪽에 씁니다. */
+const PATH = `
+/* 정해진 길이 없습니다. 예전엔 pathX(z) 를 따라 골짜기를 파 두고 그 위를
+   자동으로 달렸는데, 직접 걷게 되면 "정해진 z 방향"이라는 게 성립하지 않습니다.
+   트인 사막이라야 어디로 갈지가 실제로 내 선택이 되고, 방향은 지평선의 산이 줍니다. */
+float dunes(vec2 p){
+  float y = 0.0;
+  y += 7.0*sin(p.x*0.0125 + 1.3)*cos(p.y*0.0102 - 0.4);   /* 풍경 전체의 큰 기복 */
+  y += 3.2*sin(p.x*0.0570 - p.y*0.0410 + 2.1);            /* 실제로 넘어가는 언덕 */
+  /* 등성이 — 사인 언덕은 어디나 둥글어서 사막이 아니라 구릉이 됩니다.
+     1-|sin| 은 마루가 접혀서, 플랫셰이딩이 그 자리에 칼같은 빛/그늘 경계를
+     만듭니다. 저니 사막의 그 초승달 능선입니다. */
+  y += 1.7*(1.0 - abs(sin(p.x*0.0310 - p.y*0.0170 + 0.8)));
+  y += 1.00*sin(p.x*0.1300 + p.y*0.1050 - 1.1);
+  y += 0.28*sin(p.x*0.3100 - p.y*0.2700);
+  return y;
+}
+float height(vec2 p){ return dunes(p); }`;
 
-    function proj(d) { var s = F / d; return { y: HORIZON + CAM_H * s, hw: ROAD_HW * s, s: s }; }
+/* JS 쪽 — 위 GLSL과 계수가 같아야 합니다 */
+function height(x, z) {
+  return 7.0*Math.sin(x*0.0125+1.3)*Math.cos(z*0.0102-0.4)
+       + 3.2*Math.sin(x*0.0570 - z*0.0410 + 2.1)
+       + 1.7*(1.0 - Math.abs(Math.sin(x*0.0310 - z*0.0170 + 0.8)))   /* 등성이 — GLSL과 동일 */
+       + 1.00*Math.sin(x*0.1300 + z*0.1050 - 1.1)
+       + 0.28*Math.sin(x*0.3100 - z*0.2700);
+}
+/* 카메라가 지형을 1:1로 따라가면 언덕마다 위아래로 채질을 합니다.
+   앞쪽 몇 지점을 같이 평균 내서 "대충 이 근처 땅높이"를 만들고, 카메라는
+   그걸 천천히 따라갑니다 — 어지러움의 두 번째 원인이 이거였습니다. */
+function groundAvg(x, z, fx, fz) {
+  let s = 0;
+  for (let i = 0; i < 5; i++) s += height(x + fx*i*7, z + fz*i*7);
+  return s / 5;
+}
 
-    /* ---------- the track ----------
-       2450 units at 27/s is about ninety seconds, and the first five scenes get
-       forty per cent of it: 1~5장이 12년이고 그게 이 자기소개의 절반입니다. */
-    var TRACK = 2450, SPEED = 27, STEER = 4.4, PZ = 7;
-    var FORK_Z = 880, FORK_LEN = 170, ROAD_END = 1090, MY_CX = -8.5;
-    var GATEZ = 2260, VOID_Z = 2350, CLINIC_Z = 2440;
-    var PLANT_AHEAD = 40, PAGE_SPACE = 26, RECRAWL = 3.5;
-    var REACH = 26;                     /* how close a door has to be to read it */
-
-    /* the road you were on stays where it was. yours peels off and never comes
-       back — that separation has to be wider than both roads or they overlap
-       and the fork reads as a wobble. */
-    function myCx(z) {
-      if (z <= FORK_Z) return 0;
-      var t = Math.min(1, (z - FORK_Z) / FORK_LEN);
-      return MY_CX * t * t * (3 - 2 * t);
+    /* ---------- WebGL2, 없으면 무해한 스텁 ----------
+       스텁을 물리는 이유는 두 가지입니다. 하나는 WebGL2 가 없는 브라우저에서
+       페이지가 깨지는 대신 조용히 글로 남게 하는 것이고, 다른 하나는
+       test/walk.js 가 브라우저 없이 이 게임을 실제로 끝까지 걸어볼 수 있게
+       하는 것입니다 — 그리는 것만 사라지고 걷기·문·엔딩은 그대로 돕니다. */
+    const cv = jnc;
+    let gl = null, GLOK = false;
+    try { gl = cv.getContext('webgl2', { antialias: true, alpha: false }); } catch (e) { gl = null; }
+    if (gl && typeof gl.createShader === 'function') {
+      try {                                   /* 정말 도는지 한 번 태워 봅니다 */
+        const s = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(s, '#version 300 es\nvoid main(){gl_Position=vec4(0);}');
+        gl.compileShader(s);
+        GLOK = !!gl.getShaderParameter(s, gl.COMPILE_STATUS);
+      } catch (e) { GLOK = false; }
     }
-    function pavedCx() { return 0; }
+    if (!GLOK) {
+      const num = { VERTEX_SHADER:1, FRAGMENT_SHADER:2, COMPILE_STATUS:3, LINK_STATUS:4,
+                    FRAMEBUFFER_COMPLETE:5, TRIANGLES:6, FLOAT:7 };
+      gl = new Proxy({}, { get: function (t, k) {
+        if (typeof k === 'string' && /^[A-Z0-9_]+$/.test(k)) return num[k] || 1;
+        return function () { return true; };
+      } });
+    }
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + src);
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
 
-    /* --- ten scenes, the same ten in docs/narrative.md. the road IS the CV, so
-           each scene carries the year it happened and the one line it gets. --- */
-    var SCENES = [
-      { n:  1, z:    0, year: '2014',
-        line: '저는 노출을 팔았습니다',                       tag: '종합광고대행사' },
-      { n:  2, z:  230, year: '2015~',
-        line: '환자를 늘린다길래, 자리를 옮겼습니다',           tag: '의료 컨설팅 · 10년 넘게' },
-      { n:  3, z:  470, year: '2020',
-        line: '잘 되고 있을 때, 그만 배우기로 했습니다',        tag: 'AI 독학 6개월 · ChatGPT 2년 전' },
-      { n:  4, z:  700, year: '2025',
-        line: '5년 뒤, 팔던 것이 죽기 시작했습니다',            tag: '검색이 AI 답변으로' },
-      { n:  5, z:  880, year: '2025',
-        line: '굳이? 왜? — 다들 그렇게 물었습니다',            tag: '갈림길에서 ← 왼쪽으로' },
-      { n:  6, z: 1160, year: '2025-12',
-        line: '제일 먼저 만든 게, 제일 모호한 것이었습니다',     tag: 'aeo_sync' },
-      { n:  7, z: 1460, year: '2026-05',
-        line: '손으로 하던 것을 하나씩 떼어냈습니다',           tag: '자막 · 리포트 · 감시 · 분석' },
-      { n:  8, z: 1900, year: '2026-07',
-        line: '증명할 방법이 없다는 걸 알았습니다',             tag: '7개월 만에 · 여섯 번째 도구' },
-      { n:  9, z: 2140, year: '2026-08',
-        line: '제가 없어도 돌아가야 도구입니다',               tag: '무인 야간 제작 · 국경' },
-      { n: 10, z: 2340, year: '2026-08',
-        line: '안 만든 것도 저입니다',                        tag: '못 지킬 약속은 자리를 비웁니다' }
-    ];
+/* 하늘 — 화면 전체 삼각형 하나. 깊이 없이 먼저 칠합니다. */
+const skyProg = program(`#version 300 es
+out vec2 vUv;
+void main(){
+  vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2);
+  vUv = p; gl_Position = vec4(p*2.0-1.0, 0.999, 1.0);
+}`, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag;
+uniform vec3 uHaze, uHigh; uniform float uSunX;
+void main(){
+  float t = clamp(vUv.y, 0.0, 1.0);
+  vec3 c = mix(uHaze, uHigh, pow(t, 0.85));
+  /* 해 — 원반이 있고, 그 둘레에 두 겹의 번짐. 번짐만 있으면 "밝은 곳"이고
+     원반이 있어야 "해"입니다. 저니는 늘 해가 지평선 근처에 걸려 있습니다. */
+  vec2 sp = vec2(uSunX, 0.115);
+  float d = distance(vec2(vUv.x, vUv.y*1.9), sp);
+  c += vec3(1.00,0.72,0.34) * exp(-d*d*7.0)  * 0.55;
+  c += vec3(1.00,0.60,0.25) * exp(-d*d*90.0) * 0.85;
+  c += vec3(1.00,0.92,0.75) * smoothstep(0.052, 0.038, d);
+  /* 노을 구름 — 얇은 띠 두 줄. 아랫면만 해에 그을려 있습니다.
+     빈 그라데이션 하늘은 스크린세이버지 장면이 아닙니다. */
+  float w1 = vUv.y - 0.30 - 0.045*sin(vUv.x*5.1 + 1.2) - 0.015*sin(vUv.x*13.0);
+  float b1 = smoothstep(0.030, 0.006, abs(w1));
+  c = mix(c, vec3(0.34,0.19,0.26), b1*0.42);
+  c += vec3(0.95,0.45,0.22) * smoothstep(0.018, 0.002, abs(w1+0.012)) * 0.30;
+  float w2 = vUv.y - 0.445 - 0.03*sin(vUv.x*3.4 - 0.7) - 0.012*sin(vUv.x*9.5+2.0);
+  float b2 = smoothstep(0.022, 0.005, abs(w2));
+  c = mix(c, vec3(0.27,0.17,0.26), b2*0.34);
+  /* 디더 — 8비트 그라데이션 줄무늬(밴딩)를 잘게 부숩니다. 마감의 반은 이런 것 */
+  c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453) - 0.5) * (2.0/255.0);
+  frag = vec4(c, 1.0);
+}`);
 
-    /* --- the doors. order is COMMIT ORDER, not the order that would be tidy.
-           the lantern is sixth because it was built sixth: you publish for most
-           of the run with the crawlers invisible and the citation gauge stuck
-           on "?", exactly as it happened. running through it is the turn of the
-           piece. they span the whole track — nothing here is missable, because
-           a CV you can walk past by accident is a worse CV. --- */
-    var TOOLS = [
-      { z: 1180, rec: 'aeo_sync', grant: 'plant',
-        line: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
-        verb: '↓ 발행 — 페이지를 심습니다. 읽히는지는 아직 모릅니다.',
-        door: '표준화와 고유함은 반대말인데, 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.' },
-      { z: 1360, rec: 'MediSTT', grant: 'sub',
-        line: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
-        verb: '자막 — 이후 발행하는 페이지가 더 자주 읽힙니다.',
-        door: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
-      { z: 1520, rec: 'MetaPorter', grant: 'ledger',
-        line: '메타는 병원이 운영하기에 까다로운 매체입니다.',
-        verb: '인용 계기판 — 켜졌는데 눈금이 ? 입니다. 아직 셀 방법이 없습니다.',
-        door: '제한이 많아 캠페인이 자주 튕기고, 목표가 제각각이라 한 장으로 읽기 어렵습니다.' },
-      { z: 1680, rec: 'SERP Sentinel', grant: 'radar',
-        line: '순위 변동은 산출물이 아니라 수단입니다.',
-        verb: '경쟁 레이더 — 회색 경쟁사 페이지와 점유율이 드러납니다.',
-        door: '설계서 첫 장에 목적을 못박고 시작했습니다. 안 그러면 기능만 늘어납니다.' },
-      { z: 1800, rec: 'KPIY', grant: 'kpi',
-        line: '정확해야 하는 곳에는 검색이 아니라 실행을 붙였습니다.',
-        verb: 'KPI — 관측값이 그래프로 쌓입니다.',
-        door: 'LLM이 숫자를 지어내면 경영 보고서로 쓸 수 없습니다. 계산은 pandas가 합니다.' },
-      { z: 1930, rec: 'aeo-log-analyzer', grant: 'lantern',
-        line: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
-        verb: '랜턴 — 안 보이던 것이 전부 켜집니다. ? 가 숫자가 됩니다.',
-        door: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.' },
-      { z: 2160, rec: 'NetTier', grant: 'gate',
-        line: '추정은 틀리지만 실측은 안 틀립니다.',
-        verb: '국경 개방 — 앞을 막던 벽이 열립니다.',
-        door: '되돌릴 수 없는 작업은 사람 손에 남겼습니다 — 업로드 자동화 금지.' },
-      { z: 2400, rec: 'Hospify', grant: 'clinic',
-        line: '못 지킬 약속은, 자리를 비워둡니다.',
-        verb: '도착 — 만들어 놓고 지운 자리가 여기 있습니다.',
-        door: '가격 보증을 다 만들어 놓고 폐기했습니다. 병원이 지킬 수 없는 약속이라서.' }
-    ];
+/* 지형·인물·스카프가 전부 같은 셰이더를 씁니다. 위치만 넘기고 법선은
+   프래그먼트에서 미분으로 구하므로, 무엇을 그리든 자동으로 플랫셰이딩입니다. */
+const litVS = `#version 300 es
+in vec3 aPos;
+uniform mat4 uVP, uModel;
+uniform vec2 uOrigin;
+uniform vec3 uCam;
+uniform int uTerrain;
+out vec3 vW;    /* 월드 좌표 — 안개와 모래 결처럼 저주파에만 씁니다 */
+out vec3 vRel;  /* 카메라 기준 좌표 — 인물·신전 법선은 이걸로 뽑습니다 */
+flat out float vTer;
+${PATH}
+void main(){
+  vec3 w;
+  if (uTerrain == 1) { vec2 p = aPos.xz + uOrigin; w = vec3(p.x, height(p), p.y); }
+  else               { w = (uModel * vec4(aPos,1.0)).xyz; }
+  vW = w; vRel = w - uCam; vTer = float(uTerrain);
+  gl_Position = uVP * vec4(w,1.0);
+}`;
+const litFS = `#version 300 es
+precision highp float;
+${PATH}
+flat in float vTer;
+in vec3 vW; in vec3 vRel; out vec4 frag;
+uniform vec3 uCam, uSun, uLit, uDark, uHaze;
+uniform float uFog, uGlit, uEmit;
+void main(){
+  float dE = length(vRel);
+  /* 스스로 빛나는 면 — 신전 입구에서 새어 나오는 빛입니다.
+     빛 계산을 태우면 문간이 그냥 어두운 구멍이 되고, 멀리서 "저기 뭔가 있다"가
+     안 보입니다. 저니의 유적은 항상 입구가 빛나고 있어서 눈에 걸립니다. */
+  if (uEmit > 0.5) {
+    float fE = 1.0 - exp(-dE*dE*uFog*0.35);
+    frag = vec4(mix(uLit, uHaze, clamp(fE,0.0,1.0)), 1.0);
+    return;
+  }
+  vec3 n;
+  if (vTer > 0.5) {
+    /* 지형은 픽셀마다 높이 함수의 진짜 기울기로 법선을 계산합니다.
+       면 법선(dFdx/dFdy)은 2.6단위 격자를 그대로 드러내서, 사막 전체가
+       다이아몬드 체크무늬가 됐습니다 — 프로그래머 아트의 상징입니다.
+       높이 함수가 셰이더 안에 있으니 격자는 자리만 잡고 음영은 해석적으로:
+       언덕이 매끈하게 흐르고, 접힌 등성이의 불연속만 칼로 남습니다. */
+    float e = 0.35;
+    float hx = height(vW.xz + vec2(e,0.0)) - height(vW.xz - vec2(e,0.0));
+    float hz = height(vW.xz + vec2(0.0,e)) - height(vW.xz - vec2(0.0,e));
+    n = normalize(vec3(-hx, 2.0*e, -hz));
+  } else {
+    /* 인물·신전은 카메라 기준 면 법선. 월드 좌표로 뽑으면 float32 정밀도에
+       묻혀 벽이 자글거리고(z 300+), 부호는 화면상 감김에 따라 뒤집히므로
+       보이는 면의 법선은 카메라 쪽을 향한다는 것만 강제합니다. */
+    n = normalize(cross(dFdx(vRel), dFdy(vRel)));
+    if (dot(n, vRel) > 0.0) n = -n;
+  }
+  float d = max(dot(n, normalize(uSun)), 0.0);
+  /* 만화의 자리는 여기입니다: 명암을 3.5단으로 끊되 단 사이를 부드럽게 넘깁니다.
+     화면 필터와 달리 빛의 지형(언덕 능선)을 따라 끊기므로, 얼룩이 아니라
+     "칠한 면"이 됩니다. 절반만 섞어 3D 의 부피감도 남깁니다. */
+  float q = d * 3.5;
+  float dq = (floor(q) + smoothstep(0.30, 0.70, fract(q))) / 3.5;
+  d = mix(d, dq, 0.55);
+  vec3 c = mix(uDark, uLit, pow(d, 0.85));
+  float dist = dE;
+  /* 모래 결과 반짝임. 저니 사막의 절반은 이겁니다 — 없으면 그냥 갈색 언덕이고,
+     실제로 근경이 주황색 그라데이션처럼 텅 비어 보였습니다.
+     결은 지오메트리가 아니라 음영으로 냅니다: 정점을 안 건드리니 CPU와
+     높이를 맞출 필요가 없고, 멀리서 계단 현상도 안 납니다. */
+  if (uGlit > 0.0) {
+    float near = exp(-dist/160.0);
+    float r1 = sin(vW.x*0.42 + vW.z*0.13)*0.5 + 0.5;      /* 넓은 풍문(風紋) */
+    float r2 = sin(vW.x*0.29 - vW.z*0.97 + 1.7)*0.5 + 0.5;
+    float r3 = sin(vW.x*2.10 + vW.z*0.70 - 0.6)*0.5 + 0.5;
+    c *= 1.0 + (r1*0.20 + r2*0.15 + r3*0.06 - 0.205) * near;
+    /* 바람 — 모래 결이 표면 위를 흘러갑니다. 두 사인의 곱이라 물결이 아니라
+       띄엄띄엄 지나가는 모래 바람으로 읽히고, 수평면에만 얹어 언덕 벽면이
+       일렁이는 것을 막습니다. 사막이 "살아 있다"는 인상은 대부분 이겁니다. */
+    float wg = smoothstep(0.55, 0.9, n.y) * near;
+    float w1 = sin(vW.x*0.55 + vW.z*1.35 - uTime*2.1);
+    float w2 = sin(vW.x*0.13 - vW.z*0.31 + uTime*0.5);
+    c *= 1.0 + w1*max(0.0,w2)*0.055*wg;
+    /* 반짝이는 티끌이어야지 조명판이면 안 됩니다 — 3.4 셀 · 2% · 세기 30 은
+       사막이 LED 전광판이 됐습니다. 알갱이는 잘게, 드물게, 은은하게. */
+    float g = fract(sin(dot(floor(vW.xz*9.0), vec2(12.9898,78.233)))*43758.5453);
+    float spec = pow(max(dot(reflect(-normalize(uSun), n), normalize(uCam - vW)), 0.0), 22.0);
+    c += vec3(1.0,0.86,0.6) * step(0.994, g) * spec * uGlit * 7.0 * near;
+    /* 해를 향해 걸을 때 사막 전체에 깔리는 반짝임 띠 — 저니의 그 바다 같은 면 */
+    c += vec3(1.0,0.80,0.50) * spec * uGlit * 0.55;
+  }
+  /* 접지 그림자 — 인물 발밑의 부드러운 타원. 06 시트에서 "이게 없으면 무엇을
+     해도 떠 보인다"라고 적어 놓고 정작 사막에는 이식을 빼먹었습니다. 그게
+     "공중에 떠 있는 느낌"의 정체였습니다. 높이로 게이트를 걸어 신전 벽면까지
+     어두워지는 것을 막습니다. */
+  float sd = length(vW.xz - uPXZ);
+  float gate = smoothstep(uPY + 0.6, uPY + 0.15, vW.y);
+  c *= 1.0 - 0.62 * exp(-sd*sd*2.4) * gate;
+  /* 긴 노을 그림자 — "2010년 게임"의 정체가 이것이었습니다. 해가 지평선에
+     걸려 있는데 신전도 사람도 그림자를 안 드리우면 전부 스티커입니다.
+     드리우는 것마다 태양 반대 방향으로 길게 늘인 타원을 지형에 얹습니다. */
+  if (vTer > 0.5) {
+    vec2 sunAway = vec2(-0.156, -0.988);           /* 태양(0.15,·,0.95)의 반대 */
+    vec2 sunSide = vec2(0.988, -0.156);
+    float sh = 1.0;
+    for (int i = 0; i < 24; i++) {
+      if (i >= uCastN) break;
+      vec2 o = vW.xz - uCast[i].xy;
+      float t2 = dot(o, sunAway), s3 = dot(o, sunSide);
+      float w2 = uCast[i].z, len2 = uCast[i].w;
+      float e2 = pow(s3 / w2, 2.0) + pow((t2 - len2*0.34) / (len2*0.60), 2.0);
+      sh *= 1.0 - 0.40 * exp(-max(e2, 0.0) * 1.7);
+    }
+    c *= max(sh, 0.42);                            /* 겹쳐도 새까매지지는 않게 */
+  }
+  float f = 1.0 - exp(-dist*dist*uFog);
+  frag = vec4(mix(c, uHaze, clamp(f,0.0,1.0)), 1.0);
+}`;
+const lit = program(litVS.replace('uniform vec3 uCam;',
+  'uniform vec3 uCam;'),
+  litFS.replace('uniform float uFog, uGlit, uEmit;',
+  'uniform float uFog, uGlit, uEmit, uPY, uTime;\nuniform vec2 uPXZ;\n' +
+  'uniform vec4 uCast[24];\nuniform int uCastN;'));
 
-    var AI_NAMES = ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'OAI-SearchBot',
-                    'Google-Extended', 'Applebot-Extended'];
+/* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
+   안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
+const farProg = program(`#version 300 es
+in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uCam; out vec3 vW; out float vLY;
+void main(){ vec3 w = (uModel*vec4(aPos,1.0)).xyz; vW = w - uCam; vLY = aPos.y;
+  gl_Position = uVP*vec4(w,1.0); }`,
+`#version 300 es
+precision highp float;
+in vec3 vW; in float vLY; out vec4 frag;
+uniform vec3 uHaze, uTint; uniform float uMix;
+void main(){
+  vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
+  float d = max(dot(n, normalize(vec3(0.5,0.55,0.66))), 0.0);
+  /* 종이 오리감의 정체: 균일하게 뿌연 삼각형. 진짜 먼 산은 발치가 대기에
+     잠기고 봉우리로 갈수록 또렷해집니다 — 그 수직 그라데이션 하나가
+     산을 공기 안에 앉힙니다. */
+  float ground = smoothstep(0.02, 0.55, vLY);
+  float k = uMix * (0.35 + 0.9*ground);
+  frag = vec4(mix(uHaze, uTint*(0.50+0.50*d), clamp(k, 0.0, 1.0)), 1.0);
+}`);
 
-    /* index the records that already live in the document */
-    var RECS = {};
+const U = (p, n) => gl.getUniformLocation(p, n);
+const uni = {
+  sky:  { haze: U(skyProg,'uHaze'), high: U(skyProg,'uHigh'), sunX: U(skyProg,'uSunX') },
+  lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
+          cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
+          haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit'),
+          pxz:U(lit,'uPXZ'), py:U(lit,'uPY'), time:U(lit,'uTime'),
+          cast:U(lit,'uCast'), castN:U(lit,'uCastN') },
+  far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
+          tint:U(farProg,'uTint'), mix:U(farProg,'uMix'), cam:U(farProg,'uCam') }
+};
+
+function mesh(arr) {
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+  return { vao, n: arr.length / 3, buf };
+}
+
+/* ── 지형 격자. 카메라를 따라다니되 높이는 월드 좌표로 뽑으므로
+      언덕은 제자리에 있고 우리가 그 위를 지나갑니다.
+
+      간격이 일정한 격자를 쓰면 안 됩니다. 처음엔 1.35 간격 190칸(=128단위)이었는데,
+      그러면 128단위 앞에서 지형이 뚝 끊기고 그 자리가 지평선처럼 보입니다.
+      화면에 언덕이 한 겹밖에 안 남아서 사막이 아니라 평지가 됐습니다.
+      그래서 거듭제곱으로 등급을 매깁니다 — 발밑은 촘촘하고 멀수록 성기게, 620단위까지.
+      끝은 안개가 먹습니다. ── */
+/* 간격이 일정한 격자입니다. 등급 격자(멀수록 성기게)를 썼더니 칸 크기가
+   제각각이라 카메라 위치를 칸에 맞춰 스냅할 수가 없었고, 그러면 정점이 매 프레임
+   지형 위를 미끄러집니다. 플랫셰이딩이라 그 미끄러짐이 화면 전체의 면을 계속
+   갈아치우고, 바닥 전체가 잘게 기어다닙니다 — 어지러움의 제일 큰 원인이었습니다.
+   일정 간격이면 카메라를 칸 단위로 스냅할 수 있고, 그러면 삼각형이 월드에
+   완전히 고정돼 흔들림이 0이 됩니다. 정점은 더 쓰지만 그건 싼 값입니다. */
+/* ZBACK 은 카메라 뒤로 깔리는 길이입니다. 40 이면 뒤를 돌아본 순간 40 단위
+   너머에 지형이 없어서, 지나온 신전들이 하늘에 둥둥 뜬 채로 보입니다.
+   앞만 보고 달릴 때는 안 드러나는데, 신전에서 나올 때마다 뒤를 보게 되므로
+   실제로는 매번 보입니다. 앞쪽은 398 남고 안개가 340 부근에서 먹으니 손해가 없습니다. */
+const CELL = 2.2, NX = 390, NZ = 272, ZBACK = 200;   /* 능선 실루엣이 각지지 않을 밀도 */
+const terrain = (() => {
+  const v = [], hx = NX*CELL/2;
+  for (let i = 0; i < NX; i++) {
+    const x0 = -hx + i*CELL, x1 = x0 + CELL;
+    for (let j = 0; j < NZ; j++) {
+      const z0 = -ZBACK + j*CELL, z1 = z0 + CELL;
+      /* 감김 방향에 목숨이 걸려 있습니다. (x0,z0)->(x1,z0)->(x1,z1) 순으로 넣으면
+         법선이 아래를 향해서, 위에서 내려다보는 면이 전부 백페이스로 잘립니다.
+         그러면 경사가 가팔라 우연히 감김이 뒤집힌 면만 남고 — 화면에는 언덕 몇 겹만
+         떠 있고 나머지는 전부 하늘이 됩니다. 인물이 허공에 서 있었습니다.
+         하늘을 형광 초록으로 칠해 보고서야 알았습니다. */
+      v.push(x0,0,z0, x1,0,z1, x1,0,z0,  x0,0,z0, x0,0,z1, x1,0,z1);
+    }
+  }
+  return mesh(new Float32Array(v));
+})();
+
+/* ══════════ 인물 — 06-figure-sculpt 에서 확정한 조각을 그대로 이식 ══════════
+   회전체가 아닙니다: 사다리꼴 로브 + 각진 크리스 + 열린 옷단 + 어깨 단차 + 꺾인 후드.
+   지형과 달리 진짜 면 법선과 정점 AO·색을 가지므로 전용 셰이더(figProg)를 씁니다.
+   조명도 06에서 확정한 세트: 반구 환경광 + 앞(노을)에서 오는 키 + 앰버 림 + 톤매핑. */
+function FMesh(){ this.p=[]; this.n=[]; this.a=[]; this.c=[]; }
+FMesh.prototype.tri=function(A,B,C,ao,ci){
+  const ux=B[0]-A[0],uy=B[1]-A[1],uz=B[2]-A[2];
+  const vx=C[0]-A[0],vy=C[1]-A[1],vz=C[2]-A[2];
+  let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+  const l=Math.hypot(nx,ny,nz)||1; nx/=l;ny/=l;nz/=l;
+  for(const Pt of [A,B,C]){ this.p.push(Pt[0],Pt[1],Pt[2]); this.n.push(nx,ny,nz);
+    this.a.push(typeof ao==='function'?ao(Pt):(ao||0)); this.c.push(ci||0); }
+};
+FMesh.prototype.quad=function(A,B,C,D,ao,ci){ this.tri(A,B,C,ao,ci); this.tri(A,C,D,ao,ci); };
+
+/* 기둥 성격(크리스·옷단 들림)은 시드 고정 — 프레임마다 흔들리면 젤리가 됩니다 */
+const FIG_NS = 12, FIG_NY = 15;
+const FIG_COL = [];
+for (let i=0;i<=FIG_NS;i++){
+  const h = Math.sin(i*127.1+3.7)*43758.5453, r1 = h-Math.floor(h);
+  const h2 = Math.sin(i*269.5+1.3)*24634.6345, r2 = h2-Math.floor(h2);
+  FIG_COL.push({ crease:(r1-0.5)*0.17 + (i%4===0?0.07:0), hem:r2*0.085 });   /* 멀리서도 실루엣이 패이게 */
+}
+FIG_COL[FIG_NS] = FIG_COL[0];
+const FIG_SIL = [
+  [.500,.030],[.468,.150],
+  [.402,.430],[.335,.800],[.305,1.040],
+  [.312,1.190],[.352,1.300],[.352,1.368],
+  [.150,1.405],[.135,1.470]
+];
+const figR = y => {
+  for (let k=0;k<FIG_SIL.length-1;k++){
+    const [r0,y0]=FIG_SIL[k],[r1,y1]=FIG_SIL[k+1];
+    if (y>=y0&&y<=y1) return r0+(r1-r0)*((y-y0)/(y1-y0));
+  }
+  return y<FIG_SIL[0][1] ? FIG_SIL[0][0] : FIG_SIL[FIG_SIL.length-1][0];
+};
+/* plain=true 는 무리용: 옷단 띠·눈금 없음. 그 차이가 곧 "나"입니다. */
+function buildFigure(walk, ph, plain) {
+  const m = new FMesh();
+  /* 0.55 는 옷단이 너무 들려 속이 훤히 보였습니다 — 차임은 실루엣 가장자리에서
+     읽히면 충분하고, 속을 보여주는 순간 손해만 봅니다. */
+  const kick = walk * 0.28;
+  const Y0=.03, Y1=1.47;
+  const hemKick = (a,y) => {
+    const back = Math.max(0, Math.cos(a-Math.PI/2));
+    const low  = Math.max(0, 1 - y/0.55);
+    return kick * back*back * low*low * (0.55 + 0.45*Math.sin(ph*2));
+  };
+  const P = (i,j) => {
+    const a = i/FIG_NS*TAU, t = j/FIG_NY;
+    const y = Y0+(Y1-Y0)*t;
+    const deep = Math.max(0, 1 - y/1.42);
+    const r = figR(y) * (1 + FIG_COL[i].crease*deep) + .012*Math.sin(a*2+ph*0.9)*deep;
+    const lift = (FIG_COL[i].hem + hemKick(a,y)*0.30) * Math.max(0,1-t*3.2);
+    const lean = 0.03*Math.max(0,(y-0.9));
+    return [ r*Math.cos(a), y + lift, r*Math.sin(a) - lean + hemKick(a,y)*0.55 ];
+  };
+  const hemAO = Pt => Math.max(0, 1 - Pt[1]/1.35);
+  for (let i=0;i<FIG_NS;i++) for (let j=0;j<FIG_NY;j++)
+    m.quad(P(i,j), P(i+1,j), P(i+1,j+1), P(i,j+1), hemAO, 0);
+  /* 옷단 안쪽 — 로브색에 짙은 AO. 처음엔 얼굴 구멍과 같은 새까만 색(c3)을
+     썼는데, 걸으면서 옷단이 들릴 때마다 시커먼 속이 드러나 유령처럼 보였습니다.
+     천의 안쪽은 어두운 "천"이지 공허가 아닙니다. */
+  for (let i=0;i<FIG_NS;i++){
+    const A=P(i,0), B=P(i+1,0);
+    m.quad(B, A, [A[0]*.55,.015,A[2]*.55], [B[0]*.55,.015,B[2]*.55], .85, 0);
+  }
+  if (!plain) {
+    for (let i=0;i<FIG_NS;i++){
+      const A=P(i,0), B=P(i+1,0), C=P(i+1,1), D=P(i,1);
+      const out = Q => [Q[0]*1.008, Q[1], Q[2]*1.008];
+      const mid = (Q,W) => [ (Q[0]+W[0])/2*1.008, (Q[1]+W[1])/2, (Q[2]+W[2])/2*1.008 ];
+      m.quad(out(A), out(B), mid(B,C), mid(A,D), .15, 1);
+    }
+    const radAt = (a,y) => {
+      const deep = Math.max(0, 1 - y/1.42);
+      return figR(y)*(1 + FIG_COL[Math.round(a/TAU*FIG_NS)%FIG_NS].crease*deep);
+    };
+    for (let i=0;i<FIG_NS*2;i++){
+      const a=i/(FIG_NS*2)*TAU, major=i%5===0;
+      const y0=.032, y1=major?.092:.062;
+      const r0=radAt(a,y0)*1.02, r1=radAt(a,y1)*1.02, w=.006;
+      const tx=-Math.sin(a), tz=Math.cos(a);
+      m.quad([r0*Math.cos(a)-tx*w,y0,r0*Math.sin(a)-tz*w],
+             [r0*Math.cos(a)+tx*w,y0,r0*Math.sin(a)+tz*w],
+             [r1*Math.cos(a)+tx*w,y1,r1*Math.sin(a)+tz*w],
+             [r1*Math.cos(a)-tx*w,y1,r1*Math.sin(a)-tz*w], 0, 2);
+    }
+  }
+  const HOOD = [[.150,1.44],[.190,1.53],[.200,1.64],[.165,1.77],[.100,1.87],[.025,1.95]];
+  const hood = (i,j) => {
+    const a=i/10*TAU, r=HOOD[j][0], y=HOOD[j][1];
+    const kink = Math.max(0,(y-1.62))*0.62;
+    const rr = r*(1+.05*Math.sin(a*3+.8));
+    return [rr*Math.cos(a), y, rr*Math.sin(a)+kink];
+  };
+  for (let i=0;i<10;i++) for (let j=0;j<HOOD.length-1;j++)
+    m.quad(hood(i,j),hood(i+1,j),hood(i+1,j+1),hood(i,j+1), 0, 0);
+  /* 얼굴 구멍 — 뒤에서는 안 보이고 3/4에서 사람이 됩니다 */
+  for(let i=0;i<10;i++){
+    const a0=i/10*TAU, a1=(i+1)/10*TAU, r=.135;
+    m.tri([0,1.58,-.155],
+          [Math.cos(a0)*r*.72, 1.58+Math.sin(a0)*r, -.165],
+          [Math.cos(a1)*r*.72, 1.58+Math.sin(a1)*r, -.165], 0, 3);
+  }
+  return m;
+}
+let flow = 1;
+function buildScarfMesh(t, drive, grow) {
+  flow += (drive - flow) * 0.05;             /* 걷기 시작/멈춤에 천천히 반응 */
+  /* 신전을 하나 들어가 볼 때마다 스카프가 조금씩 길어집니다 —
+     성장이 HUD 숫자가 아니라 실루엣에 보이는 것, 이 게임의 원칙입니다. */
+  const m=new FMesh(), N=26, L=(2.1 + (grow||0))*(0.45+0.55*flow);
+  const pts=[], up=[];
+  for(let i=0;i<=N;i++){
+    const u=i/N;
+    /* +z 가 뒤 — 스카프는 진행 반대(등 뒤 카메라 쪽)로 흐릅니다 */
+    pts.push([ .40*u + Math.sin(t*2.1-u*5.2)*0.26*u,
+               1.52 + 0.22*u*flow - 0.5*u*u*(1-flow) + Math.sin(t*3.0-u*4.1)*0.13*u,
+               0.16 + u*L*0.72 + Math.cos(t*2.5-u*4.6)*0.08*u ]);
+    up.push(Math.sin(u*6+t*2.2)*0.5);
+  }
+  for(let i=0;i<N;i++){
+    const u0=i/N,u1=(i+1)/N;
+    const w0=.072*(1-u0*.7)+.014, w1=.072*(1-u1*.7)+.014;
+    const a=pts[i], b=pts[i+1];
+    const A=[a[0]-w0,a[1]+up[i]*w0,a[2]], B=[a[0]+w0,a[1]-up[i]*w0,a[2]];
+    const C=[b[0]+w1,b[1]-up[i+1]*w1,b[2]], D=[b[0]-w1,b[1]+up[i+1]*w1,b[2]];
+    m.quad(A,B,C,D,0,2); m.quad(D,C,B,A,0,2);
+  }
+  return m;
+}
+
+/* 매 프레임 다시 채우는 동적 슬롯. VAO·버퍼를 프레임마다 만들면 GPU 메모리가 새서,
+   고정 용량을 한 번 잡고 bufferSubData 로만 갱신합니다. */
+function dynSlot(capVerts) {
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const mk = (loc, size) => {
+    const b = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, capVerts*size*4, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+    return b;
+  };
+  const bP = mk(0,3), bN = mk(1,3), bA = mk(2,1), bC = mk(3,1);
+  gl.bindVertexArray(null);
+  return {
+    vao, n: 0,
+    set(m) {
+      this.n = Math.min(capVerts, m.p.length/3);
+      const put = (b, d) => { gl.bindBuffer(gl.ARRAY_BUFFER, b);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(d)); };
+      put(bP, m.p); put(bN, m.n); put(bA, m.a); put(bC, m.c);
+    }
+  };
+}
+const slotMe    = dynSlot(4000);
+const slotCrowd = dynSlot(4000);
+const slotScarf = dynSlot(400);
+const slotMotes = dynSlot(600);
+const slotBanner = dynSlot(4000);
+
+/* 깃발 천 — 신전 앞 두 기둥 끝에서 펄럭입니다. 저니 유적의 서명 같은 물건이고,
+   정지된 돌 무더기에 "지금도 바람이 분다"를 얹는 유일한 움직임입니다.
+   월드 좌표로 직접 만들어 한 슬롯에 몰아 그립니다. */
+function buildBanners(el2) {
+  const m = new FMesh(), N = 14, L = 2.6;
+  for (const t of TEMPLES) {
+    if (Math.hypot(t.x - P0.x, t.z - P0.z) > 150) continue;
+    const c = Math.cos(t.yaw), s = Math.sin(t.yaw);
+    for (const side of [-1, 1]) {
+      const lx = side*7.25, lz = -7.1;
+      const bx = t.x + c*lx + s*lz, bz = t.z - s*lx + c*lz, by = t.y + 7.35;
+      const ph2 = el2*1.9 + side + t.z*0.07;
+      const pts = [];
+      for (let i = 0; i <= N; i++) {
+        const u = i/N;
+        pts.push([ bx + u*L*0.92 + Math.sin(ph2 - u*4.6)*0.30*u,
+                   by - u*u*0.55 + Math.sin(ph2*1.3 - u*3.8)*0.22*u,
+                   bz + Math.cos(ph2 - u*4.1)*0.25*u ]);
+      }
+      for (let i = 0; i < N; i++) {
+        const w0 = 0.30*(1 - (i/N)*0.55), w1 = 0.30*(1 - ((i+1)/N)*0.55);
+        const a = pts[i], b2 = pts[i+1];
+        const A=[a[0],a[1]+w0,a[2]], B=[a[0],a[1]-w0,a[2]];
+        const C=[b2[0],b2[1]-w1,b2[2]], D=[b2[0],b2[1]+w1,b2[2]];
+        m.quad(A,B,C,D, 0, 0); m.quad(D,C,B,A, 0, 0);
+      }
+    }
+  }
+  return m;
+}
+
+/* 앰버 티끌 — 랜턴 이후의 사막. 크롤러들입니다.
+   자리는 시드 고정, 내 주위를 천천히 떠다닙니다. */
+function buildMotes(el2, cx2, cz2) {
+  const m = new FMesh();
+  for (let i = 0; i < 24; i++) {
+    const r = 7 + (i*97 % 23), a0 = i*2.399 + el2*(0.05 + (i%5)*0.012);
+    const x = cx2 + Math.cos(a0)*r, z = cz2 + Math.sin(a0)*r;
+    const y = height(x, z) + 1.0 + Math.sin(el2*0.8 + i*1.7)*0.45 + (i%3)*0.5;
+    const s = 0.055 + (i%4)*0.02;
+    m.tri([x-s,y,z],[x+s,y,z],[x,y+s*2.2,z], 0, 2);
+    m.tri([x,y,z-s],[x,y,z+s],[x,y+s*2.2,z], 0, 2);
+  }
+  return m;
+}
+
+/* 인물 전용 셰이더 — 06에서 확정한 조명 그대로 + 이 장면의 안개 */
+const figProg = program(`#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNor;
+layout(location=2) in float aAo;
+layout(location=3) in float aCi;
+uniform mat4 uVP, uM;
+out vec3 vN; out vec3 vP; out float vAo; flat out int vCi;
+void main(){ vec4 w=uM*vec4(aPos,1.0); vP=w.xyz;
+  vN=mat3(uM)*aNor; vAo=aAo; vCi=int(aCi+0.5); gl_Position=uVP*w; }`,
+`#version 300 es
+precision highp float;
+in vec3 vN; in vec3 vP; in float vAo; flat in int vCi; out vec4 frag;
+uniform vec3 uCam,uHaze;
+uniform vec3 uC0,uC1,uC2,uC3;
+uniform float uFog;
+void main(){
+  vec3 base = vCi==1?uC1 : vCi==2?uC2 : vCi==3?uC3 : uC0;
+  float dist = length(vP-uCam);
+  float fog = clamp(1.0-exp(-dist*dist*uFog), 0.0, 1.0);
+  if (vCi>=2) { frag=vec4(mix(base,uHaze,fog),1.0); return; }  /* 발광·어둠은 그대로 */
+  vec3 n=normalize(vN); vec3 V=normalize(uCam-vP);
+  if (dot(n,V)<0.0) n=-n;
+  /* 톤 통일의 핵심: 인물이 자기만의 톤매핑·감마를 따로 갖고 있었습니다.
+     지형과 다른 반응 곡선 = 다른 세계의 재질 = "오려붙인 캐릭터 뭉탱이".
+     지형과 같은 선형 공간에서, 같은 태양(uSun 방향·색), 같은 보라 그늘을 씁니다.
+     그늘의 색이 같아야 한 그림입니다. */
+  float key=max(dot(n,normalize(vec3(0.15,0.28,0.95))),0.0);
+  /* 지형과 같은 3.5단 명암 끊기 — 로브가 조각이 아니라 셀이 됩니다 */
+  float q=key*3.5;
+  key=mix(key, (floor(q)+smoothstep(0.30,0.70,fract(q)))/3.5, 0.55);
+  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.38,0.31,0.30), n.y*0.5+0.5);
+  float rim=pow(1.0-max(dot(n,V),0.0),3.2);
+  float ao=1.0-0.5*vAo;
+  vec3 c=base*(amb*ao+vec3(1.30,0.82,0.45)*key)*(1.0+rim*1.2);
+  c+=vec3(1.25,0.66,0.24)*rim*rim*0.30;
+  frag=vec4(mix(c,uHaze,fog),1.0);
+}`);
+/* ══════════ 후처리 ══════════
+   게임사가 하는 그 층입니다. 장면을 화면에 바로 내보내지 않고 텍스처로 받아서
+     ① 밝은 곳 추출(1/4 해상도) → ② 가로·세로 블러 → 블룸
+     ③ ACES 필름 톤매핑 — 하이라이트가 타지 않고 필름처럼 말립니다
+     ④ 컬러 그레이딩 — 그늘은 보라로, 하이라이트는 노을로 미는 스플릿 톤
+     ⑤ 색수차(가장자리) + 필름 그레인 + 비네트
+   장면 셰이더들은 전부 선형 공간에 두고, 감마는 여기서 딱 한 번 갑니다. */
+const fsVS = `#version 300 es
+out vec2 vUv;
+void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2);
+  vUv = p; gl_Position = vec4(p*2.0-1.0, 0.0, 1.0); }`;
+const brightProg = program(fsVS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag; uniform sampler2D uTex;
+void main(){
+  vec3 c = texture(uTex, vUv).rgb;
+  float l = dot(c, vec3(0.299,0.587,0.114));
+  frag = vec4(c * smoothstep(0.52, 0.95, l), 1.0);
+}`);
+const blurProg = program(fsVS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag; uniform sampler2D uTex; uniform vec2 uDir;
+void main(){
+  vec3 c = texture(uTex, vUv).rgb * 0.227;
+  vec2 o1 = uDir*1.3846, o2 = uDir*3.2308;
+  c += (texture(uTex, vUv+o1).rgb + texture(uTex, vUv-o1).rgb) * 0.3162;
+  c += (texture(uTex, vUv+o2).rgb + texture(uTex, vUv-o2).rgb) * 0.0702;
+  frag = vec4(c, 1.0);
+}`);
+const finalProg = program(fsVS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag;
+uniform sampler2D uTex, uBloom; uniform float uT; uniform vec2 uPx;
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.51*x+0.06)+0.14), 0.0, 1.0); }
+float luma(vec2 p){ vec3 t = texture(uTex, p).rgb; return dot(t, vec3(0.299,0.587,0.114)); }
+void main(){
+  vec2 d = vUv - vec2(0.5, 0.46);
+  float r2 = dot(d,d);
+  vec2 ca = d * r2 * 0.010;
+  vec3 c;
+  c.r = texture(uTex, vUv + ca).r;
+  c.g = texture(uTex, vUv).g;
+  c.b = texture(uTex, vUv - ca).b;
+  c += texture(uBloom, vUv).rgb * 0.50;
+  c = aces(c * 1.04);
+  float l = dot(c, vec3(0.299,0.587,0.114));
+  c = mix(c, c * vec3(1.05,0.98,0.92), smoothstep(0.2, 0.75, l));   /* 그늘 쪽 냉색 푸시 제거 */
+  c = mix(vec3(l), c, 1.14);
+
+  /* 화면 단계 포스터라이즈·윤곽선은 걷어냈습니다 — 하늘과 안개까지 통째로
+     끊어서 "필터가 덧씌워진" 티가 났습니다. 만화 느낌은 여기(화면)가 아니라
+     각 재질의 조명 계산에서 명암을 끊는 것으로 옮겼습니다. */
+
+  /* 비네트 + 아주 옅은 그레인 */
+  c *= 1.0 - 0.34*smoothstep(0.30, 1.05, r2*2.4);
+  float g = fract(sin(dot(gl_FragCoord.xy + fract(uT)*61.0, vec2(12.9898,78.233)))*43758.5453);
+  c += (g - 0.5) * 0.010;
+  frag = vec4(c, 1.0);
+}`);
+const uniPost = {
+  bT: U(brightProg,'uTex'),
+  uT: U(blurProg,'uTex'), uD: U(blurProg,'uDir'),
+  fT: U(finalProg,'uTex'), fB: U(finalProg,'uBloom'), fTime: U(finalProg,'uT'),
+  fPx: U(finalProg,'uPx')
+};
+let post = null;
+function makePost() {
+  if (post) { for (const k of ['ms','msD','fS','fB1','fB2','fB3']) if (post[k+'_del']) post[k+'_del'](); }
+  const W2 = cv.width, H2 = cv.height, W4 = Math.max(2, W2>>2), H4 = Math.max(2, H2>>2);
+  const samples = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+  const rbC = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, rbC);
+  gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA8, W2, H2);
+  const rbD = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, rbD);
+  gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, W2, H2);
+  const fboMS = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fboMS);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rbC);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbD);
+  const mkTex = (w, h) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    return { t, f };
+  };
+  const scene = mkTex(W2, H2), b1 = mkTex(W4, H4), b2 = mkTex(W4, H4);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  post = { fboMS, scene, b1, b2, W2, H2, W4, H4 };
+}
+
+const uniFig = {
+  vp:U(figProg,'uVP'), m:U(figProg,'uM'), cam:U(figProg,'uCam'), haze:U(figProg,'uHaze'),
+  fog:U(figProg,'uFog'),
+  c0:U(figProg,'uC0'), c1:U(figProg,'uC1'), c2:U(figProg,'uC2'), c3:U(figProg,'uC3')
+};
+/* 나: 적 로브 + 모래색 띠 + 앰버 눈금 · 무리: 회보라, 띠 없음.
+   전부 사막 팔레트의 가족입니다 — 로브의 적은 노을의 적이고,
+   무리의 보라는 그늘의 보라입니다. 남의 색을 데려오지 않습니다. */
+const FIG_ME    = { c0:[0.72,0.19,0.13], c1:[1.0,0.74,0.42], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
+const FIG_CROWD = { c0:[0.37,0.325,0.30], c1:[0.42,0.375,0.35], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.04] };
+
+/* ── 신전 ──
+   만든 것 하나에 유적 하나. 모래에 반쯤 묻혀 있고, 멀리서는 능선 위의 실루엣으로
+   먼저 보이고, 가까이 가면 문간에서 빛이 새어 나옵니다. 들어가면 안에 기록이 있습니다.
+
+   길가에 세운 문틀이 아니라 묻힌 유적인 게 중요합니다 — 문틀은 지나가면서 스치는
+   것이고, 유적은 찾아가서 들어가는 것입니다. 만든 것을 보여주는 방식으로는 뒤가 맞습니다.
+
+   상자 하나하나의 감김 방향에 목숨이 걸려 있습니다. 지형에서 이미 한 번
+   뒤집혀서 절반이 안 보였으므로, 여기서는 면마다 바깥쪽으로 CCW를 맞춰 둡니다. */
+function box(v, cx, cy, cz, a, bb, c) {
+  const X=(s)=>cx+s*a, Y=(s)=>cy+s*bb, Z=(s)=>cz+s*c;
+  const p=(sx,sy,sz)=>[X(sx),Y(sy),Z(sz)];
+  const q=(A,B,C,D)=>{ v.push(...A,...B,...C, ...A,...C,...D); };
+  q(p(1,-1,-1),p(1,1,-1),p(1,1,1),p(1,-1,1));       /* +X */
+  q(p(-1,-1,1),p(-1,1,1),p(-1,1,-1),p(-1,-1,-1));   /* -X */
+  q(p(-1,1,-1),p(-1,1,1),p(1,1,1),p(1,1,-1));       /* +Y */
+  q(p(-1,-1,1),p(-1,-1,-1),p(1,-1,-1),p(1,-1,1));   /* -Y */
+  q(p(-1,-1,1),p(1,-1,1),p(1,1,1),p(-1,1,1));       /* +Z */
+  q(p(1,-1,-1),p(-1,-1,-1),p(-1,1,-1),p(1,1,-1));   /* -Z */
+}
+const templeMesh = (() => {
+  const v = [];
+  /* 같은 평면을 공유하는 면이 하나도 없어야 합니다. 처음엔 옆벽과 뒷벽의 +z 면이
+     둘 다 z=5.2 에 있었고, 상인방 옆면과 앞벽 안쪽 면도 둘 다 x=±1.8 이었습니다.
+     그러면 깊이값이 같아 매 픽셀이 둘 중 아무거나 이기고, 벽 전체가 지글거립니다.
+     의도적으로 파고들게 두되 면끼리 겹치지는 않게 잡습니다. */
+  box(v,  0,-1.6, 0,    6.4, 2.6, 6.4);     /* 기단 — 아랫부분은 모래에 묻힙니다 */
+  box(v,  0, 3.0, 4.7,  5.3, 3.6, 0.62);    /* 뒷벽  z 4.08..5.32 */
+  box(v, -4.85,3.0, 0,  0.58,3.6, 4.55);    /* 옆벽  z -4.55..4.55 (뒷벽 안쪽) */
+  box(v,  4.85,3.0, 0,  0.58,3.6, 4.55);
+  box(v, -3.62,3.0,-4.75,1.77,3.6, 0.6);    /* 앞벽 — 가운데를 비워 문간을 냅니다 */
+  box(v,  3.62,3.0,-4.75,1.77,3.6, 0.6);
+  box(v,  0, 6.15,-4.75,1.95,0.52,0.66);    /* 상인방 — 앞벽을 조금 파고듭니다 */
+  box(v,  0, 7.05, 0,   5.72,0.6, 5.72);    /* 지붕 슬래브 */
+  box(v, -7.25,3.4,-7.1,0.62,4.0, 0.62);    /* 앞에 선 기둥 둘 */
+  box(v,  7.25,3.4,-7.1,0.62,4.0, 0.62);
+  box(v,  0, 0.55,-7.5, 3.05,0.52,1.42);    /* 계단 */
+  return mesh(new Float32Array(v));
+})();
+/* 문간 안쪽에서 새어 나오는 빛. 문틀에 딱 맞춰 밝은 판을 끼우면 빛이 아니라
+   노란 포스터로 보입니다 — 안쪽으로 물려서 어둑한 방이 켜져 있는 것처럼 둡니다. */
+const templeGlow = (() => {
+  const v = [];
+  box(v, 0, 2.6, 2.2, 1.55, 2.7, 0.05);
+  return mesh(new Float32Array(v));
+})();
+/* 벽의 문양 — 상인방 위 띠에 새겨진 빛나는 눈금. 저니 유적의 빛나는 룬을
+   이 포트폴리오의 언어(계측 눈금)로 바꾼 것. 은은해야 합니다 — 문간 빛보다
+   밝으면 어디로 들어가야 하는지가 흐려집니다. */
+/* 모래 둔덕 — 신전 밑단을 사막이 삼키고 있는 치마. 이게 없으면 벽과 모래가
+   만나는 선이 칼같이 끊겨 "배경에 올려놓은 모형"이 됩니다. 반경을 각도마다
+   불규칙하게 흔들어 바람이 쌓은 모양으로. */
+const templeSkirt = (() => {
+  /* 문간 앞은 비웁니다 — 처음엔 링을 한 바퀴 둘렀더니 모래 둔덕이 입구와 계단을
+     덮고, 걸어 들어갈 때 시야가 둔덕 안을 뚫고 지나가며 화면이 깨졌습니다.
+     문간은 로컬 -z 쪽(a ≈ -π/2)이므로 그 부채꼴은 건너뜁니다.
+     바깥단은 더 깊이(-1.5) 묻어 지형과의 교차선을 완만하게. */
+  const v = [], N = 26;
+  for (let i = 0; i < N; i++) {
+    const a0 = i/N*Math.PI*2, a1 = (i+1)/N*Math.PI*2, am = (a0+a1)/2;
+    if (Math.sin(am) < -0.42) continue;              /* 입구 부채꼴 생략 */
+    const rOut = (a) => 9.2 + 1.8*Math.sin(a*3.1 + 1.2) + 0.9*Math.sin(a*7.3);
+    const rIn  = 5.4;
+    const hIn  = (a) => 1.5 + 0.55*Math.sin(a*2.3 + 0.6);
+    const P0 = [Math.cos(a0)*rOut(a0), -1.5, Math.sin(a0)*rOut(a0)];
+    const P1 = [Math.cos(a1)*rOut(a1), -1.5, Math.sin(a1)*rOut(a1)];
+    const P2 = [Math.cos(a1)*rIn, hIn(a1), Math.sin(a1)*rIn];
+    const P3 = [Math.cos(a0)*rIn, hIn(a0), Math.sin(a0)*rIn];
+    v.push(...P0, ...P1, ...P2, ...P0, ...P2, ...P3);
+  }
+  return mesh(new Float32Array(v));
+})();
+
+const templeGlyphs = (() => {
+  const v = [];
+  for (let i = 0; i < 9; i++) {
+    const x = -3.4 + i*0.85, major = i % 3 === 0;
+    box(v, x, major ? 5.85 : 5.70, -5.42, 0.07, major ? 0.42 : 0.24, 0.05);
+  }
+  return mesh(new Float32Array(v));
+})();
+
+/* 빈 문틀 — 기둥 둘, 가운데가 끊긴 상인방 */
+const voidMesh = (() => {
+  const v = [];
+  box(v, -2.1, 2.0, 0, 0.42, 2.4, 0.42);
+  box(v,  2.1, 2.0, 0, 0.42, 2.4, 0.42);
+  box(v, -1.55, 4.55, 0, 0.75, 0.32, 0.38);   /* 상인방 왼쪽 토막 */
+  box(v,  1.62, 4.49, 0, 0.68, 0.30, 0.36);   /* 오른쪽 토막 — 살짝 어긋나 있음 */
+  return mesh(new Float32Array(v));
+})();
+
+/* ── 멀리 있는 산 ── */
+const mountain = (() => {
+  const v = [], peaks = [[0,1,0.72],[-0.62,0.58,0.5],[0.55,0.66,0.55],[-1.25,0.4,0.42],[1.2,0.44,0.44]];
+  for (const [cx, hgt, w] of peaks)
+    for (let s = 0; s < 5; s++) {
+      const a0 = s/5*Math.PI*2, a1 = (s+1)/5*Math.PI*2;
+      v.push(cx,hgt,0,
+             cx+Math.cos(a0)*w, 0, Math.sin(a0)*w*0.7,
+             cx+Math.cos(a1)*w, 0, Math.sin(a1)*w*0.7);
+    }
+  return mesh(new Float32Array(v));
+})();
+/* ═══════════ 팔레트 ═══════════ */
+const P = {
+  haze: [0.62, 0.42, 0.26],
+  high: [0.10, 0.10, 0.19],
+  /* 저니 사막의 절반은 색 대비입니다: 해가 닿는 면은 진한 주황,
+     그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
+     아무리 굴곡이 있어도 흙더미로 보입니다. */
+  lit:  [0.99, 0.63, 0.25],
+  dark: [0.21, 0.13, 0.105],    /* 그늘은 따뜻한 갈색. 보라는 두 번 지적받고 완전히 뺐다 */
+  sun:  [0.42, 0.42, -1.0],
+  mtn:  [0.33, 0.255, 0.22]
+};
+
+/* ═══════════ 상태 ═══════════ */
+/* 뛰는 게 아니라 걷는 속도입니다 — 기억에 남는 건 그냥 걸어가는 것이지
+   빨리 가는 게 아니라고 했고, 저니도 서두르는 법이 없습니다.
+
+   그리고 알아서 걷지 않습니다. 자동으로 흘러가면 게임이 아니라 영상이고,
+   무엇보다 "내가 움직인 결과"가 아닌 화면 이동이 멀미의 제일 큰 원인입니다. */
+/* 저니의 보속입니다. 10.5 는 키 1.9짜리 사람이 초속 10미터 — 뛰는 거였고,
+   그 속도에 맞춰 맵이 넓어지니 걷는 느낌이 살 수가 없었습니다.
+   속도를 사람 걸음으로 내리고 맵을 같은 비율로 줄입니다 — 걸리는 시간은
+   비슷한데 발밑이 천천히 흐르고, 언덕 하나가 사건이 됩니다. */
+const SPEED = 4.6, TURN = 1.25;
+let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0, spdK = 1;
+let keys = { f:false, l:false, r:false };
+let camBack = 6.4, camUp = 2.6;
+const MOUNTAIN = { x: 14, z: 440 };             /* 월드에 못박힌 목표. 저니의 산입니다 */
+
+/* 프로토타입에는 셋만 세워 둡니다. 본편에서는 여덟 개고, 안의 본문은
+   index.html 의 .rec 한 벌에서 꺼내 씁니다 — 여기에 복제하지 않습니다. */
+/* 여덟 신전 — 커밋 순서대로, 산으로 가는 길을 따라 좌우로 흩어져 있습니다.
+   랜턴(aeo-log-analyzer)은 여섯 번째입니다. 다섯을 만들고 나서야 증명할 방법이
+   없다는 걸 알았고, 그 순서를 바꾸면 이 이야기 전체가 무너집니다.
+   본문은 docs/programs.md 에서 잘라 왔고, 본편에서는 .rec 한 벌에서 꺼내 씁니다. */
+/* 간격은 "다음 신전이 보일락 말락"이 기준입니다. 700 짜리 맵은 신전 사이가
+   빈 걷기 40초였고, 40초의 사막은 명상이 아니라 로딩화면이 됩니다. */const TEMPLES = [
+  { x: 6, z: 95, yaw: 0.1, name: 'aeo_sync',
+    line: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
+    door: '표준화와 고유함은 반대말인데, 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.' },
+  { x: -30, z: 138, yaw: 0.45, name: 'MediSTT',
+    line: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
+    door: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
+  { x: 27, z: 175, yaw: -0.35, name: 'MetaPorter',
+    line: '메타는 병원이 운영하기에 까다로운 매체입니다.',
+    door: '제한이 많아 캠페인이 자주 튕기고, 목표가 제각각이라 한 장으로 읽기 어렵습니다.' },
+  { x: -20, z: 213, yaw: 0.5, name: 'SERP Sentinel',
+    line: '순위 변동은 산출물이 아니라 수단입니다.',
+    door: '설계서 첫 장에 목적을 못박고 시작했습니다. 안 그러면 기능만 늘어납니다.' },
+  { x: 36, z: 251, yaw: -0.5, name: 'KPIY',
+    line: '정확해야 하는 곳에는 검색이 아니라 실행을 붙였습니다.',
+    door: 'LLM이 숫자를 지어내면 경영 보고서로 쓸 수 없습니다. 계산은 pandas가 합니다.' },
+  { x: 2, z: 291, yaw: 0.0, name: 'aeo-log-analyzer', lantern: true,
+    line: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
+    door: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.' },
+  { x: -23, z: 335, yaw: 0.4, name: 'NetTier',
+    line: '추정은 틀리지만 실측은 안 틀립니다.',
+    door: '되돌릴 수 없는 작업은 사람 손에 남겼습니다 — 업로드 자동화 금지.' },
+  { x: 4, z: 405, yaw: -0.1, name: 'Hospify',
+    line: '못 지킬 약속은, 자리를 비워둡니다.',
+    door: '가격 보증을 다 만들어 놓고 폐기했습니다. 병원이 지킬 수 없는 약속이라서.' }
+];
+TEMPLES.forEach((t, i) => {
+  t.y = height(t.x, t.z) - 1.1;              /* 모래에 반쯤 묻힘 */
+  t.tilt = (((i*37) % 7) - 3) * 0.018;       /* 세월에 살짝 기욺 — 반듯한 유적은 신축 건물 */
+});/* 아홉 번째 — 문이 아닌 문틀. Price Lock 은 만들어졌고, 그리고 지워졌습니다.
+   상인방이 가운데가 끊긴 빈 틀이 Hospify 가는 길에 서 있고, 지나갈 수는 있지만
+   아무 데로도 이어지지 않습니다. 이 사막에서 유일하게 아무 일도 일어나지 않는
+   물건이고, 그게 요점입니다. */
+const VOIDF = { x: 12, z: 370, yaw: 0.05 };
+VOIDF.y = height(VOIDF.x, VOIDF.z) - 0.4;
+let inside = null, nearT = null;
+
+/* 월드 → 신전 로컬. 문간은 로컬 -z 입니다. */
+function templeLocal(x, z, t) {
+  const dx = x - t.x, dz = z - t.z;
+  const c = Math.cos(t.yaw), s = Math.sin(t.yaw);
+  return { x: c*dx - s*dz, z: s*dx + c*dz };
+}
+/* 신전 발자국 안이면 막힘 — 문간 복도(|x|<1.5, 앞쪽)만 뚫려 있습니다 */
+function templeBlock(x, z) {
+  for (const t of TEMPLES) {
+    const l = templeLocal(x, z, t);
+    /* 반경 7.4까지 막습니다 — 모래 둔덕을 몸으로 뚫고 들어가면 화면이 깨집니다 */
+    if ((Math.abs(l.x) < 6.0 && Math.abs(l.z) < 6.0) || Math.hypot(l.x, l.z) < 7.4) {
+      if (Math.abs(l.x) < 1.5 && l.z < -2.0) continue;   /* 문간으로는 들어갈 수 있음 */
+      return true;
+    }
+  }
+  return false;
+}
+const crowd = [];
+for (let i = 0; i < 11; i++)
+  crowd.push({ x: (Math.random()-0.5)*14, z: 12 + i*6 + Math.random()*4,
+               yaw: (Math.random()-0.5)*0.10, veer: 0, t: Math.random()*6 });
+/* ── 열 장면 대본 — docs/narrative.md 전편 ──
+   진행도는 시간도 걸음 수도 아니라 "산 쪽으로 얼마나 나아갔는가"(z 최고점)입니다.
+   길이 정해져 있지 않은 사막이라 거리(moved)로 재면 옆으로 헤맨 것까지
+   이야기가 앞서 나가고, z 로 재면 이야기와 지형이 붙습니다.
+   각 줄은 7초 떠 있다가 스스로 내려갑니다 — '' 큐를 손으로 박던 것을 대체. */
+/* 헤드라인 한 줄씩 떨어뜨렸더니 "스토리텔링이 뭐라는지 모르겠다"가 됐습니다.
+   당연합니다 — 각 줄이 narrative.md 문단의 결론만 잘라낸 것이라, 문단을 읽지
+   않은 사람에게는 주어도 맥락도 없었습니다.
+   그래서 비트마다 2~3줄이 연쇄로 이어집니다: 상황 → 그래서 → 결과.
+   그리고 이 사막이 무엇인지, 유적이 무엇인지를 게임이 직접 말해 줍니다.
+   문장은 전부 narrative.md 에 있는 내용입니다 — 새로 지어낸 사실은 없습니다. */
+const SCRIPT = [
+  { z: 0.5, year: '',        lines: ['최희준 — 의료 마케팅 12년',
+                                     '걸어서 읽는 이력서입니다. 저 산까지 갑니다.'] },
+  { z:  12, year: '2014',    lines: ['2014년, 광고대행사에서 시작했습니다',
+                                     '제가 팔던 것은 ‘노출’이었습니다 — 얼마나 많이 보였는가',
+                                     '모두가 같은 것을 팔며, 같은 길을 걸었습니다'] },
+  { z:  28, year: '2015~',   lines: ['어느 날 들었습니다 — “노출이 아니라, 실제 환자를 늘린다”',
+                                     '그 한 문장에 끌려 의료로 자리를 옮겼습니다'] },
+  { z:  44, year: '2020',    lines: ['2020년, 일은 잘되고 있었습니다',
+                                     '그런데 이 방식에는 다음이 없다고 봤습니다',
+                                     '회사를 쉬며 AI와 코딩을 독학했습니다 — 아직 쓸 데도 없이'] },
+  { z:  58, year: '2025',    lines: ['5년 뒤, 검색이 AI의 답변으로 바뀌기 시작했습니다',
+                                     '제가 팔던 상품이, 죽기 시작한 겁니다'] },
+  { z:  70, year: '2025',    lines: ['업계는 가던 길을 계속 갔습니다',
+                                     '대체할 것을 만들 사람이 저밖에 없어서, 혼자 내려섰습니다',
+                                     '다들 물었습니다 — 굳이? 왜?'] },
+  { z:  82, year: '2025-12', lines: ['여기서부터 모래에 묻힌 유적들은, 제가 만든 도구들입니다',
+                                     '문으로 들어가면 왜 만들었는지가 있습니다. 지나쳐도 됩니다'] },
+  { z: 128, year: '2026-05', lines: ['여덟 달 동안, 손으로 하던 일을 하나씩 도구로 바꿨습니다',
+                                     '자막 · 광고 리포트 · 경쟁 감시 · 매출 분석'] },
+  { z: 272, year: '2026-07', lines: ['그런데 일곱 달을 만들고 나서야 알았습니다',
+                                     '이게 읽히고 있는지, 증명할 방법이 없다는 것을',
+                                     'AI 봇은 어떤 분석기에도 잡히지 않았습니다'] },
+  { z: 322, year: '2026-08', lines: ['만든 사람이 병목이 되면 그건 도구가 아니라 일감입니다',
+                                     '제가 없어도 돌아가게 만듭니다'] },
+  { z: 358, year: '2026-08', lines: ['만들 줄 알면서, 안 만든 것도 있습니다'] }
+];
+let scriptAt = 0, lineHideAt = 0, lineGapAt = 0, zProg = 0;
+const lineQueue = [];
+    /* ---------- 화면 연결 ----------
+       프로토타입은 화면 전체를 쓰는 한 장이었고, 여기서는 이력서 안의 상자입니다.
+       큰 글자(저니식 자막)는 .jn__tick 이 맡고, 신전 안은 .jn__panel 이 맡습니다. */
+    const chEl   = document.getElementById('jn-ch');
+    const noteEl = document.getElementById('jn-note');
+    const lineEl = document.getElementById('jn-tick');
+    const cue    = document.getElementById('jn-cue');
+    const panel  = document.getElementById('jn-panel');
+    const bodyEl = document.getElementById('jn-body');
+    const xBtn   = document.getElementById('jn-x');
+    const veil   = document.getElementById('jn-veil');
+    const live   = document.getElementById('jn-live');
+    const statEl = document.getElementById('jn-stat');
+    const yearEl = document.getElementById('jn-g-year');
+    const banner = document.getElementById('jn-banner');
+    const bName  = document.getElementById('jn-b-name');
+    const bLine  = document.getElementById('jn-b-line');
+    const bVerb  = document.getElementById('jn-b-verb');
+    const navCv  = document.getElementById('jn-nav');
+    const navG   = navCv && navCv.getContext ? navCv.getContext('2d') : null;
+    let running = false, scene = 1;
+    let lantern = false, ended = false;
+    const CASTS = new Float32Array(24 * 4);   /* 그림자를 드리우는 것들 — 신전 8 + 문틀 + 무리 */
+    function setG(el, v) { if (el && el.lastChild && el.lastChild.textContent !== v) el.lastChild.textContent = v; }
+
+    /* 기록은 문서에 이미 한 벌 있습니다. 게임은 그것을 꺼내 쓸 뿐, 복제하지 않습니다. */
+    const RECS = {};
     [].forEach.call(document.querySelectorAll('.rec'), function (a) {
-      var b = a.querySelector('.rec__title b');
+      const b = a.querySelector('.rec__title b');
       if (b) RECS[b.textContent.trim()] = a;
     });
 
-    /* ---------- the figure ----------
-       docs/design/02-figure-cycle.html. Two failed attempts are recorded in
-       docs/design/README.md; the short version is that from behind you read a
-       run from heel-kick, knee lift, shoulder/hip counter-rotation, elbow flare
-       and vertical bob — NOT from a fore-aft stride, which is edge-on and
-       therefore invisible. IK was removed on purpose: a folded knee goes into
-       the screen and foreshortens, it does not swing out sideways. */
-    var L = { ground:0, hip:.5, waist:.61, shoulder:.8, crown:.945, hipHW:.05, shHW:.105,
-              headRX:.055, headRY:.067, thigh:.24, thighW:.062, shinW:.046, upperW:.045,
-              foreW:.033, upperArm:.15 };
-    function footPath(u) {
-      u -= Math.floor(u);
-      if (u < .42) { var k = u / .42;
-        return { y: .010 + .085 * Math.max(0, k - .72) / .28, lift: 0, squash: .03 * Math.sin(k * Math.PI) }; }
-      var k2 = (u - .42) / .58, arc = Math.sin(k2 * Math.PI), hard = Math.pow(arc, .72);
-      return { y: .015 + .415 * hard, lift: hard, squash: 0 };
-    }
-    function seg(x0, y0, x1, y1, w, h, baseY, cx) {
-      g.lineWidth = Math.max(.8, w * h);
-      g.beginPath(); g.moveTo(cx + x0 * h, baseY - y0 * h); g.lineTo(cx + x1 * h, baseY - y1 * h); g.stroke();
-    }
-    function runner(cx, baseY, h, t, fill, opts) {
-      opts = opts || {};
-      var u = t - Math.floor(t), ph = u * TAU, side, i;
-      var bob = -.026 * Math.cos(2 * ph) - .01, shTilt = .055 * Math.cos(ph);
-      var hipTilt = -.03 * Math.cos(ph), sway = .012 * Math.cos(ph);
-      g.save();
-      g.fillStyle = fill; g.strokeStyle = fill; g.lineCap = 'round'; g.lineJoin = 'round';
-      function P(x, y) { return [cx + (x + sway) * h, baseY - (y + bob) * h]; }
-      var legs = [];
-      for (i = 0; i < 2; i++) {
-        side = i ? 1 : -1;
-        var f = footPath(u + (side < 0 ? 0 : .5));
-        var hipX = side * L.hipHW + sway, hipY = L.hip + bob + hipTilt * side * .3;
-        var kx = hipX + side * (.008 + .03 * f.lift), ky = hipY - L.thigh * (1 - .46 * f.lift) + f.squash;
-        legs.push({ hipX: hipX, hipY: hipY, kx: kx, ky: ky,
-                    ankX: kx + side * (.004 + .014 * f.lift), ankY: L.ground + f.y + bob,
-                    lift: f.lift, side: side });
-      }
-      legs.sort(function (a, b) { return b.lift - a.lift; });   /* trailing leg behind */
-      for (i = 0; i < legs.length; i++) {
-        var lg = legs[i];
-        seg(lg.hipX, lg.hipY - bob, lg.kx, lg.ky - bob, L.thighW, h, baseY, cx);
-        seg(lg.kx, lg.ky - bob, lg.ankX, lg.ankY - bob, L.shinW, h, baseY, cx);
-        seg(lg.ankX, lg.ankY - bob, lg.ankX + lg.side * (.024 - .014 * lg.lift),
-            lg.ankY - bob + .03 * lg.lift - .004, L.shinW * .85, h, baseY, cx);
-      }
-      var shLy = L.shoulder + shTilt, shRy = L.shoulder - shTilt;
-      var hpLy = L.hip + hipTilt, hpRy = L.hip - hipTilt;
-      g.beginPath();
-      g.moveTo.apply(g, P(-L.shHW, shLy));
-      g.quadraticCurveTo.apply(g, P(-L.shHW * .86, L.waist).concat(P(-L.hipHW - .01, hpLy)));
-      g.lineTo.apply(g, P(L.hipHW + .01, hpRy));
-      g.quadraticCurveTo.apply(g, P(L.shHW * .86, L.waist).concat(P(L.shHW, shRy)));
-      g.quadraticCurveTo.apply(g, P(0, L.shoulder + .042).concat(P(-L.shHW, shLy)));
-      g.closePath(); g.fill();
-
-      /* the pack. From behind this is the only silhouette cue that can carry an
-         identity — glasses, a face, a jacket colour are all on the far side of
-         the person. Everyone else on the road runs empty-handed; I am the one
-         carrying something, and it gets heavier with every door. */
-      if (opts.pack) {
-        var pk = Math.max(0, Math.min(1, opts.pack));
-        var pw = L.shHW * (.98 + .30 * pk), pTop = L.shoulder - .012, pBot = L.hip + .085 - .03 * pk;
-        var r = (pTop - pBot) * .3;
-        g.fillStyle = opts.packFill || '#161B26';
-        g.beginPath();
-        g.moveTo.apply(g, P(-pw, pTop - r));
-        g.quadraticCurveTo.apply(g, P(-pw, pTop).concat(P(-pw + r, pTop)));
-        g.lineTo.apply(g, P(pw - r, pTop));
-        g.quadraticCurveTo.apply(g, P(pw, pTop).concat(P(pw, pTop - r)));
-        g.lineTo.apply(g, P(pw, pBot + r));
-        g.quadraticCurveTo.apply(g, P(pw, pBot).concat(P(pw - r, pBot)));
-        g.lineTo.apply(g, P(-pw + r, pBot));
-        g.quadraticCurveTo.apply(g, P(-pw, pBot).concat(P(-pw, pBot + r)));
-        g.closePath(); g.fill();
-        g.strokeStyle = opts.packEdge || 'rgba(255,174,26,.62)';
-        g.lineWidth = Math.max(1, h * .012); g.stroke();
-        /* a lid seam, so at 40px it still reads as a bag and not as a block */
-        g.beginPath();
-        g.moveTo.apply(g, P(-pw * .82, pTop - (pTop - pBot) * .34));
-        g.lineTo.apply(g, P(pw * .82, pTop - (pTop - pBot) * .34));
-        g.stroke();
-        g.fillStyle = fill;                       /* restore for the arms below */
-        g.strokeStyle = fill;
-      }
-
-      var handX = 0, handY = 0;
-      for (i = 0; i < 2; i++) {
-        side = i ? 1 : -1;
-        var q = ph + (side < 0 ? Math.PI : 0), sw = Math.cos(q);
-        var shX = side * L.shHW * .88 + sway, shY = (side < 0 ? shLy : shRy) - .012;
-        var elbX = shX + side * (.052 + .03 * Math.max(0, -sw)), elbY = shY - L.upperArm + .03 * sw;
-        var wrX = elbX - side * (.04 + .03 * Math.max(0, sw)), wrY = elbY + .038 + .115 * sw;
-        seg(shX, shY, elbX, elbY, L.upperW, h, baseY, cx);
-        seg(elbX, elbY, wrX, wrY, L.foreW, h, baseY, cx);
-        if (side === 1) { handX = wrX; handY = wrY; }
-      }
-      /* the lamp, once he has one. it swings with the arm, which is the only
-         way a light reads as carried rather than pasted on. */
-      if (opts.lamp) {
-        var hp = P(handX, handY), lr = Math.max(1.4, h * .028);
-        var lg = g.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], lr * 11);
-        lg.addColorStop(0, 'rgba(255,190,110,.42)'); lg.addColorStop(1, 'rgba(255,190,110,0)');
-        g.fillStyle = lg; g.beginPath(); g.arc(hp[0], hp[1], lr * 11, 0, TAU); g.fill();
-        g.fillStyle = '#FFD27A'; g.beginPath(); g.arc(hp[0], hp[1], lr, 0, TAU); g.fill();
-        g.fillStyle = fill; g.strokeStyle = fill;
-      }
-      seg(sway, L.shoulder, sway + shTilt * .3, L.shoulder + .055, .055, h, baseY, cx);
-      var hx = cx + (sway + shTilt * .45) * h, hy = baseY - (L.crown - L.headRY + bob) * h;
-      g.beginPath(); g.ellipse(hx, hy, L.headRX * h, L.headRY * h, shTilt * 1.4, 0, TAU); g.fill();
-      /* the rim light is the only thing separating me from the crowd: same rig,
-         same silhouette, one lit edge. */
-      if (opts.rim) {
-        var s2 = opts.rimSide || -1;
-        g.strokeStyle = opts.rim; g.lineWidth = Math.max(1, h * .013);
-        g.beginPath();
-        g.ellipse(hx, hy, L.headRX * h, L.headRY * h, shTilt * 1.4,
-                  s2 < 0 ? Math.PI * .6 : Math.PI * 1.4, s2 < 0 ? Math.PI * 1.32 : Math.PI * 2.12);
-        g.stroke();
-        g.beginPath();
-        g.moveTo.apply(g, P(s2 * L.shHW, (s2 < 0 ? shLy : shRy) - .015));
-        g.quadraticCurveTo.apply(g, P(s2 * L.shHW * .88, L.waist)
-                                     .concat(P(s2 * (L.hipHW + .008), s2 < 0 ? hpLy : hpRy)));
-        g.stroke();
-      }
-      g.restore();
-    }
-
-    /* ---------- dom ---------- */
-    var stat  = document.getElementById('jn-stat');
-    var chEl  = document.getElementById('jn-ch');
-    var noteEl= document.getElementById('jn-note');
-    var cue   = document.getElementById('jn-cue');
-    var tickEl= document.getElementById('jn-tick');
-    var veil  = document.getElementById('jn-veil');
-    var goBtn = document.getElementById('jn-go');
-    var panel = document.getElementById('jn-panel');
-    var body  = document.getElementById('jn-body');
-    var xBtn  = document.getElementById('jn-x');
-    var live  = document.getElementById('jn-live');
-    var banner= document.getElementById('jn-banner');
-    var bName = document.getElementById('jn-b-name');
-    var bLine = document.getElementById('jn-b-line');
-    var bVerb = document.getElementById('jn-b-verb');
-    var padPlant = document.getElementById('jn-pad-plant');
-    /* the only readout left is the year, because a year is biography.
-       stats below are still counted — the ending uses them and the reveal line
-       needs to know how many citations happened while you could not see them —
-       but nothing counts up on screen while you run. */
-    var GAUGE = { year: document.getElementById('jn-g-year') };
-    var card     = document.getElementById('jn-card');
-    var cardLine = document.getElementById('jn-card-line');
-    var cardTag  = document.getElementById('jn-card-tag');
-    var flash    = document.getElementById('jn-flash');
-    var sndBtn   = document.getElementById('jn-snd');
-
-    /* ---------- sound ----------
-       Six oscillator blips, no files. The context is opened on the first click
-       (the 걷기 시작 button), which is the only moment a browser will allow it.
-       Off until asked: a CV that makes noise unannounced is a bad first move. */
-    var actx = null, sndOn = false;
+    /* ---------- 소리 — 파일 없이 오실레이터로. 기본은 꺼져 있습니다 ---------- */
+    let AC = null, snd = false;
     function beep(freq, len, type, gain) {
-      if (!sndOn) return;
+      if (!snd) return;
       try {
-        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-        if (actx.state === 'suspended') actx.resume();
-        var o = actx.createOscillator(), a = actx.createGain(), t0 = actx.currentTime;
-        o.type = type || 'square';
-        o.frequency.setValueAtTime(freq, t0);
-        a.gain.setValueAtTime(gain || .05, t0);
-        a.gain.exponentialRampToValueAtTime(.0001, t0 + len);
-        o.connect(a); a.connect(actx.destination);
-        o.start(t0); o.stop(t0 + len + .02);
-      } catch (e) { sndOn = false; }         /* never let audio break the run */
+        if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.type = type || 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(gain || .04, AC.currentTime);
+        g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + len);
+        o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + len);
+      } catch (e) { snd = false; }
     }
-    var SFX = {
-      plant:  function () { beep(520, .07, 'triangle', .04); beep(780, .09, 'triangle', .025); },
-      cite:   function () { beep(940, .07, 'sine',   .03); },
-      pick:   function () { beep(660, .10, 'square', .045); beep(990, .16, 'square', .03); },
-      reveal: function () { beep(220, .5, 'sawtooth', .05); beep(660, .7, 'sine', .04); },
-      door:   function () { beep(300, .12, 'triangle', .04); },
-      turn:   function () { beep(180, .18, 'sine', .045); beep(300, .22, 'sine', .03); },
-      end:    function () { beep(392, .25, 'sine', .05); beep(587, .45, 'sine', .04); }
+    const SFX = {
+      door:   function () { beep(320, .18, 'sine', .05); },
+      reveal: function () { beep(180, .5, 'triangle', .07); beep(540, .6, 'sine', .04); },
+      end:    function () { beep(240, .7, 'sine', .05); }
     };
-    sndBtn.addEventListener('click', function () {
-      sndOn = !sndOn;
-      sndBtn.setAttribute('aria-pressed', sndOn ? 'true' : 'false');
-      sndBtn.setAttribute('aria-label', sndOn ? '소리 끄기' : '소리 켜기');
-      sndBtn.textContent = sndOn ? '♪ 소리 켬' : '♪ 소리';
-      if (sndOn) SFX.door();
-    });
+function sayLine(s, secs) {          /* 대기열 무시하고 바로 — 랜턴 전환용 */
+  lineQueue.length = 0;
+  lineEl.textContent = s; lineEl.classList.add('on');
+  lineHideAt = performance.now()*0.001 + (secs || 7);
+}
+function cues() {
+  zProg = Math.max(zProg, P0.z);
+  while (scriptAt < SCRIPT.length && zProg >= SCRIPT[scriptAt].z) {
+    const b = SCRIPT[scriptAt++];
+    if (b.year) setG(yearEl, b.year);
+    scene = Math.max(1, Math.min(10, scriptAt));
+    chEl.textContent = scene + ' / 10';
+    noteEl.textContent = b.lines[0];
+    live.textContent = b.lines.join(' ');
+    /* 빨리 걸어 비트를 여럿 건너뛰면 최신 것만 남깁니다 — 대사가 위치를
+       세 비트씩 뒤따라오면 그게 또 다른 "무슨 말인지 모르겠다"가 됩니다 */
+    lineQueue.length = 0;
+    lineQueue.push(...b.lines);
+  }
+  const now = performance.now()*0.001;
+  if (lineHideAt && now > lineHideAt) {
+    lineEl.classList.remove('on'); lineHideAt = 0;
+    lineGapAt = now + 0.65;                    /* 줄과 줄 사이 숨 */
+  }
+  /* 신전 안에서는 대사가 흐르지 않습니다 — 거긴 읽는 자리라 겹치면 둘 다 죽습니다 */
+  if (!lineHideAt && !inside && lineQueue.length && now > lineGapAt) {
+    const s = lineQueue.shift();
+    lineEl.textContent = s; lineEl.classList.add('on');
+    lineHideAt = now + 2.9 + s.length * 0.075;  /* 긴 줄은 오래 떠 있음 */
+  }
+}/* ── 나침반 ──
+   2D 캔버스 오버레이. 진행 방향이 늘 위쪽입니다 — 신전에서 나와 몸이 어디를
+   보고 있든, "산은 저쪽, 다음 신전은 이쪽"이 한눈에 잡히게. 표기는 셋뿐입니다:
+   산(목표 침) · 신전(점, 들어가 본 곳은 빈 원) · 나(가운데 쐐기). */
+function drawNav() {
+  const S = 232, C = S/2, R = 104, RANGE = 90;   /* RANGE: 원 가장자리 = 90 단위 */
+  navG.clearRect(0, 0, S, S);
+  navG.save();
+  navG.translate(C, C);
+  /* 판 */
+  navG.beginPath(); navG.arc(0, 0, R, 0, TAU);
+  navG.fillStyle = 'rgba(10,8,16,.44)'; navG.fill();
+  navG.lineWidth = 2; navG.strokeStyle = 'rgba(255,238,210,.28)'; navG.stroke();
+  navG.beginPath(); navG.arc(0, 0, R*0.5, 0, TAU);
+  navG.lineWidth = 1; navG.strokeStyle = 'rgba(255,238,210,.10)'; navG.stroke();
 
-    /* ---------- scene cards ----------
-       One short line at a time, big, in the DOM — canvas text would be neither
-       real type nor readable by anything assistive. */
-    var shownScene = 0, cardT = 0;
-    function showScene(s) {
-      if (!s || s.n === shownScene) return;
-      /* one big thing at a time. a pickup banner and a scene line both landing
-         on the bottom of the frame is two headlines on top of each other —
-         the scene waits its turn rather than being lost. */
-      if (bannerT && clock < bannerT) return;
-      shownScene = s.n;
-      cardLine.textContent = s.line;
-      cardTag.textContent  = s.year + ' · ' + s.tag;
-      card.classList.add('on');
-      cardT = clock + 4.2;
-      live.textContent = s.n + '장. ' + s.line;
-    }
+  const cw = Math.cos(camYaw), sw = Math.sin(camYaw);
+  const toMap = (wx, wz) => {          /* 진행 방향 = 위 */
+    const dx = wx - P0.x, dz = wz - P0.z;
+    const lx = cw*dx - sw*dz, lz = sw*dx + cw*dz;
+    return { x: lx/RANGE*R, y: -lz/RANGE*R, d: Math.hypot(lx, lz) };
+  };
+  const clampRim = (p, rim) => {
+    const m = Math.hypot(p.x, p.y);
+    if (m > rim) { p.x *= rim/m; p.y *= rim/m; p.clamped = true; }
+    return p;
+  };
 
-    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var shake = 0, dust = [];
-    function kick(n) { if (!calm) shake = Math.max(shake, n); }
-    function puff(x, z, n, col) {
-      if (calm) return;
-      for (var i = 0; i < n; i++)
-        dust.push({ x: x + (Math.random() - .5) * .6, z: z, h: Math.random() * .3, t: 0,
-                    vx: (Math.random() - .5) * 1.2, vh: Math.random() * 1.4, c: col || '#7E7C76' });
-      if (dust.length > 120) dust.splice(0, dust.length - 120);
-    }
+  /* 산 — 항상 원 가장자리의 침. 이게 이 나침반의 북쪽입니다 */
+  const mt = clampRim(toMap(MOUNTAIN.x, MOUNTAIN.z), R-8);
+  const ma = Math.atan2(mt.y, mt.x);
+  navG.save();
+  navG.translate(mt.x, mt.y); navG.rotate(ma + Math.PI/2);
+  navG.beginPath(); navG.moveTo(0, -7); navG.lineTo(5, 5); navG.lineTo(-5, 5); navG.closePath();
+  navG.fillStyle = 'rgba(255,224,170,.95)'; navG.fill();
+  navG.restore();
 
-    /* ---------- state ---------- */
-    var p, camX, camZ, have, stats, pages, bots, crowd, arrivals, rivals, pops;
-    var spark, sparkAt, sparkLast;
-    var running, ended, raf, last, clock, plantCd, got, forked, blockT;
-    var keys = { l: false, r: false, d: false };
+  /* 신전들 — 점. 들어가 본 곳은 빈 원이 됩니다 */
+  for (const t of TEMPLES) {
+    const p = clampRim(toMap(t.x, t.z), R-10);
+    navG.beginPath(); navG.arc(p.x, p.y, p.clamped ? 3 : 4.5, 0, TAU);
+    if (t.seen) { navG.lineWidth = 2; navG.strokeStyle = 'rgba(255,174,26,.85)'; navG.stroke(); }
+    else { navG.fillStyle = p.clamped ? 'rgba(255,174,26,.55)' : 'rgba(255,174,26,.95)'; navG.fill(); }
+  }
 
-    function reset() {
-      p = { z: 4, x: 0, anim: 0 };
-      camX = 0; camZ = p.z - PZ;
-      have = {};
-      stats = { crawl: 0, pages: 0, cited: 0, doors: 0 };
-      pages = []; pops = []; spark = []; sparkAt = 0; sparkLast = 0;
-      running = false; ended = false; clock = 0;
-      plantCd = 0; got = 0; forked = false; blockT = 0;
-      shake = 0; dust = []; shownScene = 0; cardT = 0;
-      card.classList.remove('on'); flash.classList.remove('on');
-      keys.l = keys.r = keys.d = false;
-
-      /* everyone starts on the same road, going the same way. they stay on it. */
-      /* they run at very nearly my speed. Slower and they are all behind me by
-         the time the road forks, and 5장 — the one beat the whole thing turns
-         on — plays to an empty road. They have to still be there to be left. */
-      crowd = [];
-      for (var i = 0; i < 18; i++)
-        crowd.push({ z: 12 + i * 11 + Math.random() * 7,
-                     x: (Math.random() - .5) * 2 * ROAD_HW * .78,
-                     sp: SPEED * (.97 + Math.random() * .06), t: Math.random() });
-
-      bots = [];
-      for (i = 0; i < 16; i++) bots.push(respawn({}, 30 + i * 14));
-
-      /* the mirror of scene 1: once the border opens, people walk toward the
-         clinic on MY track. nobody walks away here — the leaving happened back
-         on the paved road, when there was nothing to be done about it. */
-      arrivals = [];
-      for (i = 0; i < 9; i++)
-        arrivals.push({ z: GATEZ + 40 + i * 22, x: (Math.random() - .5) * 2 * ROAD_HW * .6,
-                        t: Math.random() });
-
-      /* competitors, invisible until the radar */
-      rivals = [];
-      for (i = 0; i < 22; i++)
-        rivals.push({ z: 1650 + i * 34, x: (Math.random() - .5) * 2 * ROAD_HW * .82 });
-
-      TOOLS.forEach(function (t) { t.taken = false; t.read = false; });
-      for (var k in GAUGE) GAUGE[k].hidden = true;   /* nothing to count yet */
-      GAUGE.year.hidden = false;                     /* except the year: it always runs */
-      padLabels();
-    }
-
-    /* crawlers come toward you out of the distance. they are drawn at .07 alpha
-       until the lantern — present the whole time, just not countable. */
-    function respawn(b, d) {
-      b.z = p ? p.z + (d !== undefined ? d : 120 + Math.random() * 90)
-              : (d !== undefined ? d : 120);
-      b.x = myCx(b.z) + (Math.random() - .5) * 2 * ROAD_HW * .85;
-      b.h = .6 + Math.random() * .8;         /* how high above the surface it flies */
-      b.name = AI_NAMES[(Math.random() * AI_NAMES.length) | 0];
-      b.wob = Math.random() * TAU;
-      b.dead = 0;
-      b.target = null;
-      return b;
-    }
-
-    /* ---------- feedback ---------- */
-    var tickT = 0;
-    function say(msg, announce) {
-      tickEl.textContent = msg;
-      tickEl.classList.add('on');
-      tickT = clock + 2.6;
-      if (announce) live.textContent = msg;
-    }
-    function pop(x, z, h, text) {
-      if (pops.length > 16) pops.shift();
-      pops.push({ x: x, z: z, h: h, t: 0, text: text });
-    }
-    function padLabels() {
-      if (padPlant) padPlant.disabled = !have || !have.plant;
-    }
-
-    var bannerT = 0;
-    function pickup(t) {
-      t.taken = true;
-      have[t.grant] = true;
-      got++;
-      bName.textContent = t.rec;
-      bLine.textContent = '“' + t.line + '”';
-      bVerb.textContent = t.verb;
-      banner.classList.add('on');
-      bannerT = clock + 4.6;
-
-      puff(myCx(t.z), t.z, 16, '#FFAE1A');
-      kick(3);
-      SFX.pick();
-
-      /* announced BEFORE the grants: reveal() and finish() both write their own
-         line here, and this one used to land after them and wipe the ending */
-      live.textContent = t.rec + ' 획득 — ' + t.verb;
-
-      if (t.grant === 'plant') padLabels();
-      if (t.grant === 'lantern') reveal();
-      if (t.grant === 'clinic')  finish();
-    }
-
-    /* The turn of the whole piece. It used to be a dial flipping from "?" to a
-       number, which meant nothing to anyone who had not read the story first.
-       Now it is what it always should have been: everything that was already
-       happening becomes visible at once, and the line names what just changed. */
-    function reveal() {
-      flash.classList.add('on');
-      setTimeout(function () { flash.classList.remove('on'); }, 40);
-      kick(8);
-      SFX.reveal();
-      for (var i = 0; i < bots.length; i++)
-        if (!bots[i].dead) puff(bots[i].x, bots[i].z, 2, '#FFAE1A');
-      say(stats.cited > 0
-        ? '그동안 ' + stats.cited + '번 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다'
-        : '크롤러가 보입니다 — 계속 지나다니고 있었습니다', true);
-    }
-
-    /* ---------- the one verb you get before the lantern ---------- */
-    function plant() {
-      if (!running || ended) return;
-      if (!have.plant) { say('아직 발행할 수 없습니다 — 앞의 aeo_sync 문을 먼저 지나세요'); return; }
-      if (plantCd > 0 || pages.length >= 46) return;
-      /* ahead of you, because in a back view nothing behind you exists. you see
-         it come toward you, and you watch a crawler land on it. */
-      var nz = p.z + PLANT_AHEAD;
-      for (var i = 0; i < pages.length; i++) {
-        if (Math.abs(pages[i].z - nz) < PAGE_SPACE) {
-          say('같은 자리에는 다시 발행할 수 없습니다 — 달리면서 발행하세요');
-          return;
-        }
-      }
-      plantCd = .3;
-      pages.push({ z: nz, x: p.x, cited: 0, cool: 0, sub: !!have.sub });
-      stats.pages++;
-      pop(p.x, p.z + 6, 1.5, '발행');   /* at me, not at the page — the page is 40 away and the pop would be a speck on the horizon */
-      SFX.plant();
-      /* the quality gate is in the pipeline, not after it */
-      if (stats.pages % 4 === 0) say('감수 통과 — reviewedBy 주입', false);
-    }
-
-    /* a page still on re-crawl cooldown is skipped, so standing on a pile of
-       pages farms a trickle while publishing more is what raises the number */
-    function nearestPage(z) {
-      var best = null, bd = 1e9;
-      for (var i = 0; i < pages.length; i++) {
-        if (pages[i].cool > 0) continue;
-        var d = Math.abs(pages[i].z - z);
-        if (d < bd) { bd = d; best = pages[i]; }
-      }
-      return bd < 150 ? best : null;
-    }
-    /* the lamps are 유입. they are lit at the start, they go out when the thing
-       I was selling starts dying, and they come back exactly where I published. */
-    function lampLit(z) {
-      if (z < 520) return true;
-      if (have.gate) return true;
-      for (var i = 0; i < pages.length; i++)
-        if (Math.abs(pages[i].z - z) < 120) return true;
-      return false;
-    }
-    function sceneAt(z) {
-      var s = SCENES[0];
-      for (var i = 0; i < SCENES.length; i++) if (z >= SCENES[i].z) s = SCENES[i];
-      return s;
-    }
-    function nearTool() {
-      for (var i = 0; i < TOOLS.length; i++)
-        if (Math.abs(TOOLS[i].z - p.z) < REACH) return TOOLS[i];
-      return null;
-    }
-
-    /* ---------- simulation ---------- */
-    function step(dt) {
-      clock += dt;
-      if (plantCd > 0) plantCd -= dt;
-      var i, b, t;
-      for (i = 0; i < pages.length; i++) if (pages[i].cool > 0) pages[i].cool -= dt;
-
-      /* --- steering. there is no jump: this is one road and one decision. --- */
-      var dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
-      p.x += dir * STEER * dt;
-
-      /* the crowd pulls right through the fork. you have to hold left to leave —
-         that resistance is 5장, and it is the only hard thing in the game. */
-      if (p.z > FORK_Z && p.z < ROAD_END && !forked) p.x += 1.5 * dt;
-      /* the band has to be WIDER than the clamp below, or holding left pins you
-         at myCx - ROAD_HW*1.02 — three centimetres outside your own road — and
-         the fork never latches. Held ← stranded the runner at the dead end. */
-      if (p.z > FORK_Z + FORK_LEN * .8 && !forked &&
-          Math.abs(p.x - myCx(p.z)) < ROAD_HW * 1.05) {
-        forked = true;
-        kick(4); SFX.turn();
-        say('무리에서 내려섰습니다', true);
-      }
-
-      var lo = myCx(p.z) - ROAD_HW * 1.02;
-      var hi = forked ? myCx(p.z) + ROAD_HW * 1.02 : ROAD_HW * 1.02;
-      p.x = Math.max(lo, Math.min(hi, p.x));
-
-      /* the tarmac ends. this is a wall you clear by steering, never a death —
-         you cannot lose this game, you can only stand still in it. */
-      var blocked = !forked && p.z >= ROAD_END;
-      if (blocked) {
-        p.z = ROAD_END;
-        if (clock > blockT) {
-          blockT = clock + 4;
-          say('포장된 길은 여기까지입니다 — ← 왼쪽 길로 내려서세요', true);
-        }
-      } else {
-        p.z += SPEED * dt;
-        p.anim += dt * 1.55;
-      }
-
-      /* the border holds until NetTier */
-      if (!have.gate && p.z > GATEZ - 3) {
-        p.z = GATEZ - 3;
-        if (clock > blockT) {
-          blockT = clock + 4;
-          say('국경 — 다국어 없이는 넘어갈 수 없습니다', true);
-        }
-      }
-
-      camX += (p.x - camX) * 3.4 * dt;    /* lags, so steering shows on screen */
-      camZ = p.z - PZ;
-
-      /* --- the others keep going, on the road that ends --- */
-      for (i = 0; i < crowd.length; i++) {
-        var c = crowd[i];
-        c.z += c.sp * dt;
-        c.t += dt * 1.55;
-        /* recycled until the tarmac runs out, so the road is still full of them
-           at the fork. after that they are simply not replaced — the road they
-           are on ends, and the emptying is the point rather than a cleanup. */
-        if (c.z < camZ - 6 || c.z > camZ + VIEW + 60) {
-          if (p.z < ROAD_END) {
-            c.z = camZ + 40 + Math.random() * 130;
-            c.x = (Math.random() - .5) * 2 * ROAD_HW * .78;
-            c.sp = SPEED * (.97 + Math.random() * .06);
-          }
-        }
-      }
-      for (i = 0; i < arrivals.length; i++) {
-        if (have.gate && arrivals[i].z < CLINIC_Z - 4) {
-          arrivals[i].z += 6 * dt; arrivals[i].t += dt * 1.1;
-        }
-      }
-
-      /* --- crawlers --- */
-      for (i = 0; i < bots.length; i++) {
-        b = bots[i];
-        if (b.dead) { b.dead -= dt; if (b.dead <= 0) respawn(b); continue; }
-        b.z -= 16 * dt;                                   /* они come toward you */
-
-        t = null;
-        if (have.plant) {
-          if (b.target && b.target.cool > 0) b.target = null;
-          if (!b.target) b.target = nearestPage(b.z);
-          t = b.target;
-        }
-        if (t) {
-          b.z += (t.z - b.z) * 2.2 * dt;
-          b.x += (t.x - b.x) * 2.6 * dt;
-          b.h += (1.15 - b.h) * 3 * dt;
-          if (Math.abs(t.z - b.z) < 3.5 && Math.abs(t.x - b.x) < .7) {
-            /* a page with subtitles is re-read sooner — MediSTT's whole claim */
-            t.cited++; t.cool = t.sub ? RECRAWL * .6 : RECRAWL; stats.cited++;
-            if (have.lantern) { pop(t.x, t.z, 1.8, '인용 +1'); SFX.cite(); }
-            else pop(t.x, t.z, 1.8, '?');   /* something happened; you cannot count it */
-            b.dead = .8; continue;
-          }
-        } else {
-          b.h = .6 + .5 + Math.sin(clock * 1.6 + b.wob) * .18;
-        }
-        if (b.z < camZ + NEAR || b.z > camZ + VIEW + 40) { respawn(b); continue; }
-
-        /* --- measure: only possible once you carry the lantern.
-               running into one is the whole verb — you have to be in its lane. */
-        if (have.lantern && Math.abs(b.z - p.z) < 3 && Math.abs(b.x - p.x) < 1.1 && b.h < 1.5) {
-          stats.crawl++;
-          pop(b.x, b.z, b.h + .4, '+1');
-          puff(b.x, b.z, 3, '#FFAE1A');
-          SFX.cite();
-          say(b.name + ' 계측 · GA에는 안 잡히는 트래픽', false);
-          b.dead = .6;
-        }
-      }
-
-      /* --- doors: full width, so nothing here is missable --- */
-      for (i = 0; i < TOOLS.length; i++)
-        if (!TOOLS[i].taken && p.z >= TOOLS[i].z) pickup(TOOLS[i]);
-
-      /* --- pops, dust, shake --- */
-      for (i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; if (pops[i].t > 1.1) pops.splice(i, 1); }
-      for (i = dust.length - 1; i >= 0; i--) {
-        var d = dust[i];
-        d.t += dt; d.x += d.vx * dt; d.h += d.vh * dt; d.vh -= 2.6 * dt;
-        if (d.t > .8) dust.splice(i, 1);
-      }
-      if (shake > 0) shake = Math.max(0, shake - dt * 22);
-
-      showScene(sceneAt(p.z));
-      if (shownScene === 5 && !forked && clock > blockT && p.z > FORK_Z + 30) {
-        blockT = clock + 6;
-        say('여기서 길이 갈립니다 — ← 왼쪽으로', true);
-      }
-
-      /* --- kpi trace: rate, not running total. a cumulative series only ever
-             rises, so every bar pins to max and the chart reads as a solid block */
-      if (have.kpi && clock > sparkAt) {
-        sparkAt = clock + .7;
-        var tot = stats.crawl + stats.cited;
-        spark.push(tot - sparkLast);
-        sparkLast = tot;
-        if (spark.length > 34) spark.shift();
-      }
-
-      if (!ended && p.z >= TRACK) finish();
-      hud();
-    }
-
-
-    /* ---------- render ----------
-       Painter's algorithm over one sorted list. Everything in the world is a
-       (z, draw) pair, so a page, a crawler and a person can never be layered
-       wrongly against each other. */
-    function sx(wx, pr) { return W / 2 + (wx - camX) * pr.s; }
-    var props = [];
-    function prop(z, fn) { if (z > camZ + NEAR && z < camZ + VIEW) props.push({ z: z, f: fn }); }
-
-    function drawRoad(cxf, zA, zB, a) {
-      var i, t, d, Z, pr, X, first;
-      for (i = 0; i < 4; i++) {
-        t = [-1, -1 / 3, 1 / 3, 1][i];
-        g.strokeStyle = (i === 0 || i === 3)
-          ? 'rgba(150,178,220,' + (.55 * a).toFixed(3) + ')'
-          : 'rgba(255,174,26,' + (.30 * a).toFixed(3) + ')';
-        g.lineWidth = 1.6;
-        g.beginPath(); first = true;
-        for (d = NEAR; d < VIEW; d *= 1.045) {
-          Z = camZ + d;
-          if (Z < zA || Z > zB) { first = true; continue; }
-          pr = proj(d);
-          X = sx(cxf(Z) + t * ROAD_HW, pr);
-          if (first) { g.moveTo(X, pr.y); first = false; } else g.lineTo(X, pr.y);
-        }
-        g.stroke();
-      }
-      /* the rungs. anchored to WORLD z, not to depth — anchored to depth they
-         sit still under a moving runner and the road stops reading as motion. */
-      var st = 2, Z0 = Math.ceil(Math.max(zA, camZ + NEAR) / st) * st;
-      var Z1 = Math.min(zB, camZ + VIEW);
-      for (Z = Z0; Z < Z1; Z += st) {
-        d = Z - camZ; pr = proj(d);
-        var c = cxf(Z);
-        g.strokeStyle = 'rgba(255,174,26,' + Math.max(.04, (.34 - d / 230) * a).toFixed(3) + ')';
-        g.lineWidth = Math.max(.7, 3.2 * pr.s / F);
-        g.beginPath();
-        g.moveTo(sx(c - ROAD_HW, pr), pr.y);
-        g.lineTo(sx(c + ROAD_HW, pr), pr.y);
-        g.stroke();
-      }
-    }
-
-    function drawLamps() {
-      var STEP = 13;
-      var Z0 = Math.ceil((camZ + NEAR) / STEP) * STEP;
-      for (var Z = Z0; Z < camZ + VIEW; Z += STEP) {
-        var d = Z - camZ, pr = proj(d), c = myCx(Z);
-        var lit = lampLit(Z), r = Math.max(.8, .085 * pr.s), postH = .95 * pr.s;
-        for (var s2 = -1; s2 <= 1; s2 += 2) {
-          var x = sx(c + s2 * ROAD_HW * 1.18, pr), y = pr.y;
-          if (x < -60 || x > W + 60) continue;
-          g.strokeStyle = 'rgba(120,132,158,.40)';
-          g.lineWidth = Math.max(.7, .03 * pr.s);
-          g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - postH); g.stroke();
-          if (lit) {
-            var gl = g.createRadialGradient(x, y - postH, 0, x, y - postH, r * 9);
-            gl.addColorStop(0, 'rgba(255,190,110,.40)'); gl.addColorStop(1, 'rgba(255,190,110,0)');
-            g.fillStyle = gl; g.beginPath(); g.arc(x, y - postH, r * 9, 0, TAU); g.fill();
-          }
-          g.fillStyle = lit ? 'rgba(255,200,130,.95)' : 'rgba(86,92,108,.45)';
-          g.beginPath(); g.arc(x, y - postH, r, 0, TAU); g.fill();
-        }
-      }
-    }
-
-    function drawSign(x, z, cited, sub, rival) {
-      var pr = proj(z - camZ), cx = sx(x, pr);
-      var w = .62 * pr.s, h = .78 * pr.s, postH = .55 * pr.s;
-      var top = pr.y - postH - h;
-      g.fillStyle = rival ? '#55545C' : '#7A6A44';
-      g.fillRect(cx - Math.max(.6, .035 * pr.s) / 2, pr.y - postH, Math.max(.8, .035 * pr.s), postH);
-      g.fillStyle = rival ? '#1B1B21' : (cited ? '#6B5310' : '#4A3407');
-      g.fillRect(cx - w / 2, top, w, h);
-      g.strokeStyle = rival ? '#55545C' : (cited ? '#F2F1ED' : '#FFAE1A');
-      g.lineWidth = Math.max(1, .035 * pr.s);
-      g.strokeRect(cx - w / 2, top, w, h);
-      if (sub) {                                   /* the subtitle bar MediSTT adds */
-        g.fillStyle = '#6E8BB5';
-        g.fillRect(cx - w * .32, top + h * .74, w * .64, Math.max(1, h * .09));
-      }
-    }
-
-    function drawDoor(t, i) {
-      var pr = proj(t.z - camZ), c = myCx(t.z), cx = sx(c, pr);
-      var hw = pr.hw * 1.1, h = 2.55 * pr.s, th = Math.max(2, .17 * pr.s);
-      var lit = t.taken;
-      /* the head of the opening is filled and the foot is left open, so it reads
-         as something you run THROUGH. Filled edge to edge it was a wall across
-         the road, which is the one thing a door must not look like. */
-      var dg = g.createLinearGradient(0, pr.y - h, 0, pr.y);
-      dg.addColorStop(0, 'rgba(10,12,18,.34)');
-      dg.addColorStop(.4, 'rgba(10,12,18,.10)');
-      dg.addColorStop(1, 'rgba(10,12,18,0)');
-      g.fillStyle = dg; g.fillRect(cx - hw, pr.y - h, hw * 2, h);
-      if (lit) {
-        var lgd = g.createLinearGradient(0, pr.y - h, 0, pr.y);
-        var a2 = .16 + .07 * Math.sin(clock * 1.7 + i);
-        lgd.addColorStop(0, 'rgba(255,174,26,' + a2.toFixed(3) + ')');
-        lgd.addColorStop(1, 'rgba(255,174,26,0)');
-        g.fillStyle = lgd; g.fillRect(cx - hw, pr.y - h, hw * 2, h);
-      }
-      /* a gantry, not a wall: what carries it is the frame, so the frame has to
-         be thick and light enough to read against the sky at 200 units out. A
-         thin dark frame over a filled panel just looked like a bridge deck. */
-      g.fillStyle = lit ? '#FFAE1A' : '#565E74';
-      g.fillRect(cx - hw - th, pr.y - h - th, hw * 2 + th * 2, th);   /* lintel */
-      g.fillRect(cx - hw - th, pr.y - h, th, h);                      /* posts */
-      g.fillRect(cx + hw,      pr.y - h, th, h);
-      g.fillStyle = lit ? 'rgba(255,174,26,.9)' : 'rgba(86,94,116,.7)';
-      g.fillRect(cx - hw - th, pr.y - h + h * .18, hw * 2 + th * 2, th * .5);  /* cross-brace */
-      if (lit) { g.fillStyle = '#FFAE1A'; g.fillRect(cx - hw, pr.y - th * .6, hw * 2, th * .6); }
-      /* the name, on the lintel, at a size that survives the distance */
-      var fs = Math.round(Math.min(30, .26 * pr.s));
-      if (fs >= 7) {
-        g.font = '700 ' + fs + 'px ui-monospace, Consolas, monospace';
-        g.textAlign = 'center';
-        g.fillStyle = lit ? 'rgba(10,12,18,.92)' : 'rgba(150,158,178,.85)';
-        g.fillText(t.rec, cx, pr.y - h - th * .22);
-        g.textAlign = 'left';
-      }
-    }
-
-    /* the ninth door, which is not a door. Price Lock was built and then
-       deleted, so scene 10 gets a frame with the lintel broken in the middle
-       that never lights and never opens. It is the only thing in the game you
-       cannot interact with, and that is the point. */
-    function drawVoid() {
-      var pr = proj(VOID_Z - camZ), cx = sx(myCx(VOID_Z), pr);
-      var hw = pr.hw * .34, h = 1.9 * pr.s, th = Math.max(1.2, .09 * pr.s);
-      g.fillStyle = '#2B2B36';
-      g.fillRect(cx - hw - th, pr.y - h, th, h);
-      g.fillRect(cx + hw,      pr.y - h, th, h);
-      g.fillRect(cx - hw - th, pr.y - h - th, hw * .8, th);
-      g.fillRect(cx + hw * .2 + th, pr.y - h - th, hw * .8, th);
-    }
-
-    function drawGate() {
-      var pr = proj(GATEZ - camZ), cx = sx(myCx(GATEZ), pr);
-      var hw = pr.hw * 1.35, h = 3.4 * pr.s;
-      if (have.gate) {
-        g.fillStyle = '#2B2B36';
-        g.fillRect(cx - hw, pr.y - h, hw * .42, h);
-        g.fillRect(cx + hw * .58, pr.y - h, hw * .42, h);
-        g.fillStyle = '#FFAE1A';
-        g.fillRect(cx - hw * .58, pr.y - h, Math.max(1.5, .1 * pr.s), h);
-        g.fillRect(cx + hw * .58 - Math.max(1.5, .1 * pr.s), pr.y - h, Math.max(1.5, .1 * pr.s), h);
-        g.fillRect(cx - hw * .58, pr.y - h, hw * 1.16, Math.max(1.5, .1 * pr.s));
-      } else {
-        g.fillStyle = '#22222C'; g.fillRect(cx - hw, pr.y - h, hw * 2, h);
-        g.fillStyle = '#33333E'; g.fillRect(cx - hw, pr.y - h, hw * 2, Math.max(1.5, .12 * pr.s));
-      }
-    }
-
-    function drawClinic() {
-      var pr = proj(CLINIC_Z - camZ), cx = sx(myCx(CLINIC_Z), pr);
-      var w = pr.hw * 1.7, h = 3.6 * pr.s;
-      var litc = have.gate ? '#FFAE1A' : '#33333E';
-      g.fillStyle = '#14141B'; g.fillRect(cx - w, pr.y - h, w * 2, h);
-      g.fillStyle = '#2B2B36'; g.fillRect(cx - w * 1.1, pr.y - h - h * .07, w * 2.2, h * .07);
-      g.fillStyle = litc;
-      for (var i = 0; i < 4; i++)
-        for (var j = 0; j < 3; j++)
-          g.fillRect(cx - w * .74 + i * w * .42, pr.y - h * .84 + j * h * .24, w * .22, h * .13);
-      g.fillStyle = '#0B0B10'; g.fillRect(cx - w * .16, pr.y - h * .3, w * .32, h * .3);
-      g.fillStyle = litc; g.fillRect(cx - w * .16, pr.y - h * .3, w * .32, Math.max(1, h * .02));
-    }
-
-    function draw() {
-      var i, pr, ox = 0, oy = 0;
-      g.setTransform(1, 0, 0, 1, 0, 0);
-      g.fillStyle = '#0D0F15'; g.fillRect(0, 0, W, H);
-      if (shake > .4) { ox = (Math.random() - .5) * shake; oy = (Math.random() - .5) * shake; }
-      g.save();
-      if (ox || oy) g.translate(ox, oy);
-
-      /* sky and ground, then the amber horizon — one line, the whole width.
-         docs/design fixed this as the signature of the piece: the only warm
-         thing above ground. */
-      var sk = g.createLinearGradient(0, 0, 0, HORIZON);
-      sk.addColorStop(0, '#0A0C12'); sk.addColorStop(.62, '#141824'); sk.addColorStop(1, '#242A3A');
-      g.fillStyle = sk; g.fillRect(-8, -8, W + 16, HORIZON + 8);
-      var gr = g.createLinearGradient(0, HORIZON, 0, H);
-      gr.addColorStop(0, '#171B26'); gr.addColorStop(1, '#0A0C12');
-      g.fillStyle = gr; g.fillRect(-8, HORIZON, W + 16, H - HORIZON + 16);
-
-      var hg = g.createLinearGradient(0, HORIZON - 150, 0, HORIZON + 4);
-      hg.addColorStop(0, 'rgba(255,174,26,0)'); hg.addColorStop(1, 'rgba(255,174,26,.34)');
-      g.fillStyle = hg; g.fillRect(-8, HORIZON - 150, W + 16, 154);
-      g.fillStyle = 'rgba(255,200,110,.85)'; g.fillRect(-8, HORIZON - 1.5, W + 16, 2.5);
-
-      /* MY road is one unbroken surface from the first metre to the last, drawn
-         the same way the whole time. It used to be two branches that swapped at
-         p.z = FORK_Z - 60, and the swap changed where the road started and
-         stopped in mid-stride — the view visibly jumped just before the fork.
-         There is one camera in this piece and there is one road under it. */
-      drawRoad(myCx, -40, TRACK + 60, 1);
-
-      /* the paved road is only a SEPARATE thing once it has separated. Drawn
-         from z 0 it sat exactly on top of my road for the whole prologue, so
-         every line was painted twice and the road thinned out at the fork for
-         no reason anyone could name. It decays, and then it stops — that is
-         the whole of 4장 drawn rather than narrated. */
-      var pavedEnd = ROAD_END + 260;
-      if (camZ + VIEW > FORK_Z && camZ < pavedEnd) {
-        var pa = p.z < FORK_Z ? 1 : Math.max(.16, 1 - (p.z - FORK_Z) / 420);
-        drawRoad(pavedCx, FORK_Z, pavedEnd, pa);
-      }
-      drawLamps();
-
-      /* ---- one sorted list, far to near ---- */
-      props.length = 0;
-      for (i = 0; i < TOOLS.length; i++) (function (t, k) { prop(t.z, function () { drawDoor(t, k); }); })(TOOLS[i], i);
-      prop(VOID_Z, drawVoid);
-      prop(GATEZ, drawGate);
-      prop(CLINIC_Z, drawClinic);
-      if (have.radar)
-        for (i = 0; i < rivals.length; i++)
-          (function (r) { prop(r.z, function () { drawSign(r.x, r.z, 0, false, true); }); })(rivals[i]);
-      for (i = 0; i < pages.length; i++)
-        (function (q) { prop(q.z, function () { drawSign(q.x, q.z, q.cited, q.sub, false); }); })(pages[i]);
-      for (i = 0; i < crowd.length; i++)
-        (function (c) {
-          prop(c.z, function () {
-            var pr2 = proj(c.z - camZ);
-            /* they run at my speed, so without this they would still be jogging
-               alongside in 10장 — on a road that stopped being drawn 1000 units
-               ago. They do not vanish at the fork, they recede out of it. */
-            var gone = p.z <= ROAD_END ? 1 : Math.max(0, 1 - (p.z - ROAD_END) / 260);
-            if (gone <= 0) return;
-            g.globalAlpha = gone * Math.max(.22, 1 - (c.z - camZ) / 170);
-            /* #1C2230 was within a shade of the ground and they were invisible.
-               They have to be dark enough to read as a crowd and light enough
-               to read at all — and no pack, which is the whole difference. */
-            runner(sx(c.x, pr2), pr2.y, 1.75 * pr2.s, c.t, '#39415C');
-            g.globalAlpha = 1;
-          });
-        })(crowd[i]);
-      if (have.gate)
-        for (i = 0; i < arrivals.length; i++)
-          (function (a) {
-            prop(a.z, function () {
-              var pr2 = proj(a.z - camZ);
-              g.globalAlpha = .8;
-              runner(sx(a.x, pr2), pr2.y, 1.75 * pr2.s, a.t, '#31405C');
-              g.globalAlpha = 1;
-            });
-          })(arrivals[i]);
-      for (i = 0; i < bots.length; i++)
-        (function (b) {
-          if (b.dead) return;
-          prop(b.z, function () {
-            var pr2 = proj(b.z - camZ), x = sx(b.x, pr2), y = pr2.y - b.h * pr2.s;
-            var r = Math.max(.9, .13 * pr2.s);
-            g.globalAlpha = have.lantern ? 1 : .07;
-            var gl = g.createRadialGradient(x, y, 0, x, y, r * 3.2);
-            gl.addColorStop(0, 'rgba(255,174,26,.5)'); gl.addColorStop(1, 'rgba(255,174,26,0)');
-            g.fillStyle = gl; g.beginPath(); g.arc(x, y, r * 3.2, 0, TAU); g.fill();
-            g.fillStyle = have.lantern ? '#FFC246' : '#4A4A58';
-            g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-            g.fillStyle = '#0D0F15'; g.beginPath(); g.arc(x, y, r * .42, 0, TAU); g.fill();
-            g.globalAlpha = 1;
-          });
-        })(bots[i]);
-
-      /* me. drawn from the same list, so a page I just published can pass in
-         front of me on its way out of frame. */
-      prop(p.z, function () {
-        var pr2 = proj(PZ);
-        runner(sx(p.x, pr2), pr2.y, 1.75 * pr2.s, p.anim, '#080A10',
-               { rim: 'rgba(255,190,90,1)', rimSide: -1,
-                 pack: .18 + got / 8 * .82, lamp: !!have.lantern });
-      });
-
-      props.sort(function (a, b) { return b.z - a.z; });
-      for (i = 0; i < props.length; i++) props[i].f();
-
-      /* dust */
-      for (i = 0; i < dust.length; i++) {
-        var d = dust[i];
-        if (d.z <= camZ + NEAR || d.z > camZ + 60) continue;
-        pr = proj(d.z - camZ);
-        g.globalAlpha = Math.max(0, 1 - d.t / .8);
-        g.fillStyle = d.c;
-        var ds = Math.max(1, .06 * pr.s);
-        g.fillRect(sx(d.x, pr), pr.y - d.h * pr.s, ds, ds);
-      }
-      g.globalAlpha = 1;
-
-      /* Night lifts with every door, and hardest at the lantern. But the swing
-         has to stay small: this used to run .30 -> .008, and "how much of the
-         world you can see" changing that much across a run reads as the view
-         itself changing. One camera means one exposure too — the lantern is
-         allowed to be the one visible step, and nothing else is. */
-      var dark = Math.max(.04, .21 - .011 * got - (have.lantern ? .055 : 0));
-      g.fillStyle = 'rgba(0,0,0,' + dark.toFixed(3) + ')';
-      g.fillRect(-8, -8, W + 16, H + 16);
-
-      var v = g.createRadialGradient(W / 2, H * .54, H * .30, W / 2, H * .54, W * .75);
-      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.60)');
-      g.fillStyle = v; g.fillRect(-8, -8, W + 16, H + 16);
-
-      /* floating numbers, projected so they sit on the thing they describe */
-      g.font = '600 16px ui-monospace, Consolas, monospace'; g.textAlign = 'center';
-      for (i = 0; i < pops.length; i++) {
-        var q = pops[i];
-        if (q.z <= camZ + NEAR || q.z > camZ + 90) continue;
-        pr = proj(q.z - camZ);
-        g.globalAlpha = Math.max(0, 1 - q.t / 1.1);
-        g.fillStyle = '#FFAE1A';
-        g.fillText(q.text, sx(q.x, pr), pr.y - q.h * pr.s - q.t * 26);
-      }
-      g.globalAlpha = 1; g.textAlign = 'left';
-
-      /* kpi trace, bottom left where nothing else lives */
-      if (have.kpi && spark.length > 1) {
-        var mx = Math.max.apply(null, spark) || 1, base = H - 22, n = spark.length;
-        g.fillStyle = '#33333E'; g.fillRect(22, base + 2, n * 7 + 2, 1);
-        for (i = 0; i < n; i++) {
-          var hgt = Math.max(2, Math.round(spark[i] / mx * 46));
-          g.fillStyle = 'rgba(74,52,7,.8)'; g.fillRect(24 + i * 7, base - 46, 5, 46);
-          g.fillStyle = '#FFAE1A'; g.fillRect(24 + i * 7, base - hgt, 5, hgt);
-        }
-      }
-      g.restore();
-    }
-
-    /* ---------- hud ---------- */
-    function setG(el, v) { if (el.lastChild.textContent !== v) el.lastChild.textContent = v; }
-    function hud() {
-      if (tickT && clock > tickT) { tickEl.classList.remove('on'); tickT = 0; }
-      if (bannerT && clock > bannerT) { banner.classList.remove('on'); bannerT = 0; }
-      if (cardT && clock > cardT) { card.classList.remove('on'); cardT = 0; }
-
-      var s = sceneAt(p.z);
-      var label = s.n + ' / 10';
-      if (chEl.textContent !== label) {
-        chEl.textContent = label;
-        noteEl.textContent = s.line;
-      }
-      setG(GAUGE.year, s.year);
-      stat.textContent = got + ' / 8 문 · ' + Math.round(p.z / TRACK * 100) + '%';
-
-      var n = nearTool();
-      if (n && n.taken) {
-        cue.textContent = 'Enter — ' + n.rec + (n.read ? ' 다시 읽기' : ' 문 열기');
-        cue.disabled = false; cue.hidden = false;
-      } else if (Math.abs(VOID_Z - p.z) < REACH + 14) {
-        cue.textContent = '이 문은 열리지 않습니다 — 만들어 놓고 지웠습니다';
-        cue.disabled = true; cue.hidden = false;
-      } else cue.hidden = true;
-    }
-
-    /* ---------- record panel (on demand — the game never forces it) ---------- */
-    /* A door is a reading room, not a puzzle: the run stops, nothing is asked of
-       you, and the body is the record markup that already exists further down the
-       page. The only thing the game adds is the one line about why it was built —
-       everything factual has exactly one copy, in the .rec below. */
-    function openRec(tool) {
-      var name = typeof tool === 'string' ? tool : tool.rec;
-      var rec = RECS[name];
-      if (!rec) return;
-      var why = (typeof tool === 'object' && tool.door)
-        ? '<p class="jn__why">' + esc(tool.door) + '</p>' : '';
-      body.innerHTML = why + '<div class="rec">' + rec.innerHTML + '</div>';
-      if (typeof tool === 'object' && !tool.read) { tool.read = true; stats.doors++; }
-      panel.hidden = false;
-      panel.scrollTop = 0;
-      running = false;
-      keys.l = keys.r = false;
+  /* 나 — 가운데 쐐기, 늘 위를 봅니다 */
+  navG.beginPath(); navG.moveTo(0, -8); navG.lineTo(5.5, 6); navG.lineTo(-5.5, 6); navG.closePath();
+  navG.fillStyle = 'rgba(255,246,230,.95)'; navG.fill();
+  navG.restore();
+}
+    /* ---------- 신전 안 — 읽는 자리 ----------
+       본문은 아래 '대표 프로젝트'의 .rec 한 벌에서 꺼내 씁니다.
+       게임 안에 기능 설명을 복제하면 둘이 갈라지고, 갈라지면 둘 다 못 믿게 됩니다. */
+    function goIn(t) {
+      if (inside) return;
+      inside = t; t.seen = true;
+      const rec = RECS[t.name];
+      bodyEl.innerHTML = '<p class="jn__why">' + esc(t.door) + '</p>' +
+                         (rec ? '<div class="rec">' + rec.innerHTML + '</div>' : '');
+      panel.hidden = false; panel.scrollTop = 0;
+      keys.f = keys.l = keys.r = false;
       cue.hidden = true;
-      xBtn.focus();
+      bName.textContent = t.name; bLine.textContent = t.line; bVerb.textContent = '';
+      banner.classList.add('on');
+      if (xBtn.focus) xBtn.focus();
       SFX.door();
-      live.textContent = name + ' 문을 열었습니다.';
+      live.textContent = t.name + ' — ' + t.door;
     }
-    function closeRec() {
+    function goOut() {
+      if (!inside) return;
+      /* 들어온 문 앞으로 돌려세웁니다 — 문지방 위에 두면 나오자마자 다시 들어갑니다.
+         카메라가 등 뒤 7.8 이라, 8.4 로 세우면 카메라가 신전 안에 박혀서 화면
+         절반이 벽이 됩니다. 하필 랜턴이 켜지는 장면이 거기라서 18 로 물립니다. */
+      const t = inside;
+      P0.x = t.x - 18 * Math.sin(t.yaw); P0.z = t.z - 18 * Math.cos(t.yaw);
+      yaw = t.yaw + Math.PI; camYaw = yaw;
+      /* 여섯 번째 신전에서 나오는 순간이 이 이야기의 전환점입니다. */
+      if (t.lantern && !lantern) {
+        lantern = true;
+        sayLine('그동안, 계속 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다', 8);
+        live.textContent = '그동안, 계속 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다';
+        SFX.reveal();
+      }
+      inside = null;
       panel.hidden = true;
-      if (!veil.hidden) return;
-      running = true; last = 0; jnc.focus();
-    }
-
-    /* ---------- ending ---------- */
-    function finish() {
-      if (ended) return;
-      ended = true; running = false;
-      keys.l = keys.r = false;
       banner.classList.remove('on');
-      card.classList.remove('on');
+      if (!veil.hidden) return;
+      if (cv.focus) cv.focus();
+    }
+    xBtn.addEventListener('click', goOut);
+    /* 유적에 들어가면 포커스가 닫기 버튼으로 옮겨갑니다(그래야 스크린리더가
+       읽는 자리를 압니다). 그러면 캔버스는 더 이상 키를 못 받으므로, 나가는
+       키는 여기에도 붙여야 합니다 — 안 그러면 들어간 채로 갇힙니다. */
+    panel.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.key === 'Enter') { goOut(); if (e.preventDefault) e.preventDefault(); }
+    });
+    cue.addEventListener('click', function () { if (nearT && !inside) goIn(nearT); });
+
+    /* ---------- 엔딩 ---------- */
+    /* ended 는 호출부(사막 쪽)가 먼저 세웁니다. 그래서 여기서 ended 로 가드를
+       걸면 자기 가드에 걸려 돌아 나가고, 산에 닿아도 엔딩이 안 뜹니다. */
+    let finished = false;
+    function finish() {
+      if (finished) return;
+      finished = true;
+      ended = true; running = false;
+      keys.f = keys.l = keys.r = false;
+      banner.classList.remove('on');
+      lineEl.classList.remove('on');
+      cue.hidden = true;
       SFX.end();
-
-      var list = TOOLS.map(function (t) {
-        return '<button type="button" data-rec="' + esc(t.rec) + '">' +
-               esc(t.rec) + '<i>' + (t.read ? '열어봄' : t.taken ? '지나침' : '못 지남') +
-               '</i></button>';
+      const seen = TEMPLES.filter(function (t) { return t.seen; }).length;
+      const list = TEMPLES.map(function (t) {
+        return '<button type="button" data-rec="' + esc(t.name) + '">' +
+               esc(t.name) + '<i>' + (t.seen ? '들어가 봄' : '지나침') + '</i></button>';
       }).join('');
-
-      /* three doors, because three kinds of people read a CV and the last line
-         is not the same for them. the evidence behind all three is identical. */
       veil.innerHTML =
         '<h3>저는 여전히 마케터입니다</h3>' +
         '<p class="lede">다만 이제, 팔 것을 직접 만듭니다.</p>' +
-        /* one number, and it is the only one that means anything to a reader:
-           how much of this you actually opened. 발행/인용/계측 were game score
-           dressed as business metrics — off the end screen too. */
-        '<div class="jn__score">' +
-          '<span>열어본 문<b>' + stats.doors + ' / 8</b></span>' +
-        '</div>' +
+        '<div class="jn__score"><span>들어가 본 신전<b>' + seen + ' / 8</b></span></div>' +
         '<p>노출 말고 환자를 세겠다고 자리를 옮긴 게 10년 전입니다. 지금도 같은 일을 합니다 — ' +
         '세는 대상이 환자에서 <b>인용</b>으로 바뀌었을 뿐입니다. ' +
-        '중간에 계기판이 <b>?</b>였던 구간이 실제로 7개월입니다. ' +
+        '여섯 번째 유적 전까지 아무것도 안 보이던 구간이 실제로 7개월입니다. ' +
         '만든 게 쌓였는데 설명할 방법이 없어서 이 페이지를 만들었습니다 — ' +
         '<b>저를 재는 계측기</b>입니다.</p>' +
         '<div class="jn__doors">' +
@@ -2430,249 +2534,506 @@
           '<button type="button" data-go="#biz">창업 · 투자<i>이 밸류체인을 제품으로 만든다면</i></button>' +
         '</div>' +
         '<div class="jn__list">' + list + '</div>' +
-        '<button class="btn" id="jn-again" type="button">다시 달리기</button>';
+        '<button class="btn" id="jn-again" type="button">다시 걷기</button>';
       veil.hidden = false;
-
+      statEl.textContent = '완주';
       document.getElementById('jn-again').addEventListener('click', function () {
-        reset(); veil.innerHTML = ''; start();
+        veil.innerHTML = ''; reset(); start();
       });
       [].forEach.call(veil.querySelectorAll('.jn__list button'), function (btn) {
         btn.addEventListener('click', function () {
-          var rec = RECS[btn.getAttribute('data-rec')];
-          if (rec) rec.scrollIntoView({ block: 'center' });
+          const rec = RECS[btn.getAttribute('data-rec')];
+          if (rec && rec.scrollIntoView) rec.scrollIntoView({ block: 'center' });
         });
       });
       [].forEach.call(veil.querySelectorAll('.jn__doors button'), function (btn) {
         btn.addEventListener('click', function () {
-          var el = document.querySelector(btn.getAttribute('data-go'));
-          if (el) el.scrollIntoView({ block: 'start' });
+          const el2 = document.querySelector(btn.getAttribute('data-go'));
+          if (el2 && el2.scrollIntoView) el2.scrollIntoView({ block: 'start' });
         });
       });
-      live.textContent = '완주. 문 8개 중 ' + stats.doors + '개를 열어봤습니다.';
+      live.textContent = '완주. 신전 8개 중 ' + seen + '개에 들어가 봤습니다.';
     }
 
-    /* ---------- loop ---------- */
-    function frame(t) {
-      if (!last) last = t;
-      var dt = Math.min(.05, (t - last) / 1000);
-      last = t;
-      if (running) step(dt); else clock += dt;
-      draw();
-      raf = requestAnimationFrame(frame);
+    /* ---------- 조작 ----------
+       달리는 건 알아서 하지 않습니다 — 직접 걷습니다. 자동 이동은 멀미의
+       첫 번째 원인이라 프로토타입에서 걷어냈고, 그 판단을 그대로 가져왔습니다. */
+    function K(e, d) {
+      if (!veil.hidden || ended) return;
+      const k = e.key;
+      if (inside) {
+        if (d && (k === 'Enter' || k === 'Escape')) { goOut(); if (e.preventDefault) e.preventDefault(); }
+        return;
+      }
+      if (d && k === 'Enter' && nearT) { goIn(nearT); if (e.preventDefault) e.preventDefault(); return; }
+      if (k === 'ArrowLeft'  || k === 'a' || k === 'A') keys.l = d;
+      else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = d;
+      else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === ' ') keys.f = d;
+      else return;
+      if (e.preventDefault) e.preventDefault();
+    }
+    cv.addEventListener('keydown', function (e) { K(e, true); });
+    cv.addEventListener('keyup',   function (e) { K(e, false); });
+    /* 키는 캔버스가 포커스를 가진 동안에만 받습니다. 문서 전체에서 받으면
+       페이지를 읽는 사람의 화살표 스크롤을 게임이 가로챕니다 — 게임은 이
+       페이지의 맨 위 한 칸이지 페이지 전체가 아닙니다.
+       대신 화면을 누르면 포커스가 옵니다. 안 그러면 시작 버튼에서 포커스가
+       옮겨간 순간부터 키가 영영 안 듣습니다. */
+    cv.addEventListener('pointerdown', function () { if (cv.focus) cv.focus(); });
+    /* 폰에는 키보드가 없습니다. 이 패드가 없으면 게임 자체가 없습니다. */
+    [].forEach.call(document.querySelectorAll('.jn__pad button'), function (btn) {
+      const k = btn.getAttribute('data-key');
+      const set = function (v) {
+        return function (e) {
+          if (k === 'l') keys.l = v; else if (k === 'r') keys.r = v; else if (k === 'u') keys.f = v;
+          if (e && e.preventDefault) e.preventDefault();
+        };
+      };
+      btn.addEventListener('pointerdown', set(true));
+      btn.addEventListener('pointerup', set(false));
+      btn.addEventListener('pointerleave', set(false));
+      btn.addEventListener('pointercancel', set(false));
+    });
+
+    /* ---------- 시작 · 다시 ---------- */
+    function reset() {
+      P0 = { x: 0, z: 0 }; yaw = camYaw = 0; camY = 0; moved = 0; walkA = 0; spdK = 1;
+      keys = { f: false, l: false, r: false };
+      inside = null; nearT = null; lantern = false; ended = false; finished = false;
+      scriptAt = 0; zProg = 0; lineHideAt = 0; lineGapAt = 0; lineQueue.length = 0;
+      scene = 1;
+      TEMPLES.forEach(function (t) { t.seen = false; });
+      crowd.forEach(function (c, i) {
+        c.x = (Math.random() - 0.5) * 14; c.z = 12 + i * 6 + Math.random() * 4;
+        c.veer = 0; c.yaw = (Math.random() - 0.5) * 0.10; c.hes = c.dly = undefined;
+      });
+      lineEl.classList.remove('on'); lineEl.textContent = '';
+      banner.classList.remove('on');
+      panel.hidden = true; cue.hidden = true;
+      chEl.textContent = '1 / 10'; setG(yearEl, '2014');
     }
     function start() {
-      veil.hidden = true;
-      panel.hidden = true;
-      running = true; last = 0;
-      jnc.focus();
-      if (!raf) raf = requestAnimationFrame(frame);
-      hud();
+      veil.hidden = true; running = true; last = 0;
+      chEl.textContent = scene + ' / 10';
+      statEl.textContent = GLOK ? '걷는 중' : '그림 없이 진행 중';
+      if (cv.focus) cv.focus();
+      live.textContent = '걷기 시작. 위 화살표로 걷고 좌우로 방향을 잡습니다.';
     }
-
-    /* ---------- input ---------- */
-    goBtn.addEventListener('click', start);
-    xBtn.addEventListener('click', closeRec);
-    /* the cue is the touch equivalent of Enter — without it a phone can run the
-       whole road and never open a single door */
-    cue.addEventListener('click', function () {
-      /* CSS hides this behind a veil with pointer-events, but :has() is not
-         everywhere yet and a tap that opens a door under the end screen is the
-         same bug the Enter key had */
-      if (!veil.hidden || !panel.hidden) return;
-      var n = nearTool();
-      if (n && n.taken) openRec(n);
+    const goBtn = document.getElementById('jn-go');
+    if (goBtn) goBtn.addEventListener('click', start);
+    if (!GLOK) {
+      /* 그림이 안 나오는 브라우저에서도 이야기는 글로 남습니다 */
+      statEl.textContent = 'WebGL2 없음 — 아래 기록으로 읽어 주세요';
+    }
+    const sndBtn = document.getElementById('jn-snd');
+    if (sndBtn) sndBtn.addEventListener('click', function () {
+      snd = !snd;
+      sndBtn.setAttribute('aria-pressed', snd ? 'true' : 'false');
+      sndBtn.setAttribute('aria-label', snd ? '소리 끄기' : '소리 켜기');
+      sndBtn.textContent = snd ? '♪ 소리 켬' : '♪ 소리';
     });
 
-    function key(e, down) {
-      var k = e.key;
-      /* once the end screen is up the canvas is covered but still focused, so a
-         stray Enter used to open a door behind it and overwrite the ending's
-         announcement. Nothing on the canvas takes input while a veil is showing. */
-      if (!veil.hidden) return;
-      if (k === 'ArrowLeft'  || k === 'a' || k === 'A') keys.l = down;
-      else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = down;
-      else if (k === 'ArrowDown' || k === 's' || k === 'S' || k === ' ') {
-        keys.d = down;
-        if (down && !e.repeat) plant();
+    function resize() {
+      const r = cv.getBoundingClientRect ? cv.getBoundingClientRect() : { width: 960, height: 540 };
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, Math.round((r.width || 960) * dpr));
+      const h = Math.max(1, Math.round((r.width || 960) * 9 / 16 * dpr));
+      if (cv.width === w && cv.height === h) return;
+      cv.width = w; cv.height = h;
+      if (GLOK) { gl.viewport(0, 0, w, h); makePost(); }
+    }
+    if (window.addEventListener) window.addEventListener('resize', resize);
+    resize();
+    if (GLOK) { gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); }
+    let last = 0;
+function frame(now) {
+  if (!running) { last = now; requestAnimationFrame(frame); return; }
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  const el = performance.now() * 0.001;          /* 흔들림·걸음 위상용 시계 */
+
+  /* ── 직접 걷습니다 — 미끄러지지 않고 ──
+     등속 이동은 스케이트입니다. 걸음은 발을 디딜 때마다 속도가 맥동하고
+     (밀 때 빠르고 발을 옮길 때 느리고), 몸이 좌우로 흔들립니다.
+     위상은 시간이 아니라 걸어온 거리에 묶습니다 — 그래야 발과 땅이 붙습니다. */
+  if (keys.l) yaw -= TURN * dt;
+  if (keys.r) yaw += TURN * dt;
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  walkA += ((keys.f ? 1 : 0) - walkA) * Math.min(1, 4*dt);   /* 출발·정지를 부드럽게 */
+  const ph = moved * 1.45;                                    /* 걸음 위상 = 거리 */
+
+  /* 경사가 속도를 정합니다 — 사막이니까. 오르막은 무겁고(최저 0.55배)
+     내리막은 모래에 실려 내려갑니다(최대 1.5배). 급히 바뀌지 않도록 걸러서,
+     언덕 하나를 넘는 것이 "느려졌다가 훅 풀리는" 한 호흡이 됩니다. */
+  const slopeF = (height(P0.x + fx*1.4, P0.z + fz*1.4) - height(P0.x - fx*0.4, P0.z - fz*0.4)) / 1.8;
+  const glide = Math.max(0, Math.min(1, -slopeF*2.6));        /* 내리막 미끄러짐 정도 */
+  /* 활강은 걷기가 아니라 다른 상태입니다: 오르막 최저 0.55배는 천천히 걸리고,
+     내리막은 2.1배까지 빠르게 붙습니다 — 모래가 밀어주는 건 즉각적이어야
+     "미끄러진다"로 느껴지고, 천천히 붙으면 그냥 빨리 걷기가 됩니다. */
+  spdK += (Math.max(.55, Math.min(2.1, 1 - slopeF*2.1)) - spdK)
+          * Math.min(1, (glide > .1 ? 5.0 : 2.5)*dt);
+  const steer = (keys.r?1:0) - (keys.l?1:0);
+
+  if (keys.f) {
+    /* 맥동은 있되 들리지 않게: 0.4 진폭 |sin| 은 로봇 걸음이었습니다.
+       sin² 라 꺾임이 없고, 활강에선 걸음 자체가 사라집니다 — 발이 땅을 안 딛으니까. */
+    const ox = P0.x, oz = P0.z;
+    const s2 = Math.sin(ph)*Math.sin(ph);
+    const pulse = (0.93 + 0.13*s2) * (1 - glide*0.7) + glide*1.15;
+    const v = SPEED * spdK * pulse;
+    P0.x += fx * v * dt; P0.z += fz * v * dt;
+    /* 활강 중 조향은 걷는 회전이 아니라 카빙 — 옆으로 실제로 흘러갑니다 */
+    if (glide > .05 && steer) {
+      P0.x += fz * steer * glide * v * 0.30 * dt;
+      P0.z += -fx * steer * glide * v * 0.30 * dt;
+    }
+    /* 돌은 돌입니다 — 벽은 막히고, 축을 나눠 풀어서 벽을 따라 미끄러집니다.
+       막힌 채로 서 버리면 벽에 붙을 때마다 걸음이 뚝 끊깁니다. */
+    if (templeBlock(P0.x, P0.z)) {
+      if (!templeBlock(P0.x, oz)) P0.z = oz;
+      else if (!templeBlock(ox, P0.z)) P0.x = ox;
+      else { P0.x = ox; P0.z = oz; }
+    }
+    moved += v * dt;
+  }
+  /* 문으로 걸어 들어가면 그대로 들어가집니다 — Enter 를 기다리지 않습니다.
+     문 앞에서 키를 누르는 건 "읽으시겠습니까"이고, 문지방을 넘는 건 이미 대답입니다. */
+  if (!inside) for (const t of TEMPLES) {
+    const l = templeLocal(P0.x, P0.z, t);
+    if (Math.abs(l.x) < 1.5 && l.z > -4.3 && l.z < 3.5) { goIn(t); break; }
+  }
+  /* 산기슭 — 끝. Hospify 를 지나 산 아래 이르면 이야기가 닫힙니다 */
+  if (!ended && !inside && Math.hypot(P0.x - MOUNTAIN.x, P0.z - (MOUNTAIN.z - 12)) < 26) {
+    ended = true;
+    keys.f = keys.l = keys.r = false;
+    finish();
+  }
+  cues();
+  navCv.classList.toggle('on', moved > 4 && !inside);
+  if (moved > 4 && !inside) drawNav();
+
+  /* 제일 가까운 신전. 문간 쪽에서 다가와야 들어갈 수 있습니다 — 뒷벽에
+     붙어서 들어가지는 것보다, 돌아 들어가는 편이 유적답습니다. */
+  nearT = null;
+  if (!inside) {
+    let best = 1e9;
+    for (const t of TEMPLES) {
+      const dx = P0.x - t.x, dz = P0.z - t.z, d = Math.hypot(dx, dz);
+      const front = -(dx*Math.sin(t.yaw) + dz*Math.cos(t.yaw));   /* 문간은 로컬 -z */
+      if (d < 16 && front > 1 && d < best) { best = d; nearT = t; }
+    }
+  }
+  /* 빈 문틀 앞 — 이름도 ⏎ 도 없이 그 한 줄만 */
+  const vd = Math.hypot(P0.x - VOIDF.x, P0.z - VOIDF.z);
+  /* 터치에는 Enter 가 없습니다 — 이 버튼이 폰에서 문을 여는 유일한 길입니다 */
+  var cueTxt = nearT ? ('Enter — ' + nearT.name + ' 문 열기')
+             : vd < 9 ? '이 문은 열리지 않습니다 — 만들어 놓고 지웠습니다' : '';
+  if (cue.textContent !== cueTxt) cue.textContent = cueTxt;
+  cue.hidden = !cueTxt;
+  cue.disabled = !nearT;
+
+  const px = P0.x, pz = P0.z, py = height(px, pz);
+  /* 걸음의 몸: 바운스·흔들림 모두 반으로 줄이고 내리막에선 더 잦아듭니다 —
+     활강 중에 몸이 뚝딱거리면 그 순간 걷기가 아니라 기계가 됩니다.
+     전부 위상 ph(거리)에 묶여 있어 발과 땅이 밀리지 않습니다. */
+  const calm  = 1 - glide*0.85;                          /* 활강 중엔 걸음의 몸짓이 거의 사라짐 */
+  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.038 * calm - glide*0.05;  /* 모래에 살짝 가라앉음 */
+  const rock  = walkA * Math.sin(ph) * 0.026 * calm
+              + steer * glide * 0.10;                    /* 카빙 — 조향 쪽으로 기욺 */
+  const pitchG= walkA * (0.045 + glide*0.12);            /* 활강에선 몸이 실림 */
+  /* 지형 기울기 따라 눕기 — 언덕을 오르는데 몸이 수직이면 그게 곧 "떠 있음"입니다 */
+  const gAlong = (height(px+fx*.6, pz+fz*.6) - height(px-fx*.6, pz-fz*.6)) / 1.2;
+  const gSide  = (height(px+fz*.6, pz-fx*.6) - height(px-fz*.6, pz+fx*.6)) / 1.2;
+  const tPitch = Math.max(-.30, Math.min(.30, Math.atan(gAlong)*0.55));
+  const tRoll  = Math.max(-.25, Math.min(.25, Math.atan(gSide)*0.45));
+  if (GLOK) {
+  /* ── 카메라 ──
+     저니의 절반은 이것인데, 어지럽지 않게 만드는 것도 절반은 이것입니다.
+       · 지형을 1:1로 따라가지 않고 평균 높이를 천천히 좇습니다
+       · 시선은 인물이 아니라 앞쪽 한 점을 보므로 지평선이 출렁이지 않습니다
+       · 화각을 52도에서 44도로 좁혔습니다. 넓은 화각은 주변부가 빨리 흘러서
+         그 자체로 멀미를 만듭니다
+       · 방향 전환도 카메라가 조금 늦게 따라옵니다 */
+  camYaw += Math.atan2(Math.sin(yaw - camYaw), Math.cos(yaw - camYaw)) * Math.min(1, 3.0*dt);
+  const cfx = Math.sin(camYaw), cfz = Math.cos(camYaw);
+
+  const wide = Math.min(1, Math.max(0, (zProg - 56)/20)) * (1 - Math.min(1, Math.max(0, (zProg - 96)/24)));
+  camBack += (7.8 + wide*12.0 - camBack) * 0.8 * dt;
+  camUp   += (3.0 + wide*6.0  - camUp)   * 0.8 * dt;
+
+  const cx = px - cfx*camBack, cz = pz - cfz*camBack;
+  const want = groundAvg(cx, cz, cfx, cfz) + camUp;
+  if (!camY) camY = want;
+  camY += (want - camY) * Math.min(1, 1.3*dt);
+  camY = Math.max(camY, height(cx, cz) + 1.4);   /* 절대 땅을 뚫지 않습니다 */
+
+  const eye = [cx, camY, cz];
+  const look = [px + cfx*16, groundAvg(px, pz, cfx, cfz) + 1.9 + wide*1.2, pz + cfz*16];
+  /* 근평면 0.4 · 원평면 2600 은 비율이 6500:1 이라 깊이 정밀도가 남아나지 않고,
+     겹치지 않은 벽면끼리도 지글거립니다. 카메라는 인물보다 7.8 뒤에 있으니
+     1.2 로 밀어도 잘리는 게 없고, 정밀도는 다섯 배쯤 벌어집니다. */
+  const VP = mul(perspective(Math.PI/180*44, cv.width/cv.height, 1.2, 2400), lookAt(eye, look, [0,1,0]));
+
+  /* 장면 전체를 MSAA 프레임버퍼로 — 화면에는 후처리를 거쳐서만 나갑니다 */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.fboMS);
+  gl.viewport(0, 0, post.W2, post.H2);
+
+  /* 하늘 */
+  gl.depthMask(false);
+  gl.useProgram(skyProg);
+  gl.uniform3fv(uni.sky.haze, P.haze); gl.uniform3fv(uni.sky.high, P.high);
+  gl.uniform1f(uni.sky.sunX, 0.5 - camYaw*0.28);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.depthMask(true);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+
+  /* 산 — 월드에 못박혀 있습니다. 카메라를 따라다니게 두면 아무리 걸어도
+     제자리라 방향 감각을 못 줍니다. 어디로 가는지는 이 산이 알려줍니다. */
+  gl.useProgram(farProg);
+  gl.uniformMatrix4fv(uni.far.vp, false, VP);
+  gl.uniformMatrix4fv(uni.far.model, false, trs(MOUNTAIN.x, -11, MOUNTAIN.z, 0, 68));
+  gl.uniform3fv(uni.far.cam, eye);
+  gl.uniform3fv(uni.far.haze, P.haze); gl.uniform3fv(uni.far.tint, P.mtn);
+  gl.uniform1f(uni.far.mix, 0.30);
+  gl.bindVertexArray(mountain.vao); gl.drawArrays(gl.TRIANGLES, 0, mountain.n);
+
+  /* 지형 */
+  gl.useProgram(lit);
+  gl.uniformMatrix4fv(uni.lit.vp, false, VP);
+  gl.uniform3fv(uni.lit.cam, eye); gl.uniform3fv(uni.lit.sun, P.sun);
+  gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.0000128);
+  gl.uniform2f(uni.lit.pxz, px, pz); gl.uniform1f(uni.lit.py, py);
+  gl.uniform1f(uni.lit.time, el);
+  /* 그림자 드리우는 것들: 신전 8 + 빈 문틀 + 근처 무리 (최대 24) */
+  {
+    let n2 = 0;
+    for (const t of TEMPLES) { CASTS[n2*4]=t.x; CASTS[n2*4+1]=t.z; CASTS[n2*4+2]=6.4; CASTS[n2*4+3]=30; n2++; }
+    CASTS[n2*4]=VOIDF.x; CASTS[n2*4+1]=VOIDF.z; CASTS[n2*4+2]=2.4; CASTS[n2*4+3]=10; n2++;
+    for (const c of crowd) {
+      if (n2 >= 24) break;
+      if (Math.hypot(c.x - px, c.z - pz) > 90) continue;
+      CASTS[n2*4]=c.x; CASTS[n2*4+1]=c.z; CASTS[n2*4+2]=0.62; CASTS[n2*4+3]=4.2; n2++;
+    }
+    gl.uniform4fv(uni.lit.cast, CASTS);
+    gl.uniform1i(uni.lit.castN, n2);
+  }
+  gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
+  gl.uniform1f(uni.lit.glit, 1.0);
+  gl.uniform1i(uni.lit.terrain, 1);
+  /* 칸 단위로 스냅합니다. 이게 없으면 정점이 매 프레임 지형 위를 미끄러지고,
+     플랫셰이딩이라 바닥 전체의 면이 계속 갈아치워지면서 잘게 기어다닙니다. */
+  gl.uniform2f(uni.lit.origin, Math.round(cx/CELL)*CELL, Math.round(cz/CELL)*CELL);
+  gl.bindVertexArray(terrain.vao); gl.drawArrays(gl.TRIANGLES, 0, terrain.n);
+
+  /* 신전 */
+  gl.uniform1i(uni.lit.terrain, 0);
+  gl.uniform1f(uni.lit.glit, 0.0);
+  /* 신전은 사막과 같은 돌입니다: 볕 면은 모래의 주황 가족, 그늘은 지형과
+     같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
+     이유가 이 두 상수였습니다. */
+  gl.uniform3fv(uni.lit.litc, [0.88,0.56,0.28]);
+  gl.uniform3fv(uni.lit.dark, [0.24,0.155,0.125]);
+  gl.bindVertexArray(templeMesh.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
+    gl.drawArrays(gl.TRIANGLES, 0, templeMesh.n);
+  }
+  gl.uniform1f(uni.lit.emit, 1.0);
+  gl.uniform3fv(uni.lit.litc, [0.86, 0.52, 0.19]);
+  gl.bindVertexArray(templeGlow.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
+    gl.drawArrays(gl.TRIANGLES, 0, templeGlow.n);
+  }
+  /* 모래 둔덕 — 사막과 같은 모래색, 지형과 같은 그늘.
+     이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
+  gl.uniform1f(uni.lit.emit, 0.0);
+  gl.uniform3fv(uni.lit.litc, [0.97, 0.615, 0.245]);
+  gl.uniform3fv(uni.lit.dark, [0.21, 0.135, 0.11]);
+  gl.bindVertexArray(templeSkirt.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
+    gl.drawArrays(gl.TRIANGLES, 0, templeSkirt.n);
+  }
+  gl.uniform1f(uni.lit.emit, 1.0);
+  /* 벽의 눈금 문양 — 문간 빛보다 어둡게 */
+  gl.uniform3fv(uni.lit.litc, [0.48, 0.28, 0.10]);
+  gl.bindVertexArray(templeGlyphs.vao);
+  for (const t of TEMPLES) {
+    gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
+    gl.drawArrays(gl.TRIANGLES, 0, templeGlyphs.n);
+  }
+  gl.uniform1f(uni.lit.emit, 0.0);
+  /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
+  gl.uniform3fv(uni.lit.litc, [0.52,0.38,0.30]);
+  gl.uniform3fv(uni.lit.dark, [0.17,0.12,0.10]);
+  gl.bindVertexArray(voidMesh.vao);
+  gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
+  gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
+
+  /* ── 인물들 — 06의 조각과 조명으로 ── */
+  gl.useProgram(figProg);
+  gl.uniformMatrix4fv(uniFig.vp, false, VP);
+  gl.uniform3fv(uniFig.cam, eye);
+  gl.uniform3fv(uniFig.haze, P.haze);
+  gl.uniform1f(uniFig.fog, 0.0000128);
+  gl.disable(gl.CULL_FACE);               /* 옷단 안쪽·스카프 뒷면이 보여야 합니다 */
+
+  /* 무리 — 같은 조각, 색만 회청이고 띠가 없습니다. 그 차이가 곧 "나"입니다.
+     걸음 위상은 하나로 공유합니다: 개별 위상은 메시를 사람 수만큼 다시
+     조각하는 값인데, 이 거리에선 아무도 못 알아봅니다. */
+  const crowdFig = buildFigure(1, el*3.0 + 1.7, true);
+  slotCrowd.set(crowdFig);
+  gl.uniform3fv(uniFig.c0, FIG_CROWD.c0); gl.uniform3fv(uniFig.c1, FIG_CROWD.c1);
+  gl.uniform3fv(uniFig.c2, FIG_CROWD.c2); gl.uniform3fv(uniFig.c3, FIG_CROWD.c3);
+  gl.bindVertexArray(slotCrowd.vao);
+  /* 갈라짐은 "각자 슬금슬금"이 아니라 하나의 사건입니다.
+     예전엔 55 지점부터 개인 타이머로 6초에 걸쳐 흐물흐물 휘어서, 흩어지는 게
+     아니라 배회하는 걸로 읽혔습니다 — "쟤들 뭐지"가 그래서 나왔습니다.
+     지금은 "굳이? 왜?" 자막이 뜨는 그 지점에서, 2초 안에, 전원이 같은
+     오른쪽으로 결단하듯 꺾어 능선을 넘어갑니다. 떠나는 자는 걸음도 빨라집니다.
+     그리고 딱 한 명 — 맨 앞의 하나가 멈춰 서서 나를 돌아봅니다.
+     "굳이? 왜?"를 몸으로 묻고, 대답을 기다리지 않고 무리를 따라갑니다. */
+  const SPLIT = 70;                            /* "굳이? 왜?" 자막과 같은 지점(z) */
+  for (const c of crowd) {
+    if (zProg > SPLIT) {
+      if (c === crowd[0] && c.hes === undefined) c.hes = 2.6;   /* 묻는 사람 */
+      if (c.hes > 0) c.hes -= dt;
+      else {
+        if (c.dly === undefined) c.dly = c.t * 0.35;            /* 0~2초 시차 */
+        c.dly = Math.max(0, c.dly - dt);
+        if (c.dly === 0) c.veer = Math.min(1, c.veer + dt*0.55);
       }
-      else if (down && k === 'Escape' && !panel.hidden) closeRec();
-      else if (down && k === 'Enter') {
-        var n = nearTool();
-        if (n && n.taken) openRec(n); else return;
-      } else return;
-      e.preventDefault();
     }
-    jnc.tabIndex = 0;
-    jnc.addEventListener('keydown', function (e) { key(e, true); });
-    jnc.addEventListener('keyup',   function (e) { key(e, false); });
-    /* openRec() moves focus to the close button, which is a sibling of the
-       canvas — Escape bound on the canvas alone never fires while reading */
-    panel.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { e.preventDefault(); closeRec(); }
-    });
-    jnc.addEventListener('blur', function () { keys.l = keys.r = keys.d = false; });
+    let heading = c.yaw + c.veer * 1.35;                        /* 75도 — 결단의 각도 */
+    let spd = SPEED * (0.93 + c.veer * 0.25);
+    if (c.hes > 0) { spd = 0; heading = Math.atan2(px - c.x, pz - c.z); }
+    c.x += Math.sin(heading) * spd * dt;
+    c.z += Math.cos(heading) * spd * dt;
+    const dx = c.x - cx, dz = c.z - cz;
+    if (dx*cfx + dz*cfz < 1.5) continue;    /* 등 뒤나 코앞의 하나가 장면을 다 망칩니다 */
+    /* +π: 06 조각은 얼굴이 로컬 -z 인데 이 월드는 +z 가 전진입니다.
+       무리도 걷습니다 — 서 있는 사람은 바운스 없이 서 있습니다. */
+    const cph = el*3.0 + c.t*7, mv = spd > 0 ? 1 : 0;
+    gl.uniformMatrix4fv(uniFig.m, false,
+      mul(trs(c.x, height(c.x, c.z) + Math.abs(Math.sin(cph))*0.05*mv, c.z, heading + Math.PI, 1),
+          rotZ(Math.sin(cph)*0.04*mv)));
+    gl.drawArrays(gl.TRIANGLES, 0, slotCrowd.n);
+  }
 
-    [].forEach.call(document.querySelectorAll('.jn__pad button'), function (btn) {
-      var k = btn.getAttribute('data-key');
-      btn.addEventListener('pointerdown', function (e) {
-        e.preventDefault();
-        keys[k] = true;
-        if (k === 'd') plant();
-      });
-      function up(e) { e.preventDefault(); keys[k] = false; }
-      btn.addEventListener('pointerup', up);
-      btn.addEventListener('pointerleave', up);
-      btn.addEventListener('pointercancel', up);
-    });
+  /* 나 — 걸을 때만 옷단이 차이고, 서면 천이 가라앉습니다 */
+  const meFig = buildFigure(walkA, ph, false);   /* 옷단 차임도 거리 위상에 */
+  slotMe.set(meFig);
+  gl.uniform3fv(uniFig.c0, FIG_ME.c0); gl.uniform3fv(uniFig.c1, FIG_ME.c1);
+  gl.uniform3fv(uniFig.c2, FIG_ME.c2); gl.uniform3fv(uniFig.c3, FIG_ME.c3);
+  /* +π: 06 조각은 얼굴이 로컬 -z. 회전 순서: 지형에 눕고 → 걸음 기울기 → 흔들림.
+     +π 를 돌면 로컬 x·z 부호가 뒤집히므로 피치는 부호를 뒤집어 얹습니다. */
+  const me = mul(trs(px, py + walk, pz, yaw + Math.PI, 1),
+                 mul(rotX(-(tPitch + pitchG)), rotZ(rock - tRoll)));
+  gl.uniformMatrix4fv(uniFig.m, false, me);
+  gl.bindVertexArray(slotMe.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
 
-    /* switching tabs mid-run and coming back should not resume with the keys
-       still held down from before */
-    document.addEventListener('visibilitychange', function () {
-      if (document.hidden) { keys.l = keys.r = keys.d = false; last = 0; }
-    });
+  /* 스카프 — 서 있으면 가라앉습니다. 바람은 내가 만드는 거니까 */
+  const seenN = TEMPLES.filter(t => t.seen).length;
+  slotScarf.set(buildScarfMesh(el, walkA > .5 ? 1 + glide*0.5 : 0.28, seenN*0.22));
+  gl.uniformMatrix4fv(uniFig.m, false, me);
+  gl.bindVertexArray(slotScarf.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, slotScarf.n);
 
-    /* the loop is unbounded, so stop it whenever the canvas is off-screen */
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (es) {
-        if (es[0].isIntersecting) {
-          if (!raf && veil.hidden) { last = 0; raf = requestAnimationFrame(frame); }
-        } else if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      }, { threshold: 0 }).observe(jnc);
-    }
+  /* 랜턴 이후 — 크롤러 티끌 */
+  if (lantern) {
+    slotMotes.set(buildMotes(el, px, pz));
+    gl.uniformMatrix4fv(uniFig.m, false, ident());
+    gl.bindVertexArray(slotMotes.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, slotMotes.n);
+  }
+  /* 신전 깃발 — 로브보다 바랜 천 색 */
+  slotBanner.set(buildBanners(el));
+  if (slotBanner.n) {
+    gl.uniform3fv(uniFig.c0, [0.80, 0.26, 0.16]);   /* 로브와 같은 적 가족, 조금 바램 */
+    gl.uniformMatrix4fv(uniFig.m, false, ident());
+    gl.bindVertexArray(slotBanner.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, slotBanner.n);
+  }
+  gl.enable(gl.CULL_FACE);
 
-    reset();
-    draw();
-    hud();
+  /* ── 후처리 체인 ── */
+  gl.disable(gl.DEPTH_TEST);
+  /* MSAA 를 일반 텍스처로 해상 */
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, post.fboMS);
+  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, post.scene.f);
+  gl.blitFramebuffer(0, 0, post.W2, post.H2, 0, 0, post.W2, post.H2, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+  /* 밝은 곳 추출 (1/4 해상도) */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.b1.f);
+  gl.viewport(0, 0, post.W4, post.H4);
+  gl.useProgram(brightProg);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, post.scene.t);
+  gl.uniform1i(uniPost.bT, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  /* 가로 블러 → 세로 블러 */
+  gl.useProgram(blurProg);
+  gl.uniform1i(uniPost.uT, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.b2.f);
+  gl.bindTexture(gl.TEXTURE_2D, post.b1.t);
+  gl.uniform2f(uniPost.uD, 1/post.W4, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, post.b1.f);
+  gl.bindTexture(gl.TEXTURE_2D, post.b2.t);
+  gl.uniform2f(uniPost.uD, 0, 1/post.H4);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  /* 합성 — 톤매핑·그레이딩·색수차·그레인·비네트, 감마는 여기서 한 번 */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, post.W2, post.H2);
+  gl.useProgram(finalProg);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, post.scene.t);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, post.b1.t);
+  gl.uniform1i(uniPost.fT, 0); gl.uniform1i(uniPost.fB, 1);
+  gl.uniform1f(uniPost.fTime, el);
+  gl.uniform2f(uniPost.fPx, 1/post.W2, 1/post.H2);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.enable(gl.DEPTH_TEST);
 
-    /* ---- self-check ---- */
+  }
+  requestAnimationFrame(frame);
+}
+
+    /* ---- 자체 검사: 주소에 ?selftest ---- */
     if (location.search.indexOf('selftest') !== -1) {
-      /* one camera, and the projection has to stay sane at both ends */
-      var near = proj(NEAR), far = proj(VIEW);
-      console.assert(near.y > H, 'the road spills past the bottom edge');
-      console.assert(far.y > HORIZON && far.y - HORIZON < 12, 'the far end converges on the horizon');
-      console.assert(near.hw > far.hw * 20, 'perspective actually converges');
-      console.assert(proj(10).s === F / 10, 'scale is F/z and nothing else');
-
-      /* the two roads must genuinely separate, or the fork reads as a wobble */
-      console.assert(myCx(FORK_Z) === 0, 'both roads are the same road until the fork');
-      console.assert(Math.abs(myCx(FORK_Z + FORK_LEN) - MY_CX) < .01, 'my track finishes peeling off');
-      console.assert(Math.abs(MY_CX) > ROAD_HW * 2, 'the roads do not overlap once split');
-      console.assert(FORK_Z + FORK_LEN < ROAD_END, 'the split completes before the tarmac ends');
-      /* and you must be able to out-steer the pull, or 5장 is unwinnable */
-      console.assert(STEER > 1.5 + Math.abs(MY_CX) / (FORK_LEN / SPEED),
-                     'steering beats the crowd pull with room to spare');
-      /* holding ← pins you against the clamp, so the "you made it" band must be
-         wider than the clamp or the fork never latches and you stand there */
-      console.assert(ROAD_HW * 1.05 > ROAD_HW * 1.02, 'the fork band clears the steering clamp');
-
-      TOOLS.forEach(function (t) {
-        console.assert(!!RECS[t.rec], 'tool has a record: ' + t.rec);
-        console.assert(t.z > ROAD_END && t.z <= TRACK, 'door is on my track: ' + t.rec);
-        console.assert(!!t.door, 'door ' + t.rec + ' says why it was built');
-        console.assert(!!t.verb && !!t.line, 'door ' + t.rec + ' has a line and a verb');
+      console.assert(TEMPLES.length === 8, '신전은 여덟 개');
+      console.assert(TEMPLES[5].name === 'aeo-log-analyzer' && TEMPLES[5].lantern === true,
+                     '계측기는 여섯 번째다 — 앞으로 당기면 이야기가 무너진다');
+      for (let i = 1; i < TEMPLES.length; i++)
+        console.assert(TEMPLES[i].z > TEMPLES[i-1].z, '신전은 만든 순서(z)대로 놓인다');
+      TEMPLES.forEach(function (t) {
+        console.assert(!!RECS[t.name], '문 이름이 기록과 맞는다: ' + t.name);
+        console.assert(!!t.door, '문마다 왜 만들었나가 있다: ' + t.name);
       });
-      console.assert(TOOLS.length === 8, 'eight doors');
-      for (var ti = 1; ti < TOOLS.length; ti++)
-        console.assert(TOOLS[ti].z > TOOLS[ti - 1].z, 'doors are in commit order along the road');
-
-      /* the order of the doors is the order the things were actually built.
-         the lantern being sixth is the whole argument — if a tidy-up ever moves
-         it to the front, the seven blind months disappear and so does scene 8. */
-      console.assert(TOOLS[0].rec === 'aeo_sync', 'aeo_sync was built first');
-      console.assert(TOOLS[5].grant === 'lantern', 'the lantern is the sixth door');
-      console.assert(TOOLS[5].rec === 'aeo-log-analyzer', 'and it is the log analyzer');
-      console.assert(TOOLS[0].z < TOOLS[5].z, 'you publish long before you can measure');
-
-      /* ten scenes, in the order docs/narrative.md fixes them */
-      console.assert(SCENES.length === 10, 'ten scenes');
-      console.assert(sceneAt(0).n === 1, 'the run opens on scene 1');
-      console.assert(sceneAt(FORK_Z).n === 5, 'the fork is scene 5');
-      console.assert(sceneAt(TRACK).n === 10, 'the run ends on scene 10');
-      console.assert(SCENES[4].z <= FORK_Z && SCENES[5].z > ROAD_END,
-                     'five scenes before the fork, five after');
-      SCENES.forEach(function (s, i) {
-        console.assert(s.n === i + 1, 'scenes are numbered in order');
-        console.assert(!!s.line && !!s.year, 'scene ' + s.n + ' has a line and a year');
-        console.assert(s.line.length <= 26, 'scene ' + s.n + ' line is short enough to be big');
-      });
-
-      /* the empty frame belongs to scene 10 and must be passed BEFORE the last
-         record, or you never see the thing that was deleted */
-      console.assert(sceneAt(VOID_Z).n === 10, 'the empty frame is in scene 10');
-      console.assert(VOID_Z < TOOLS[7].z, 'you run past it before the last door');
-      console.assert(!TOOLS.some(function (t) { return Math.abs(t.z - VOID_Z) < 40; }),
-                     'nothing real stands where the deleted thing was');
-
-      /* NetTier must be reached before the wall it opens */
-      console.assert(TOOLS[6].z < GATEZ && GATEZ < TOOLS[7].z, 'gate sits between NetTier and Hospify');
-      console.assert(CLINIC_Z <= TRACK, 'the clinic is inside the run');
-
-      /* about ninety seconds, and the prologue keeps its share of it */
-      console.assert(TRACK / SPEED > 75 && TRACK / SPEED < 110, 'the run is about a minute and a half');
-      console.assert(FORK_Z / TRACK > .3, 'the first five scenes are not cut short');
-
-      /* lamps are 유입: lit at the start, out when the thing I sold started
-         dying, and back exactly where I published */
-      console.assert(lampLit(100), '유입 is fine at the start');
-      console.assert(!lampLit(760), 'and gone by the time search moved to AI answers');
-      pages.push({ z: 1500, x: 0, cited: 0, cool: 0 });
-      console.assert(lampLit(1500), 'publishing lights the road again');
-      console.assert(!lampLit(1900), 'but only where I actually published');
-      console.assert(nearestPage(1500) !== null, 'a fresh page attracts crawlers');
-      pages[0].cool = RECRAWL;
-      console.assert(nearestPage(1500) === null, 'a page on re-crawl cooldown is skipped');
-      pages.length = 0;
-
-      /* publishing must put a sign AHEAD — behind you there is no picture — and
-         make you keep running, or a stack of pages farms citations for free */
-      (function () {
-        var sz = p.z, sr = running;
-        pages.length = 0; stats.pages = 0; have.plant = true; running = true;
-        p.z = 1200; p.x = 0; plantCd = 0;
-        plant();
-        console.assert(pages.length === 1, 'first publish lands');
-        console.assert(pages[0].z > p.z, 'the page is planted ahead, where you can see it');
-        plantCd = 0; plant();
-        console.assert(pages.length === 1, 'no second page on the same spot');
-        p.z = 1200 + PAGE_SPACE + 2; plantCd = 0; plant();
-        console.assert(pages.length === 2, 'running on lets you publish again');
-        pages.length = 0; stats.pages = 0; have.plant = false;
-        plantCd = 0; p.z = sz; running = sr;
-      })();
-
-      /* Nothing counts up on screen. The only readout is the year, because a
-         year is biography and "발행 21" is not — on a CV a live score also reads
-         as a real business number, which is worse than useless. */
-      (function () {
-        console.assert(Object.keys(GAUGE).length === 1 && !!GAUGE.year,
-                       'the year is the only gauge');
-        hud();
-        console.assert(!document.getElementById('jn-g-cite') &&
-                       !document.getElementById('jn-g-page') &&
-                       !document.getElementById('jn-g-crawl'),
-                       'the score counters are gone from the markup too');
-      })();
-
-      /* The seven blind months are still told, just not by a dial: citations
-         accrue while you cannot see them, and the sixth door says how many.
-         If that number ever stops being spoken, the whole point is gone. */
-      (function () {
-        var wasC = stats.cited, wasT = tickEl.textContent;
-        stats.cited = 17; reveal();
-        console.assert(/17/.test(tickEl.textContent),
-                       'the reveal names what was happening unseen: ' + tickEl.textContent);
-        stats.cited = 0; reveal();
-        console.assert(!/\d/.test(tickEl.textContent) || /크롤러/.test(tickEl.textContent),
-                       'and still says something sensible if nothing was cited');
-        stats.cited = wasC; tickEl.textContent = wasT;
-      })();
-
-      /* a page with subtitles has to come back round sooner, or MediSTT grants
-         a verb that changes nothing */
-      console.assert(RECRAWL * .6 < RECRAWL, 'subtitled pages are re-read sooner');
+      console.assert(SCRIPT.length === 11, '도입 + 열 장면');
+      for (let i = 1; i < SCRIPT.length; i++)
+        console.assert(SCRIPT[i].z > SCRIPT[i-1].z, '대본은 산 쪽으로만 흐른다');
+      console.assert(VOIDF.z > TEMPLES[6].z && VOIDF.z < TEMPLES[7].z,
+                     '빈 문틀은 NetTier 와 Hospify 사이에 있다');
+      console.assert(MOUNTAIN.z > TEMPLES[7].z, '산은 마지막 신전보다 멀다');
+      /* 검사 창구 — ?selftest 일 때만 열립니다.
+         사막은 정해진 길이 없어서 여덟 유적을 걸어 도는 데만 몇 분이 걸립니다.
+         그래서 문 앞까지는 이 창구로 데려다 놓고 들어가고 나오는 것만 진짜로
+         시킵니다 — 잡으려는 건 이동이 아니라 문과 이야기입니다. */
+      window.JOURNEY = {
+        TEMPLES: TEMPLES, SCRIPT: SCRIPT, MOUNTAIN: MOUNTAIN, VOIDF: VOIDF,
+        at: function (x, z, ry) { P0.x = x; P0.z = z; if (ry !== undefined) yaw = camYaw = ry; },
+        get pos() { return { x: P0.x, z: P0.z, yaw: yaw }; },
+        get state() {
+          return { inside: inside && inside.name, near: nearT && nearT.name,
+                   lantern: lantern, ended: ended, running: running, scene: scene,
+                   seen: TEMPLES.filter(function (t) { return t.seen; }).length };
+        }
+      };
       console.log('journey selftest done');
     }
+    requestAnimationFrame(frame);
   })();
+
   /* ---- self-check: append ?selftest to the URL ---- */
   if (location.search.indexOf('selftest') !== -1) {
     var t = analyze(SAMPLE);

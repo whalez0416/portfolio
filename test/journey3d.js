@@ -17,7 +17,9 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
   const errs = [];
   p.on('pageerror', e => errs.push('JS: ' + e.message));
   p.on('console', m => { if (m.type()==='error') errs.push('console: '+m.text()); });
-  await p.goto('file:///D:/portfolio/docs/design/04-journey-3d.html', { waitUntil:'networkidle2', timeout:60000 });
+  const ROOT = path.join(__dirname, '..');
+  const url = 'file:///' + path.join(ROOT, 'docs/design/04-journey-3d.html').replace(/\\/g, '/');
+  await p.goto(url, { waitUntil:'networkidle2', timeout:60000 });
   await sleep(1800);
 
   let pass = true;

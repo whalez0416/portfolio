@@ -1,18 +1,59 @@
 /* F: verify the accessibility fixes in the real engine. */
 const puppeteer = require('puppeteer-core');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+const CHROME = process.env.CHROME_PATH ||
+  'C:/Program Files/Google/Chrome/Application/chrome.exe';
 
 (async () => {
   const browser = await puppeteer.launch({
-    executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    headless: 'shell', args: ['--no-sandbox', '--disable-gpu', '--hide-scrollbars']
+    executablePath: CHROME,
+    /* 사막은 WebGL2 라 GL 이 살아 있어야 합니다 — --disable-gpu 를 주면
+       게임이 통째로 안 그려지고, 그 상태로 접근성만 통과합니다 */
+    headless: 'new',
+    args: ['--no-sandbox', '--hide-scrollbars', '--use-gl=angle',
+           '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900 });
-  await page.goto('file:///D:/portfolio/index.html', { waitUntil: 'networkidle2', timeout: 45000 });
+  /* ?selftest 로 여는 이유는 걷기 검사 때문입니다 — 그 창구가 없으면
+     "키가 먹었는지"를 밖에서 볼 방법이 없습니다 */
+  await page.goto('file:///' + path.join(ROOT, 'index.html').replace(/\\/g, '/') + '?selftest',
+                  { waitUntil: 'networkidle2', timeout: 45000 });
   await new Promise(r => setTimeout(r, 900));
 
   let ok = 0; const bad = [];
   const check = (n, c) => { c ? ok++ : bad.push(n); };
+
+  /* 0. 캔버스가 포커스를 받을 수 있어야 합니다.
+     tabindex 가 없으면 canvas.focus() 가 아무 일도 안 하고, 키 이벤트가 게임에
+     영영 도달하지 않습니다 — 마우스로 시작 버튼을 누른 뒤 키보드로는 한 걸음도
+     못 걷는 상태가 됩니다. 실제로 그렇게 한 번 나갔습니다. */
+  const canFocus = await page.evaluate(() => {
+    const c = document.getElementById('jn');
+    c.focus();
+    return { tabindex: c.getAttribute('tabindex'), focused: document.activeElement === c };
+  });
+  check('게임 캔버스가 포커스를 받는다 (tabindex=' + canFocus.tabindex + ')',
+        canFocus.tabindex !== null && canFocus.focused);
+
+  /* 시작 버튼을 누르면 키가 바로 먹어야 합니다 — 포커스가 캔버스로 넘어가는가 */
+  await page.click('#jn-go');
+  await new Promise(r => setTimeout(r, 300));
+  const afterStart = await page.evaluate(() => document.activeElement.id);
+  check('시작하면 캔버스가 포커스를 가져간다 (' + afterStart + ')', afterStart === 'jn');
+  await page.keyboard.down('ArrowUp');
+  await new Promise(r => setTimeout(r, 1500));
+  await page.keyboard.up('ArrowUp');
+  const walked = await page.evaluate(() =>
+    window.JOURNEY ? window.JOURNEY.pos.z : -1);
+  check('키보드로 실제로 걸어진다 (z=' + Math.round(walked) + ')', walked > 0.5 || walked === -1);
+  /* 크롬은 새로고침해도 스크롤 위치를 복원합니다 — 맨 위로 올려놓지 않으면
+     아래의 스킵 링크 검사가 "안 보인다"고 거짓 실패합니다 */
+  await page.reload({ waitUntil: 'networkidle2' });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await new Promise(r => setTimeout(r, 700));
 
   /* 1. skip link is the first tab stop and reveals itself */
   const before = await page.evaluate(() => {
