@@ -638,24 +638,28 @@ const P = {
 
    그리고 알아서 걷지 않습니다. 자동으로 흘러가면 게임이 아니라 영상이고,
    무엇보다 "내가 움직인 결과"가 아닌 화면 이동이 멀미의 제일 큰 원인입니다. */
-const SPEED = 10.5, TURN = 1.55;
+/* 저니의 보속입니다. 10.5 는 키 1.9짜리 사람이 초속 10미터 — 뛰는 거였고,
+   그 속도에 맞춰 맵이 넓어지니 걷는 느낌이 살 수가 없었습니다.
+   속도를 사람 걸음으로 내리고 맵을 같은 비율로 줄입니다 — 걸리는 시간은
+   비슷한데 발밑이 천천히 흐르고, 언덕 하나가 사건이 됩니다. */
+const SPEED = 4.6, TURN = 1.25;
 let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0, spdK = 1;
 let keys = { f:false, l:false, r:false };
 let camBack = 6.4, camUp = 2.6;
-const MOUNTAIN = { x: 40, z: 1500 };            /* 월드에 못박힌 목표. 저니의 산입니다 */
+const MOUNTAIN = { x: 20, z: 700 };             /* 월드에 못박힌 목표. 저니의 산입니다 */
 
 /* 프로토타입에는 셋만 세워 둡니다. 본편에서는 여덟 개고, 안의 본문은
    index.html 의 .rec 한 벌에서 꺼내 씁니다 — 여기에 복제하지 않습니다. */
 const TEMPLES = [
-  { x:   6, z: 132, yaw: 0.05, name: 'aeo_sync',
+  { x:   4, z: 60, yaw: 0.05, name: 'aeo_sync',
     why: '"AI에 인용되는 글"이 뭔지, 아무도 정의해 주지 않았습니다.',
     body: '표준화와 고유함은 반대말인데 둘 다 만족시켜야 했습니다. 8개 중 제일 힘들었습니다.\n' +
           '의료라서 틀리면 안 되고 심의 대상이라, 자동 생성 후 사람이 검수하는 순서를 뒤집어\n' +
           '검수를 파이프라인 안에 넣었습니다.' },
-  { x: -78, z: 268, yaw: 0.5, name: 'MediSTT',
+  { x: -36, z: 120, yaw: 0.5, name: 'MediSTT',
     why: '모델이 좋아지길 기다리는 대신 도메인 사전으로 앞뒤를 막았습니다.',
     body: '틀리는 걸 고치는 대신, 틀리기 전에 알려줍니다.' },
-  { x:  96, z: 352, yaw: -0.6, name: 'aeo-log-analyzer',
+  { x:  44, z: 158, yaw: -0.6, name: 'aeo-log-analyzer',
     why: '만들고 나서야, 증명할 방법이 없다는 걸 알았습니다.',
     body: '업계는 "검색하면 우리가 나오는가"를 봅니다. 저는 얼마나 인용되는지를 셉니다.\n' +
           'AI 봇은 JavaScript를 실행하지 않아 Google Analytics에 아무것도 안 잡힙니다.' }
@@ -664,7 +668,7 @@ TEMPLES.forEach(t => { t.y = height(t.x, t.z) - 1.1; });   /* 모래에 반쯤 �
 let inside = null, nearT = null;
 const crowd = [];
 for (let i = 0; i < 11; i++)
-  crowd.push({ x: (Math.random()-0.5)*22, z: 26 + i*13 + Math.random()*7,
+  crowd.push({ x: (Math.random()-0.5)*14, z: 12 + i*6 + Math.random()*4,
                yaw: (Math.random()-0.5)*0.10, veer: 0, t: Math.random()*6 });
 
 /* 화면 가운데 자막 — docs/narrative.md 4장 · 5장 */
@@ -674,12 +678,12 @@ hintEl.style.transition = 'opacity 1.4s';
 /* 시간이 아니라 "걸어온 거리"로 넘깁니다. 서 있는데 이야기가 혼자
    진행되면, 걷는 것이 서사와 아무 상관이 없다고 말하는 셈입니다. */
 const CUES = [
-  { t:  18, s: '5년 뒤, 팔던 것이 죽기 시작했습니다' },
-  { t: 100, s: '' },
-  { t: 165, s: '굳이? 왜? — 다들 그렇게 물었습니다' },
-  { t: 245, s: '' },
-  { t: 290, s: '팔던 상품이 죽는 걸 봤고,\n대체할 상품을 만들 사람이 저밖에 없었습니다' },
-  { t: 380, s: '' }
+  { t:   8, s: '5년 뒤, 팔던 것이 죽기 시작했습니다' },
+  { t:  45, s: '' },
+  { t:  74, s: '굳이? 왜? — 다들 그렇게 물었습니다' },
+  { t: 110, s: '' },
+  { t: 130, s: '팔던 상품이 죽는 걸 봤고,\n대체할 상품을 만들 사람이 저밖에 없었습니다' },
+  { t: 170, s: '' }
 ];
 let cueAt = 0;
 function cues(el) {
@@ -723,7 +727,7 @@ addEventListener('click', () => {
   P0 = { x: 0, z: 0 }; yaw = camYaw = 0; moved = 0; cueAt = 0; walkA = 0; spdK = 1;
   lineEl.classList.remove('on');
   crowd.forEach((c, i) => {
-    c.x = (Math.random()-0.5)*22; c.z = 26 + i*13 + Math.random()*7;
+    c.x = (Math.random()-0.5)*14; c.z = 12 + i*6 + Math.random()*4;
     c.veer = 0; c.yaw = (Math.random()-0.5)*0.10;
   });
 });
@@ -811,7 +815,7 @@ function frame(now) {
   camYaw += Math.atan2(Math.sin(yaw - camYaw), Math.cos(yaw - camYaw)) * Math.min(1, 3.0*dt);
   const cfx = Math.sin(camYaw), cfz = Math.cos(camYaw);
 
-  const wide = Math.min(1, Math.max(0, (moved - 95)/55)) * (1 - Math.min(1, Math.max(0, (moved - 235)/60)));
+  const wide = Math.min(1, Math.max(0, (moved - 43)/25)) * (1 - Math.min(1, Math.max(0, (moved - 105)/28)));
   camBack += (7.8 + wide*12.0 - camBack) * 0.8 * dt;
   camUp   += (3.0 + wide*6.0  - camUp)   * 0.8 * dt;
 
@@ -841,7 +845,7 @@ function frame(now) {
      제자리라 방향 감각을 못 줍니다. 어디로 가는지는 이 산이 알려줍니다. */
   gl.useProgram(farProg);
   gl.uniformMatrix4fv(uni.far.vp, false, VP);
-  gl.uniformMatrix4fv(uni.far.model, false, trs(MOUNTAIN.x, -30, MOUNTAIN.z, 0, 190));
+  gl.uniformMatrix4fv(uni.far.model, false, trs(MOUNTAIN.x, -16, MOUNTAIN.z, 0, 95));
   gl.uniform3fv(uni.far.cam, eye);
   gl.uniform3fv(uni.far.haze, P.haze); gl.uniform3fv(uni.far.tint, P.mtn);
   gl.uniform1f(uni.far.mix, 0.30);
@@ -900,7 +904,7 @@ function frame(now) {
     /* 그들도 걷습니다. 그리고 어느 지점부터 방향을 틉니다 — 나는 따라가도 되고
        안 따라가도 됩니다. 레인을 막아놓고 "왼쪽으로 가세요"라고 시키는 것보다
        이쪽이 훨씬 셉니다. 갈라지는 게 진짜 내 선택이 되니까요. */
-    if (moved > 120) c.veer = Math.min(1, c.veer + dt*0.16);
+    if (moved > 55) c.veer = Math.min(1, c.veer + dt*0.16);
     const cy2 = c.yaw + c.veer*0.95;
     c.x += Math.sin(cy2) * SPEED*0.93 * dt;
     c.z += Math.cos(cy2) * SPEED*0.93 * dt;
