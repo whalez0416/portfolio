@@ -385,13 +385,31 @@ void main(){
   float sd = length(vW.xz - uPXZ);
   float gate = smoothstep(uPY + 0.6, uPY + 0.15, vW.y);
   c *= 1.0 - 0.62 * exp(-sd*sd*2.4) * gate;
+  /* 긴 노을 그림자 — "2010년 게임"의 정체가 이것이었습니다. 해가 지평선에
+     걸려 있는데 신전도 사람도 그림자를 안 드리우면 전부 스티커입니다.
+     드리우는 것마다 태양 반대 방향으로 길게 늘인 타원을 지형에 얹습니다. */
+  if (vTer > 0.5) {
+    vec2 sunAway = vec2(-0.156, -0.988);           /* 태양(0.15,·,0.95)의 반대 */
+    vec2 sunSide = vec2(0.988, -0.156);
+    float sh = 1.0;
+    for (int i = 0; i < 24; i++) {
+      if (i >= uCastN) break;
+      vec2 o = vW.xz - uCast[i].xy;
+      float t2 = dot(o, sunAway), s3 = dot(o, sunSide);
+      float w2 = uCast[i].z, len2 = uCast[i].w;
+      float e2 = pow(s3 / w2, 2.0) + pow((t2 - len2*0.34) / (len2*0.60), 2.0);
+      sh *= 1.0 - 0.40 * exp(-max(e2, 0.0) * 1.7);
+    }
+    c *= max(sh, 0.42);                            /* 겹쳐도 새까매지지는 않게 */
+  }
   float f = 1.0 - exp(-dist*dist*uFog);
   frag = vec4(mix(c, uHaze, clamp(f,0.0,1.0)), 1.0);
 }`;
 const lit = program(litVS.replace('uniform vec3 uCam;',
   'uniform vec3 uCam;'),
   litFS.replace('uniform float uFog, uGlit, uEmit;',
-  'uniform float uFog, uGlit, uEmit, uPY, uTime;\nuniform vec2 uPXZ;'));
+  'uniform float uFog, uGlit, uEmit, uPY, uTime;\nuniform vec2 uPXZ;\n' +
+  'uniform vec4 uCast[24];\nuniform int uCastN;'));
 
 /* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
    안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
@@ -420,7 +438,8 @@ const uni = {
   lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
           cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
           haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit'),
-          pxz:U(lit,'uPXZ'), py:U(lit,'uPY'), time:U(lit,'uTime') },
+          pxz:U(lit,'uPXZ'), py:U(lit,'uPY'), time:U(lit,'uTime'),
+          cast:U(lit,'uCast'), castN:U(lit,'uCastN') },
   far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
           tint:U(farProg,'uTint'), mix:U(farProg,'uMix'), cam:U(farProg,'uCam') }
 };
@@ -708,7 +727,7 @@ void main(){
   /* 지형과 같은 3.5단 명암 끊기 — 로브가 조각이 아니라 셀이 됩니다 */
   float q=key*3.5;
   key=mix(key, (floor(q)+smoothstep(0.30,0.70,fract(q)))/3.5, 0.55);
-  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.37,0.29,0.43), n.y*0.5+0.5);
+  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.38,0.31,0.30), n.y*0.5+0.5);
   float rim=pow(1.0-max(dot(n,V),0.0),3.2);
   float ao=1.0-0.5*vAo;
   vec3 c=base*(amb*ao+vec3(1.30,0.82,0.45)*key)*(1.0+rim*1.2);
@@ -761,7 +780,7 @@ void main(){
   c += texture(uBloom, vUv).rgb * 0.50;
   c = aces(c * 1.04);
   float l = dot(c, vec3(0.299,0.587,0.114));
-  c = mix(c * vec3(0.97,0.93,1.05), c * vec3(1.05,0.98,0.91), smoothstep(0.15, 0.75, l));
+  c = mix(c, c * vec3(1.05,0.98,0.92), smoothstep(0.2, 0.75, l));   /* 그늘 쪽 냉색 푸시 제거 */
   c = mix(vec3(l), c, 1.14);
 
   /* 화면 단계 포스터라이즈·윤곽선은 걷어냈습니다 — 하늘과 안개까지 통째로
@@ -822,7 +841,7 @@ const uniFig = {
    전부 사막 팔레트의 가족입니다 — 로브의 적은 노을의 적이고,
    무리의 보라는 그늘의 보라입니다. 남의 색을 데려오지 않습니다. */
 const FIG_ME    = { c0:[0.72,0.19,0.13], c1:[1.0,0.74,0.42], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
-const FIG_CROWD = { c0:[0.40,0.31,0.40], c1:[0.44,0.37,0.43], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.05] };
+const FIG_CROWD = { c0:[0.37,0.325,0.30], c1:[0.42,0.375,0.35], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.04] };
 
 /* ── 신전 ──
    만든 것 하나에 유적 하나. 모래에 반쯤 묻혀 있고, 멀리서는 능선 위의 실루엣으로
@@ -877,14 +896,19 @@ const templeGlow = (() => {
    만나는 선이 칼같이 끊겨 "배경에 올려놓은 모형"이 됩니다. 반경을 각도마다
    불규칙하게 흔들어 바람이 쌓은 모양으로. */
 const templeSkirt = (() => {
-  const v = [], N = 22;
+  /* 문간 앞은 비웁니다 — 처음엔 링을 한 바퀴 둘렀더니 모래 둔덕이 입구와 계단을
+     덮고, 걸어 들어갈 때 시야가 둔덕 안을 뚫고 지나가며 화면이 깨졌습니다.
+     문간은 로컬 -z 쪽(a ≈ -π/2)이므로 그 부채꼴은 건너뜁니다.
+     바깥단은 더 깊이(-1.5) 묻어 지형과의 교차선을 완만하게. */
+  const v = [], N = 26;
   for (let i = 0; i < N; i++) {
-    const a0 = i/N*Math.PI*2, a1 = (i+1)/N*Math.PI*2;
-    const rOut = (a) => 9.6 + 2.2*Math.sin(a*3.1 + 1.2) + 1.1*Math.sin(a*7.3);
+    const a0 = i/N*Math.PI*2, a1 = (i+1)/N*Math.PI*2, am = (a0+a1)/2;
+    if (Math.sin(am) < -0.42) continue;              /* 입구 부채꼴 생략 */
+    const rOut = (a) => 9.2 + 1.8*Math.sin(a*3.1 + 1.2) + 0.9*Math.sin(a*7.3);
     const rIn  = 5.4;
     const hIn  = (a) => 1.5 + 0.55*Math.sin(a*2.3 + 0.6);
-    const P0 = [Math.cos(a0)*rOut(a0), -0.55, Math.sin(a0)*rOut(a0)];
-    const P1 = [Math.cos(a1)*rOut(a1), -0.55, Math.sin(a1)*rOut(a1)];
+    const P0 = [Math.cos(a0)*rOut(a0), -1.5, Math.sin(a0)*rOut(a0)];
+    const P1 = [Math.cos(a1)*rOut(a1), -1.5, Math.sin(a1)*rOut(a1)];
     const P2 = [Math.cos(a1)*rIn, hIn(a1), Math.sin(a1)*rIn];
     const P3 = [Math.cos(a0)*rIn, hIn(a0), Math.sin(a0)*rIn];
     v.push(...P0, ...P1, ...P2, ...P0, ...P2, ...P3);
@@ -932,9 +956,9 @@ const P = {
      그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
      아무리 굴곡이 있어도 흙더미로 보입니다. */
   lit:  [0.99, 0.63, 0.25],
-  dark: [0.20, 0.125, 0.175],   /* 보라가 '색보정'이 아니라 '보라색 물체'로 읽혀서 웜 모브로 물림 */
+  dark: [0.21, 0.13, 0.105],    /* 그늘은 따뜻한 갈색. 보라는 두 번 지적받고 완전히 뺐다 */
   sun:  [0.42, 0.42, -1.0],
-  mtn:  [0.30, 0.24, 0.31]
+  mtn:  [0.33, 0.255, 0.22]
 };
 
 /* ═══════════ 상태 ═══════════ */
@@ -1017,7 +1041,8 @@ function templeLocal(x, z, t) {
 function templeBlock(x, z) {
   for (const t of TEMPLES) {
     const l = templeLocal(x, z, t);
-    if (Math.abs(l.x) < 6.0 && Math.abs(l.z) < 6.0) {
+    /* 반경 7.4까지 막습니다 — 모래 둔덕을 몸으로 뚫고 들어가면 화면이 깨집니다 */
+    if ((Math.abs(l.x) < 6.0 && Math.abs(l.z) < 6.0) || Math.hypot(l.x, l.z) < 7.4) {
       if (Math.abs(l.x) < 1.5 && l.z < -2.0) continue;   /* 문간으로는 들어갈 수 있음 */
       return true;
     }
@@ -1165,6 +1190,7 @@ function goIn(t) {
   enterEl.classList.remove('on');
 }
 let lantern = false, ended = false;
+const CASTS = new Float32Array(24 * 4);
 const finEl = document.getElementById('fin');
 document.getElementById('fin-again').addEventListener('click', () => location.reload());
 function goOut() {
@@ -1379,6 +1405,19 @@ function frame(now) {
   gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.0000128);
   gl.uniform2f(uni.lit.pxz, px, pz); gl.uniform1f(uni.lit.py, py);
   gl.uniform1f(uni.lit.time, el);
+  /* 그림자 드리우는 것들: 신전 8 + 빈 문틀 + 근처 무리 (최대 24) */
+  {
+    let n2 = 0;
+    for (const t of TEMPLES) { CASTS[n2*4]=t.x; CASTS[n2*4+1]=t.z; CASTS[n2*4+2]=6.4; CASTS[n2*4+3]=30; n2++; }
+    CASTS[n2*4]=VOIDF.x; CASTS[n2*4+1]=VOIDF.z; CASTS[n2*4+2]=2.4; CASTS[n2*4+3]=10; n2++;
+    for (const c of crowd) {
+      if (n2 >= 24) break;
+      if (Math.hypot(c.x - px, c.z - pz) > 90) continue;
+      CASTS[n2*4]=c.x; CASTS[n2*4+1]=c.z; CASTS[n2*4+2]=0.62; CASTS[n2*4+3]=4.2; n2++;
+    }
+    gl.uniform4fv(uni.lit.cast, CASTS);
+    gl.uniform1i(uni.lit.castN, n2);
+  }
   gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
   gl.uniform1f(uni.lit.glit, 1.0);
   gl.uniform1i(uni.lit.terrain, 1);
@@ -1394,7 +1433,7 @@ function frame(now) {
      같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
      이유가 이 두 상수였습니다. */
   gl.uniform3fv(uni.lit.litc, [0.88,0.56,0.28]);
-  gl.uniform3fv(uni.lit.dark, [0.235,0.15,0.20]);
+  gl.uniform3fv(uni.lit.dark, [0.24,0.155,0.125]);
   gl.bindVertexArray(templeMesh.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
@@ -1411,7 +1450,7 @@ function frame(now) {
      이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
   gl.uniform1f(uni.lit.emit, 0.0);
   gl.uniform3fv(uni.lit.litc, [0.97, 0.615, 0.245]);
-  gl.uniform3fv(uni.lit.dark, [0.21, 0.13, 0.175]);
+  gl.uniform3fv(uni.lit.dark, [0.21, 0.135, 0.11]);
   gl.bindVertexArray(templeSkirt.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
@@ -1428,7 +1467,7 @@ function frame(now) {
   gl.uniform1f(uni.lit.emit, 0.0);
   /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
   gl.uniform3fv(uni.lit.litc, [0.52,0.38,0.30]);
-  gl.uniform3fv(uni.lit.dark, [0.16,0.11,0.17]);
+  gl.uniform3fv(uni.lit.dark, [0.17,0.12,0.10]);
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
