@@ -216,9 +216,24 @@ uniform vec3 uHaze, uHigh; uniform float uSunX;
 void main(){
   float t = clamp(vUv.y, 0.0, 1.0);
   vec3 c = mix(uHaze, uHigh, pow(t, 0.85));
-  /* 낮게 걸린 해 — 저니는 거의 항상 해가 지평선 근처에 있습니다 */
-  float d = distance(vec2(vUv.x, vUv.y*1.9), vec2(uSunX, 0.10));
-  c += vec3(1.00,0.72,0.34) * exp(-d*d*7.0) * 0.55;
+  /* 해 — 원반이 있고, 그 둘레에 두 겹의 번짐. 번짐만 있으면 "밝은 곳"이고
+     원반이 있어야 "해"입니다. 저니는 늘 해가 지평선 근처에 걸려 있습니다. */
+  vec2 sp = vec2(uSunX, 0.115);
+  float d = distance(vec2(vUv.x, vUv.y*1.9), sp);
+  c += vec3(1.00,0.72,0.34) * exp(-d*d*7.0)  * 0.55;
+  c += vec3(1.00,0.60,0.25) * exp(-d*d*90.0) * 0.85;
+  c += vec3(1.00,0.92,0.75) * smoothstep(0.052, 0.038, d);
+  /* 노을 구름 — 얇은 띠 두 줄. 아랫면만 해에 그을려 있습니다.
+     빈 그라데이션 하늘은 스크린세이버지 장면이 아닙니다. */
+  float w1 = vUv.y - 0.30 - 0.045*sin(vUv.x*5.1 + 1.2) - 0.015*sin(vUv.x*13.0);
+  float b1 = smoothstep(0.030, 0.006, abs(w1));
+  c = mix(c, vec3(0.34,0.19,0.26), b1*0.42);
+  c += vec3(0.95,0.45,0.22) * smoothstep(0.018, 0.002, abs(w1+0.012)) * 0.30;
+  float w2 = vUv.y - 0.445 - 0.03*sin(vUv.x*3.4 - 0.7) - 0.012*sin(vUv.x*9.5+2.0);
+  float b2 = smoothstep(0.022, 0.005, abs(w2));
+  c = mix(c, vec3(0.27,0.17,0.26), b2*0.34);
+  /* 디더 — 8비트 그라데이션 줄무늬(밴딩)를 잘게 부숩니다. 마감의 반은 이런 것 */
+  c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453) - 0.5) * (2.0/255.0);
   frag = vec4(c, 1.0);
 }`);
 
@@ -231,17 +246,20 @@ uniform vec2 uOrigin;
 uniform vec3 uCam;
 uniform int uTerrain;
 out vec3 vW;    /* 월드 좌표 — 안개와 모래 결처럼 저주파에만 씁니다 */
-out vec3 vRel;  /* 카메라 기준 좌표 — 법선은 반드시 이걸로 뽑습니다 */
+out vec3 vRel;  /* 카메라 기준 좌표 — 인물·신전 법선은 이걸로 뽑습니다 */
+flat out float vTer;
 ${PATH}
 void main(){
   vec3 w;
   if (uTerrain == 1) { vec2 p = aPos.xz + uOrigin; w = vec3(p.x, height(p), p.y); }
   else               { w = (uModel * vec4(aPos,1.0)).xyz; }
-  vW = w; vRel = w - uCam;
+  vW = w; vRel = w - uCam; vTer = float(uTerrain);
   gl_Position = uVP * vec4(w,1.0);
 }`;
 const litFS = `#version 300 es
 precision highp float;
+${PATH}
+flat in float vTer;
 in vec3 vW; in vec3 vRel; out vec4 frag;
 uniform vec3 uCam, uSun, uLit, uDark, uHaze;
 uniform float uFog, uGlit, uEmit;
@@ -255,18 +273,24 @@ void main(){
     frag = vec4(mix(uLit, uHaze, clamp(fE,0.0,1.0)), 1.0);
     return;
   }
-  /* 카메라 기준 좌표로 뽑습니다. 월드 좌표(z가 130, 300, 1000 으로 커짐)로 뽑으면
-     한 픽셀당 변화량이 float32 해상도(값 x 2^-23)에 묻혀 법선이 난수가 되고,
-     넓은 벽이 검은 점으로 자글자글 뒤덮입니다. 처음엔 z-파이팅인 줄 알았는데,
-     아무것도 겹치지 않은 기둥에서도 똑같이 나서 아닌 걸 알았습니다.
-     걸어갈수록 심해지는 종류라 더 나빴습니다. */
-  vec3 n = normalize(cross(dFdx(vRel), dFdy(vRel)));
-  /* cross(dFdx, dFdy) 는 방향만 맞고 부호는 화면상 감김에 따라 뒤집힙니다.
-     예전엔 n.y < 0 이면 뒤집었는데, 벽처럼 수직인 면은 n.y 가 0 이라
-     그 보정이 아무 일도 안 하고 부호가 반올림 잡음에 맡겨졌습니다 —
-     한 픽셀은 해를 보고 옆 픽셀은 등지면서, 신전 벽이 검은 점으로 자글거렸습니다.
-     보이는 면의 법선은 반드시 카메라 쪽을 향합니다. 그것만 강제하면 됩니다. */
-  if (dot(n, vRel) > 0.0) n = -n;
+  vec3 n;
+  if (vTer > 0.5) {
+    /* 지형은 픽셀마다 높이 함수의 진짜 기울기로 법선을 계산합니다.
+       면 법선(dFdx/dFdy)은 2.6단위 격자를 그대로 드러내서, 사막 전체가
+       다이아몬드 체크무늬가 됐습니다 — 프로그래머 아트의 상징입니다.
+       높이 함수가 셰이더 안에 있으니 격자는 자리만 잡고 음영은 해석적으로:
+       언덕이 매끈하게 흐르고, 접힌 등성이의 불연속만 칼로 남습니다. */
+    float e = 0.35;
+    float hx = height(vW.xz + vec2(e,0.0)) - height(vW.xz - vec2(e,0.0));
+    float hz = height(vW.xz + vec2(0.0,e)) - height(vW.xz - vec2(0.0,e));
+    n = normalize(vec3(-hx, 2.0*e, -hz));
+  } else {
+    /* 인물·신전은 카메라 기준 면 법선. 월드 좌표로 뽑으면 float32 정밀도에
+       묻혀 벽이 자글거리고(z 300+), 부호는 화면상 감김에 따라 뒤집히므로
+       보이는 면의 법선은 카메라 쪽을 향한다는 것만 강제합니다. */
+    n = normalize(cross(dFdx(vRel), dFdy(vRel)));
+    if (dot(n, vRel) > 0.0) n = -n;
+  }
   float d = max(dot(n, normalize(uSun)), 0.0);
   vec3 c = mix(uDark, uLit, pow(d, 0.85));
   float dist = dE;
@@ -572,6 +596,22 @@ void main(){
   c=pow(c,vec3(1.0/2.2));
   frag=vec4(mix(c,uHaze,fog),1.0);
 }`);
+/* 비네트 — 마지막에 화면 가장자리를 조용히 눌러 주는 한 겹.
+   03-runner-frame 부터 이 마감이 있었는데 3D 로 오면서 빠졌습니다.
+   시선이 가운데(인물과 지평선)로 모이고, 화면이 "완성된 프레임"이 됩니다. */
+const vigProg = program(`#version 300 es
+out vec2 vUv;
+void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2);
+  vUv = p; gl_Position = vec4(p*2.0-1.0, 0.0, 1.0); }`,
+`#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 frag;
+void main(){
+  float d = distance(vUv, vec2(0.5, 0.46));
+  float v = smoothstep(0.55, 1.05, d);
+  frag = vec4(0.02, 0.01, 0.03, v*0.42);
+}`);
+
 const uniFig = {
   vp:U(figProg,'uVP'), m:U(figProg,'uM'), cam:U(figProg,'uCam'), haze:U(figProg,'uHaze'),
   fog:U(figProg,'uFog'),
@@ -1028,6 +1068,15 @@ function frame(now) {
   gl.bindVertexArray(slotScarf.vao);
   gl.drawArrays(gl.TRIANGLES, 0, slotScarf.n);
   gl.enable(gl.CULL_FACE);
+
+  /* 비네트 — 반드시 맨 마지막, 깊이 무시, 블렌드로 */
+  gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(vigProg);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.disable(gl.BLEND);
+  gl.enable(gl.DEPTH_TEST);
 
   requestAnimationFrame(frame);
 }
