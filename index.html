@@ -1532,7 +1532,7 @@ void main(){
   vec3 c = mix(uHaze, uHigh, pow(t, 0.85));
   /* 해 — 원반이 있고, 그 둘레에 두 겹의 번짐. 번짐만 있으면 "밝은 곳"이고
      원반이 있어야 "해"입니다. 저니는 늘 해가 지평선 근처에 걸려 있습니다. */
-  vec2 sp = vec2(uSunX, 0.115);
+  vec2 sp = vec2(uSunX, 0.195);   /* 지평선보다 조금 위 — 레퍼런스의 그 해 */
   float d = distance(vec2(vUv.x, vUv.y*1.9), sp);
   c += vec3(1.00,0.72,0.34) * exp(-d*d*7.0)  * 0.55;
   c += vec3(1.00,0.60,0.25) * exp(-d*d*90.0) * 0.85;
@@ -1931,23 +1931,40 @@ function buildScarfMesh(t, drive, grow) {
   flow += (drive - flow) * 0.05;             /* 걷기 시작/멈춤에 천천히 반응 */
   /* 신전을 하나 들어가 볼 때마다 스카프가 조금씩 길어집니다 —
      성장이 HUD 숫자가 아니라 실루엣에 보이는 것, 이 게임의 원칙입니다. */
-  const m=new FMesh(), N=26, L=(2.1 + (grow||0))*(0.45+0.55*flow);
+  const m=new FMesh(), N=26, L=(2.4 + (grow||0))*(0.45+0.55*flow);
   const pts=[], up=[];
   for(let i=0;i<=N;i++){
     const u=i/N;
-    /* +z 가 뒤 — 스카프는 진행 반대(등 뒤 카메라 쪽)로 흐릅니다 */
-    pts.push([ .40*u + Math.sin(t*2.1-u*5.2)*0.26*u,
-               1.52 + 0.22*u*flow - 0.5*u*u*(1-flow) + Math.sin(t*3.0-u*4.1)*0.13*u,
-               0.16 + u*L*0.72 + Math.cos(t*2.5-u*4.6)*0.08*u ]);
-    up.push(Math.sin(u*6+t*2.2)*0.5);
+    /* +z 가 뒤 — 스카프는 진행 반대(등 뒤 카메라 쪽)로 흐릅니다.
+       파동을 조금 느리고 크게 — 급한 잔물결은 리본이 아니라 지렁이입니다 */
+    pts.push([ .40*u + Math.sin(t*2.1-u*4.6)*0.30*u,
+               1.52 + 0.26*u*flow - 0.5*u*u*(1-flow) + Math.sin(t*3.0-u*3.6)*0.16*u,
+               0.16 + u*L*0.72 + Math.cos(t*2.5-u*4.2)*0.09*u ]);
+    up.push(Math.sin(u*5+t*2.2)*0.5);
   }
   for(let i=0;i<N;i++){
     const u0=i/N,u1=(i+1)/N;
-    const w0=.072*(1-u0*.7)+.014, w1=.072*(1-u1*.7)+.014;
+    const w0=.085*(1-u0*.62)+.012, w1=.085*(1-u1*.62)+.012;
     const a=pts[i], b=pts[i+1];
     const A=[a[0]-w0,a[1]+up[i]*w0,a[2]], B=[a[0]+w0,a[1]-up[i]*w0,a[2]];
     const C=[b[0]+w1,b[1]-up[i+1]*w1,b[2]], D=[b[0]-w1,b[1]+up[i+1]*w1,b[2]];
-    m.quad(A,B,C,D,0,2); m.quad(D,C,B,A,0,2);
+    /* 리본 몸은 천(ci 1) — 전부 발광이면 노란 바나나가 됩니다 */
+    m.quad(A,B,C,D,0,1); m.quad(D,C,B,A,0,1);
+    /* 문양 — 세 칸마다 발광 눈금 하나, 리본 면 위에 살짝 띄워서.
+       저니 스카프의 그 패턴을 이 포트폴리오의 언어(계측 눈금)로 */
+    if (i % 3 === 1) {
+      const M=[(A[0]+B[0]+C[0]+D[0])/4,(A[1]+B[1]+C[1]+D[1])/4,(A[2]+B[2]+C[2]+D[2])/4];
+      let nx=(B[1]-A[1])*(D[2]-A[2])-(B[2]-A[2])*(D[1]-A[1]),
+          ny=(B[2]-A[2])*(D[0]-A[0])-(B[0]-A[0])*(D[2]-A[2]),
+          nz=(B[0]-A[0])*(D[1]-A[1])-(B[1]-A[1])*(D[0]-A[0]);
+      const nl=Math.hypot(nx,ny,nz)||1; nx/=nl*80; ny/=nl*80; nz/=nl*80;
+      const G=(P)=>[ (P[0]+M[0])/2, (P[1]+M[1])/2, (P[2]+M[2])/2 ];
+      const gA=G(A),gB=G(B),gC=G(C),gD=G(D);
+      m.quad([gA[0]+nx,gA[1]+ny,gA[2]+nz],[gB[0]+nx,gB[1]+ny,gB[2]+nz],
+             [gC[0]+nx,gC[1]+ny,gC[2]+nz],[gD[0]+nx,gD[1]+ny,gD[2]+nz],0,2);
+      m.quad([gD[0]-nx,gD[1]-ny,gD[2]-nz],[gC[0]-nx,gC[1]-ny,gC[2]-nz],
+             [gB[0]-nx,gB[1]-ny,gB[2]-nz],[gA[0]-nx,gA[1]-ny,gA[2]-nz],0,2);
+    }
   }
   return m;
 }
@@ -1977,7 +1994,7 @@ function dynSlot(capVerts) {
 }
 const slotMe    = dynSlot(4000);
 const slotCrowd = dynSlot(4000);
-const slotScarf = dynSlot(400);
+const slotScarf = dynSlot(600);
 const slotMotes = dynSlot(600);
 const slotBanner = dynSlot(4000);
 const slotWisps = dynSlot(300);
@@ -2257,6 +2274,12 @@ const templeMeshes = (() => {
     box(v, -3.62,3.0,-4.75,1.77,3.6, 0.6);    /* 앞벽 — 가운데를 비워 문간을 냅니다 */
     box(v,  3.62,3.0,-4.75,1.77,3.6, 0.6);
     box(v,  0, 6.15,-4.75,1.95,0.52,0.66);    /* 상인방 */
+    /* 코벨 아치 — 문 위 모서리를 두 단 좁혀 사각 구멍을 아치 실루엣으로.
+       레퍼런스 유적의 개구부가 전부 아치입니다. 충돌·문간 규칙은 그대로 */
+    box(v, -1.55, 5.30, -4.75, 0.38, 0.30, 0.58);
+    box(v,  1.55, 5.30, -4.75, 0.38, 0.30, 0.58);
+    box(v, -1.15, 5.72, -4.75, 0.32, 0.24, 0.56);
+    box(v,  1.15, 5.72, -4.75, 0.32, 0.24, 0.56);
     box(v, -7.25,3.4,-7.1,0.62,4.0, 0.62);    /* 앞에 선 기둥 둘 (깃발이 여기 답니다) */
     box(v,  7.25,3.4,-7.1,0.62,4.0, 0.62);
     box(v,  0, 0.55,-7.5, 3.05,0.52,1.42);    /* 계단 */
@@ -3412,7 +3435,8 @@ function frame(now) {
      서면 walkS 가 늦게 따라오며 반동으로 자세가 정리됩니다(오버슈트 이징). */
   const stretch = walkA * Math.sin(ph*2.0) * 0.033 * calm;
   const antic   = keys.f ? Math.max(0, 0.22 - walkA) * 0.35 : 0;
-  const sy  = 1 + stretch - antic;
+  const breath  = (1 - walkA) * Math.sin(el*1.4) * 0.010;   /* 서 있어도 숨은 쉽니다 */
+  const sy  = 1 + stretch - antic + breath;
   const sxz = 1 / Math.sqrt(Math.max(0.7, sy));
   const scl = M4(); scl[0] = sxz; scl[5] = sy; scl[10] = sxz; scl[15] = 1;
   const surge = (walkA - walkS) * 0.55;          /* +가속 앞쏠림 / -정지 뒷반동 */
