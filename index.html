@@ -310,7 +310,8 @@
     opacity: 0; transition: opacity 1.2s; pointer-events: none;
   }
   .jn__nav.on { opacity: .9; }
-  @media (max-width: 560px) { .jn__nav { width: 62px; height: 62px; } }
+  /* 작은 화면에서는 연도 표기와 겹칩니다 — 연도 아래로 내리고 줄입니다 */
+  @media (max-width: 560px) { .jn__nav { width: 56px; height: 56px; top: 2.2rem; right: .5rem; } }
 
   /* pickup banner — never pauses the walk */
   .jn__banner {
