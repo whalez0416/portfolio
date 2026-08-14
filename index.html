@@ -1537,6 +1537,17 @@ void main(){
   c += vec3(1.00,0.72,0.34) * exp(-d*d*7.0)  * 0.55;
   c += vec3(1.00,0.60,0.25) * exp(-d*d*90.0) * 0.85;
   c += vec3(1.00,0.92,0.75) * smoothstep(0.052, 0.038, d);
+  /* 지평선 홍조 — 노을은 해 주변만 물드는 게 아니라 지평선 전체가 달아오릅니다.
+     이게 없으면 해 반대쪽 하늘이 그냥 그라데이션 벽입니다. */
+  c += vec3(0.42,0.16,0.05) * exp(-pow((t - 0.07)/0.14, 2.0)) * 0.55;
+  /* 어스름의 첫 별 — 높은 하늘에만, 드물게. 셀마다 난수 위치에 점 하나라
+     격자로 안 읽힙니다. */
+  vec2 sg = vec2(vUv.x*90.0, vUv.y*50.0);
+  vec2 sid = floor(sg), sf = fract(sg);
+  float sh2 = fract(sin(dot(sid, vec2(127.1,311.7)))*43758.5453);
+  vec2 sof = vec2(fract(sh2*13.7), fract(sh2*7.31))*0.7 + 0.15;
+  float star = smoothstep(0.10, 0.02, length(sf - sof)) * step(0.94, sh2);
+  c += vec3(1.0,0.95,0.85) * star * smoothstep(0.70, 0.95, t) * 0.34;
   /* 노을 구름 — 얇은 띠 두 줄. 아랫면만 해에 그을려 있습니다.
      빈 그라데이션 하늘은 스크린세이버지 장면이 아닙니다. */
   float w1 = vUv.y - 0.30 - 0.045*sin(vUv.x*5.1 + 1.2) - 0.015*sin(vUv.x*13.0);
@@ -1546,6 +1557,9 @@ void main(){
   float w2 = vUv.y - 0.445 - 0.03*sin(vUv.x*3.4 - 0.7) - 0.012*sin(vUv.x*9.5+2.0);
   float b2 = smoothstep(0.022, 0.005, abs(w2));
   c = mix(c, vec3(0.27,0.17,0.26), b2*0.34);
+  /* 높은 권운 — 넓고 흐린 결. 띠 둘만으로는 하늘 위쪽이 여전히 빈 벽입니다. */
+  float v1 = sin(vUv.x*2.3 + vUv.y*7.0 + 0.8) * sin(vUv.x*5.1 - vUv.y*3.2 - 1.1);
+  c = mix(c, vec3(0.19,0.15,0.24), max(v1, 0.0) * 0.16 * smoothstep(0.40, 0.75, t));
   /* 디더 — 8비트 그라데이션 줄무늬(밴딩)를 잘게 부숩니다. 마감의 반은 이런 것 */
   c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453) - 0.5) * (2.0/255.0);
   frag = vec4(c, 1.0);
@@ -2202,7 +2216,11 @@ const voidMesh = (() => {
 
 /* ── 멀리 있는 산 ── */
 const mountain = (() => {
-  const v = [], peaks = [[0,1,0.72],[-0.62,0.58,0.5],[0.55,0.66,0.55],[-1.25,0.4,0.42],[1.2,0.44,0.44]];
+  /* 갈라진 쌍봉 — 저니의 산은 꼭대기가 갈라져 있고 그 틈이 빛납니다.
+     0 과 0.16 두 봉우리 사이 홈에 빛기둥(summitGlow)이 서 있습니다. */
+  /* 옆으로 흩어진 봉우리는 배경막(능선) 몫입니다 — 세계에 박힌 산에 두면
+     다가갔을 때 낱개 피라미드로 찢어집니다. 산은 한 덩어리의 괴체입니다. */
+  const v = [], peaks = [[0,1,0.58],[0.16,0.93,0.46],[-0.40,0.55,0.48],[0.48,0.47,0.50]];
   for (const [cx, hgt, w] of peaks)
     for (let s = 0; s < 5; s++) {
       const a0 = s/5*Math.PI*2, a1 = (s+1)/5*Math.PI*2;
@@ -2212,6 +2230,29 @@ const mountain = (() => {
     }
   return mesh(new Float32Array(v));
 })();
+/* 먼 능선 두 겹 — 산 하나만 서 있으면 허공에 뜬 종이입니다. 뒤로 땅이
+   이어져야 지평선이 받쳐지고, 멀수록 하늘 색에 잠기는 순서가 곧 공기입니다. */
+function ridgeMesh(seed, hMax) {
+  const v = [], N2 = 42, xs = [], ys = [];
+  for (let i = 0; i <= N2; i++) {
+    const jag = Math.sin(i*127.1 + seed*311.7)*43758.5453;
+    xs.push((i/N2 - 0.5) * 8.0);
+    ys.push(hMax * Math.max(0.0,
+      0.45 + 0.30*Math.sin(i*0.55 + seed) + 0.18*Math.sin(i*1.31 + seed*2.7)
+           + 0.14*(jag - Math.floor(jag) - 0.5))
+      * Math.max(0.12, Math.sin(i/N2*Math.PI)));           /* 가장자리는 낮게 */
+  }
+  for (let i = 0; i < N2; i++)
+    v.push(xs[i],0,0,  xs[i+1],0,0,      xs[i],ys[i],0,
+           xs[i],ys[i],0, xs[i+1],0,0,   xs[i+1],ys[i+1],0);
+  return mesh(new Float32Array(v));
+}
+const ridgeFar = ridgeMesh(3, 0.55), ridgeMid = ridgeMesh(7, 0.8);
+/* 산꼭대기 빛기둥 — 갈라진 틈에서 위로 가늘어지는 빛. 밝기를 1 넘게 줘서
+   블룸이 받아 가면, 목표가 "밝은 산"이 아니라 "빛이 서 있는 산"이 됩니다. */
+const summitGlow = mesh(new Float32Array([
+  0.02,0.55,-0.45,  0.15,0.55,-0.45,  0.085,1.45,-0.45,
+]));
 /* ═══════════ 팔레트 ═══════════ */
 const P = {
   haze: [0.62, 0.42, 0.26],
@@ -2890,11 +2931,24 @@ function frame(now) {
      제자리라 방향 감각을 못 줍니다. 어디로 가는지는 이 산이 알려줍니다. */
   gl.useProgram(farProg);
   gl.uniformMatrix4fv(uni.far.vp, false, VP);
-  gl.uniformMatrix4fv(uni.far.model, false, trs(MOUNTAIN.x, -11, MOUNTAIN.z, 0, 68));
   gl.uniform3fv(uni.far.cam, eye);
   gl.uniform3fv(uni.far.haze, P.haze); gl.uniform3fv(uni.far.tint, P.mtn);
-  gl.uniform1f(uni.far.mix, 0.30);
+  /* 겹은 멀수록 하늘에 잠깁니다: 0.13 < 0.24 < 0.46.
+     능선은 세계가 아니라 카메라에 붙습니다 — 배경막이라 다가가면 안 되고,
+     북쪽(+z, 산 방향)에 늘 같은 크기로 서서 지평선을 받칩니다. */
+  gl.uniformMatrix4fv(uni.far.model, false, trs(eye[0] - 30, -10, eye[2] + 760, 0, 150));
+  gl.uniform1f(uni.far.mix, 0.13);
+  gl.bindVertexArray(ridgeFar.vao); gl.drawArrays(gl.TRIANGLES, 0, ridgeFar.n);
+  gl.uniformMatrix4fv(uni.far.model, false, trs(eye[0] + 90, -10, eye[2] + 600, 0, 80));
+  gl.uniform1f(uni.far.mix, 0.24);
+  gl.bindVertexArray(ridgeMid.vao); gl.drawArrays(gl.TRIANGLES, 0, ridgeMid.n);
+  gl.uniformMatrix4fv(uni.far.model, false, trs(MOUNTAIN.x, -11, MOUNTAIN.z, 0, 68));
+  /* 멀면 공기에 잠기고, 다가가면 안개에서 빠져나와 단단해집니다 */
+  gl.uniform1f(uni.far.mix, 0.46 + 0.30*Math.max(0.0, 1.0 - (MOUNTAIN.z - eye[2])/380));
   gl.bindVertexArray(mountain.vao); gl.drawArrays(gl.TRIANGLES, 0, mountain.n);
+  gl.uniform3fv(uni.far.tint, [3.0, 2.45, 1.75]);
+  gl.uniform1f(uni.far.mix, 1.0);
+  gl.bindVertexArray(summitGlow.vao); gl.drawArrays(gl.TRIANGLES, 0, summitGlow.n);
 
   /* 지형 */
   gl.useProgram(lit);
