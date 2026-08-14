@@ -2331,6 +2331,7 @@ const SPEED = 4.6, TURN = 1.25;
 let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0, spdK = 1;
 let keys = { f:false, l:false, r:false };
 let camBack = 6.4, camUp = 2.6;
+let cineT = 0, cineMode = null;   /* 연출 순간 — 'lantern'(사막 점등) · 'end'(산으로 걸어 들어감) */
 const MOUNTAIN = { x: 14, z: 440 };             /* 월드에 못박힌 목표. 저니의 산입니다 */
 
 /* 프로토타입에는 셋만 세워 둡니다. 본편에서는 여덟 개고, 안의 본문은
@@ -2639,6 +2640,9 @@ function drawNav() {
         sayLine('그동안, 계속 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다', 8);
         live.textContent = '그동안, 계속 읽히고 있었습니다 — 셀 방법이 없었을 뿐입니다';
         SFX.reveal();
+        /* 이 게임의 전부인 순간에 연출이 없었습니다 — 4초간 조작을 잠그고
+           카메라가 물러나, 사막 전체에 티끌이 떠오르는 것을 보여줍니다 */
+        cineT = 4.2; cineMode = 'lantern';
       }
       inside = null;
       panel.hidden = true;
@@ -2754,6 +2758,7 @@ function drawNav() {
       P0 = { x: 0, z: 0 }; yaw = camYaw = 0; camY = 0; moved = 0; walkA = 0; spdK = 1;
       keys = { f: false, l: false, r: false };
       inside = null; nearT = null; lantern = false; ended = false; finished = false;
+      cineT = 0; cineMode = null;
       scriptAt = 0; zProg = 0; lineHideAt = 0; lineGapAt = 0; lineQueue.length = 0;
       scene = 1;
       TEMPLES.forEach(function (t) { t.seen = false; });
@@ -2768,6 +2773,10 @@ function drawNav() {
     }
     function start() {
       veil.hidden = true; running = true; last = 0;
+      /* 인트로 리빌 — 카메라 시작값만 높이 올려 두면 원래의 목표 lerp 가
+         알아서 내려앉습니다. 조작은 잠그지 않습니다 — 첫 걸음과 하강이 겹쳐도
+         저니의 오프닝처럼 자연스럽습니다. */
+      camBack = 30; camUp = 16;
       chEl.textContent = scene + ' / 10';
       statEl.textContent = GLOK ? '걷는 중' : '그림 없이 진행 중';
       if (cv.focus) cv.focus();
@@ -2839,6 +2848,20 @@ function frame(now) {
      등속 이동은 스케이트입니다. 걸음은 발을 디딜 때마다 속도가 맥동하고
      (밀 때 빠르고 발을 옮길 때 느리고), 몸이 좌우로 흔들립니다.
      위상은 시간이 아니라 걸어온 거리에 묶습니다 — 그래야 발과 땅이 붙습니다. */
+  /* ── 연출 순간 — 조작을 잠그고 장면을 보여줍니다 ── */
+  if (cineT > 0) {
+    cineT -= dt;
+    keys.f = keys.l = keys.r = false;
+    if (cineMode === 'end') {
+      keys.f = true;                                  /* 등이 산으로 계속 걸어갑니다 */
+      const wy = Math.atan2(MOUNTAIN.x - P0.x, MOUNTAIN.z - P0.z);
+      yaw += Math.atan2(Math.sin(wy - yaw), Math.cos(wy - yaw)) * Math.min(1, 2.0*dt);
+    }
+    if (cineT <= 0) {
+      if (cineMode === 'end') finish();
+      cineMode = null;
+    }
+  }
   if (keys.l) yaw -= TURN * dt;
   if (keys.r) yaw += TURN * dt;
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
@@ -2889,7 +2912,9 @@ function frame(now) {
   if (!ended && !inside && Math.hypot(P0.x - MOUNTAIN.x, P0.z - (MOUNTAIN.z - 12)) < 26) {
     ended = true;
     keys.f = keys.l = keys.r = false;
-    finish();
+    /* 자막으로 바로 덮지 않습니다 — 등이 산으로 계속 걸어 들어가는 것을
+       잠깐 보고 나서 닫아야 도착이 됩니다. finish() 는 연출이 끝날 때. */
+    cineT = 3.2; cineMode = 'end';
   }
   cues();
   /* 나침반은 처음부터 켭니다. 4 단위를 걸어야 나타나게 뒀더니, 정작 방향을
@@ -2949,8 +2974,12 @@ function frame(now) {
   /* 카메라가 7.8 이면 인물이 화면 아래 22도쯤에 걸려서 옷단이 잘립니다
      (화각 44도의 절반이 22도). 11.5 로 물리면 13도쯤으로 올라와 발밑이
      프레임 안에 들어오고, 인물도 저니처럼 작아집니다. */
-  camBack += (11.5 + wide*12.0 - camBack) * 0.8 * dt;
-  camUp   += (3.6  + wide*6.0  - camUp)   * 0.8 * dt;
+  /* 연출 순간에는 카메라가 물러나 장면 전체를 봅니다 — 랜턴은 사막이
+     켜지는 것을, 엔딩은 산으로 걸어 들어가는 등을 */
+  const cineB = (cineT > 0 && cineMode === 'lantern') ? 13.0 : (cineT > 0 && cineMode === 'end') ? 9.0 : 0;
+  const cineU = (cineT > 0 && cineMode === 'lantern') ? 7.5  : (cineT > 0 && cineMode === 'end') ? 7.0 : 0;
+  camBack += (11.5 + wide*12.0 + cineB - camBack) * 0.8 * dt;
+  camUp   += (3.6  + wide*6.0  + cineU - camUp)   * 0.8 * dt;
 
   const cx = px - cfx*camBack, cz = pz - cfz*camBack;
   const want = groundAvg(cx, cz, cfx, cfz) + camUp;

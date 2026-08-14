@@ -170,9 +170,10 @@ J.TEMPLES.forEach((t, i) => {
 goTo(J.VOIDF.x, J.VOIDF.z - 5, 0);
 tick(2);
 
-/* 산기슭 — 끝 */
+/* 산기슭 — 끝. 엔딩은 즉시 덮이지 않는다 — 3.2초(약 192프레임) 동안
+   등이 산으로 걸어 들어가는 연출이 흐른 뒤에 자막이 뜬다. */
 goTo(J.MOUNTAIN.x, J.MOUNTAIN.z - 14, 0);
-tick(4);
+tick(215);
 
 /* ---------- report ---------- */
 let pass = true;

@@ -76,14 +76,19 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
   s = await S();
   ok(/열리지 않습니다/.test(s.enter), '빈 문틀: ' + s.enter);
 
-  /* 엔딩 */
+  /* 엔딩 — 트리거 뒤 3.2초 워크인 연출이 흐른 다음에야 자막이 뜬다. 폴링. */
   await tp(14, 410, 0); await walk(5000);
   s = await S();
   ok(s.ended, '엔딩 도달 (z=' + s.z + ')');
-  const fin = await p.evaluate(() => ({
-    on: document.getElementById('fin').classList.contains('on'),
-    cnt: document.getElementById('fin-cnt').textContent
-  }));
+  let fin = { on: false, cnt: '' };
+  for (let i = 0; i < 20; i++) {
+    fin = await p.evaluate(() => ({
+      on: document.getElementById('fin').classList.contains('on'),
+      cnt: document.getElementById('fin-cnt').textContent
+    }));
+    if (fin.on) break;
+    await sleep(600);
+  }
   ok(fin.on, '엔딩 화면 표시');
   ok(/1 \/ 8/.test(fin.cnt), '신전 카운트: ' + fin.cnt);
   try { await p.screenshot({ path: path.join(TMP, 'fin.png') }); } catch (e) {}
