@@ -1623,9 +1623,11 @@ void main(){
   /* 만화의 자리는 여기입니다: 명암을 3.5단으로 끊되 단 사이를 부드럽게 넘깁니다.
      화면 필터와 달리 빛의 지형(언덕 능선)을 따라 끊기므로, 얼룩이 아니라
      "칠한 면"이 됩니다. 절반만 섞어 3D 의 부피감도 남깁니다. */
-  float q = d * 3.5;
-  float dq = (floor(q) + smoothstep(0.30, 0.70, fract(q))) / 3.5;
-  d = mix(d, dq, 0.55);
+  /* MeshToonMaterial 의 gradientMap 에 해당 — 4단, 거의 전부 끊긴 쪽.
+     55%는 "조각에 살짝 만화"였다. 인물과 같은 결정. */
+  float q = d * 4.0;
+  float dq = (floor(q) + smoothstep(0.46, 0.54, fract(q))) / 4.0;
+  d = mix(d, dq, 0.92);
   vec3 c = mix(uDark, uLit, pow(d, 1.08));   /* 0.85 는 중간톤이 떠서 파스텔이 됐다 */
   float dist = dE;
   /* 모래 결과 반짝임. 저니 사막의 절반은 이겁니다 — 없으면 그냥 갈색 언덕이고,
@@ -2065,7 +2067,7 @@ void main(){
   float ao=1.0-0.28*vAo;   /* 만화는 AO 도 얕게 — 굴곡을 선과 단이 말하게 */
   /* 만화의 두 색: 그늘 셀도 선명한 빨강이어야지 검붉은 흙색이면 그냥 어두운
      3D 입니다. 밝음/그늘을 색 곱 둘로 딱 정해 놓고 key 로 고릅니다. */
-  vec3 c=base*mix(vec3(0.55,0.38,0.34), vec3(1.30,1.02,0.72), key)*ao;
+  vec3 c=base*mix(vec3(0.52,0.40,0.55), vec3(1.30,1.02,0.72), key)*ao;
   c*=1.0+rim*0.9;
   c+=vec3(1.25,0.66,0.24)*rim*0.35;
   frag=vec4(mix(c,uHaze,fog),1.0);
@@ -2119,7 +2121,7 @@ void main(){
   /* 필름 대비 S커브 — 중간톤 뭉개짐이 "물빠진 파스텔"의 정체였다 */
   c = mix(c, c*c*(3.0 - 2.0*c), 0.38);
   c = mix(c, c * vec3(1.06,0.97,0.90), smoothstep(0.2, 0.75, l));   /* 하이라이트만 노을 쪽 */
-  c = mix(c, c * vec3(1.02,0.90,0.78), (1.0 - smoothstep(0.05, 0.42, l)) * 0.7);  /* 그늘은 탄 주황 */
+  c = mix(c, c * vec3(0.96,0.93,1.12), (1.0 - smoothstep(0.05, 0.42, l)) * 0.55); /* 그늘은 찬 보라 */
   c = mix(vec3(l), c, 1.30);
 
   /* 화면 단계 포스터라이즈·윤곽선은 걷어냈습니다 — 하늘과 안개까지 통째로
@@ -2383,8 +2385,9 @@ const P = {
      그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
      아무리 굴곡이 있어도 흙더미로 보입니다. */
   lit:  [1.10, 0.62, 0.20],     /* 능선 너머 볕 면 — 1 을 넘겨 블룸이 받게 */
-  dark: [0.42, 0.225, 0.115],   /* 역광의 그늘은 죽은 색이 아니라 빛이 도는 호박색 —
-                                   하늘과 모래가 서로 비춰주는 사막의 그늘 */
+  dark: [0.25, 0.215, 0.40],    /* 그늘은 보라/파랑 틴트 — 예전엔 "보라색 물체"로
+                                   읽혀서 뺐지만, 고채도 셀 + 역광에서는 보색 대비가
+                                   저니의 그 색이 된다. 명도는 호박색 때와 동일 */
   /* 해는 하나여야 합니다. 하늘의 해 원반도, 긴 그림자도, 인물 키도 전부
      정면(+z) 지평선의 해를 가리키는데 지형 디퓨즈만 등 뒤(-z)에서 쏘고
      있었습니다 — 보이는 언덕 면이 죄다 순광으로 고르게 밝아서, 무엇을
@@ -2406,6 +2409,7 @@ const P = {
    비슷한데 발밑이 천천히 흐르고, 언덕 하나가 사건이 됩니다. */
 const SPEED = 4.6, TURN = 1.25;
 let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0, spdK = 1;
+let walkS = 0;   /* walkA 를 늦게 좇는 그림자 — 차이가 곧 가속(앞쏠림)과 반동(뒷정리) */
 let keys = { f:false, l:false, r:false };
 let camBack = 6.4, camUp = 2.6;
 let cineT = 0, cineMode = null;   /* 연출 순간 — 'lantern'(사막 점등) · 'end'(산으로 걸어 들어감) */
@@ -3004,6 +3008,7 @@ function frame(now) {
   if (keys.r) yaw += TURN * dt;
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
   walkA += ((keys.f ? 1 : 0) - walkA) * Math.min(1, 4*dt);   /* 출발·정지를 부드럽게 */
+  walkS += (walkA - walkS) * Math.min(1, 7*dt);
   const ph = moved * 1.45;                                    /* 걸음 위상 = 거리 */
 
   /* 경사가 속도를 정합니다 — 사막이니까. 오르막은 무겁고(최저 0.55배)
@@ -3057,6 +3062,13 @@ function frame(now) {
       footI = (footI + 1) % 24; footN = Math.min(24, footN + 1);
       if (glide < .3) SFX.step();
     }
+  }
+  if (!keys.f && walkA > 0.04) {
+    /* 팔로우 스루 — 뚝 멈추면 기계입니다. 관성으로 반 걸음 미끄러진 뒤 섭니다 */
+    const ox2 = P0.x, oz2 = P0.z, v2 = SPEED * spdK * walkA * 0.5;
+    P0.x += fx * v2 * dt; P0.z += fz * v2 * dt;
+    if (templeBlock(P0.x, P0.z)) { P0.x = ox2; P0.z = oz2; }
+    moved += v2 * dt;
   }
   /* 문으로 걸어 들어가면 그대로 들어가집니다 — Enter 를 기다리지 않습니다.
      문 앞에서 키를 누르는 건 "읽으시겠습니까"이고, 문지방을 넘는 건 이미 대답입니다. */
@@ -3228,7 +3240,7 @@ function frame(now) {
      같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
      이유가 이 두 상수였습니다. */
   gl.uniform3fv(uni.lit.litc, [0.98,0.56,0.23]);
-  gl.uniform3fv(uni.lit.dark, [0.40,0.215,0.115]);   /* 역광의 돌 — 모래가 되쏘는 바운스 */
+  gl.uniform3fv(uni.lit.dark, [0.25,0.21,0.38]);    /* 돌 그늘도 같은 보라 가족 */
   TEMPLES.forEach((t, ti) => {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
     gl.bindVertexArray(templeMeshes[ti].vao);
@@ -3236,7 +3248,7 @@ function frame(now) {
   });
   /* 돌무지 — 유적과 같은 돌이되 조금 어둡게. 월드 좌표로 구워 뒀으니 모델은 단위행렬 */
   gl.uniform3fv(uni.lit.litc, [0.84,0.46,0.19]);
-  gl.uniform3fv(uni.lit.dark, [0.33,0.18,0.10]);
+  gl.uniform3fv(uni.lit.dark, [0.23,0.19,0.34]);
   gl.uniformMatrix4fv(uni.lit.model, false, ident());
   gl.bindVertexArray(cairns.vao);
   gl.drawArrays(gl.TRIANGLES, 0, cairns.n);
@@ -3255,7 +3267,7 @@ function frame(now) {
      이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
   gl.uniform1f(uni.lit.emit, 0.0);
   gl.uniform3fv(uni.lit.litc, [1.06, 0.61, 0.20]);
-  gl.uniform3fv(uni.lit.dark, [0.42, 0.225, 0.115]);
+  gl.uniform3fv(uni.lit.dark, [0.25, 0.215, 0.40]);
   gl.bindVertexArray(templeSkirt.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
@@ -3270,12 +3282,32 @@ function frame(now) {
     gl.drawArrays(gl.TRIANGLES, 0, templeGlyphs.n);
   }
   gl.uniform1f(uni.lit.emit, 0.0);
+  /* 윤곽선 — 신전도 만화입니다. 살짝 키워 앞면을 걸러내고(inverted hull)
+     잉크색 발광으로 그리면, 실루엣 바깥으로 삐져나온 테만 남습니다.
+     box() 와인딩이 일관 CCW 라 가능한 방법 — 인물은 와인딩이 섞여 못 씁니다. */
+  gl.uniform1f(uni.lit.emit, 1.0);
+  gl.uniform3fv(uni.lit.litc, [0.10, 0.05, 0.055]);
+  gl.cullFace(gl.FRONT);
+  TEMPLES.forEach((t, ti) => {
+    gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y - 0.10, t.z, t.yaw, 1.028), rotZ(t.tilt)));
+    gl.bindVertexArray(templeMeshes[ti].vao);
+    gl.drawArrays(gl.TRIANGLES, 0, templeMeshes[ti].n);
+  });
+  gl.cullFace(gl.BACK);
+  gl.uniform1f(uni.lit.emit, 0.0);
   /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
   gl.uniform3fv(uni.lit.litc, [0.52,0.38,0.30]);
-  gl.uniform3fv(uni.lit.dark, [0.26,0.17,0.13]);
+  gl.uniform3fv(uni.lit.dark, [0.24,0.18,0.28]);
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
+  gl.uniform1f(uni.lit.emit, 1.0);
+  gl.uniform3fv(uni.lit.litc, [0.10, 0.05, 0.055]);
+  gl.cullFace(gl.FRONT);
+  gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y - 0.06, VOIDF.z, VOIDF.yaw, 1.05));
+  gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
+  gl.cullFace(gl.BACK);
+  gl.uniform1f(uni.lit.emit, 0.0);
 
   /* ── 인물들 — 06의 조각과 조명으로 ── */
   gl.useProgram(figProg);
@@ -3338,8 +3370,17 @@ function frame(now) {
   gl.uniform3fv(uniFig.c2, FIG_ME.c2); gl.uniform3fv(uniFig.c3, FIG_ME.c3);
   /* +π: 06 조각은 얼굴이 로컬 -z. 회전 순서: 지형에 눕고 → 걸음 기울기 → 흔들림.
      +π 를 돌면 로컬 x·z 부호가 뒤집히므로 피치는 부호를 뒤집어 얹습니다. */
+  /* 스쿼시&스트레치 — 미는 발에서 늘고(1.03) 딛는 발에서 눌립니다(0.97).
+     부피 보존: 가로는 세로의 역제곱근. 출발 직전엔 살짝 웅크리고(예비동작),
+     서면 walkS 가 늦게 따라오며 반동으로 자세가 정리됩니다(오버슈트 이징). */
+  const stretch = walkA * Math.sin(ph*2.0) * 0.033 * calm;
+  const antic   = keys.f ? Math.max(0, 0.22 - walkA) * 0.35 : 0;
+  const sy  = 1 + stretch - antic;
+  const sxz = 1 / Math.sqrt(Math.max(0.7, sy));
+  const scl = M4(); scl[0] = sxz; scl[5] = sy; scl[10] = sxz; scl[15] = 1;
+  const surge = (walkA - walkS) * 0.55;          /* +가속 앞쏠림 / -정지 뒷반동 */
   const me = mul(trs(px, py + walk, pz, yaw + Math.PI, 1),
-                 mul(rotX(-(tPitch + pitchG)), rotZ(rock - tRoll)));
+                 mul(rotX(-(tPitch + pitchG + surge)), mul(rotZ(rock - tRoll), scl)));
   gl.uniformMatrix4fv(uniFig.m, false, me);
   gl.bindVertexArray(slotMe.vao);
   gl.uniform1f(uniFig.puff, 0.048); gl.uniform1f(uniFig.ink, 1.0);
