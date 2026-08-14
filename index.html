@@ -2023,19 +2023,25 @@ layout(location=1) in vec3 aNor;
 layout(location=2) in float aAo;
 layout(location=3) in float aCi;
 uniform mat4 uVP, uM;
+uniform float uPuff;      /* 잉크 패스: 법선으로 부풀리고 카메라 반대로 밀어 몸 뒤에 깔림 */
+uniform vec3 uCam;
 out vec3 vN; out vec3 vP; out float vAo; flat out int vCi;
-void main(){ vec4 w=uM*vec4(aPos,1.0); vP=w.xyz;
+void main(){ vec4 w=uM*vec4(aPos + aNor*uPuff,1.0);
+  if (uPuff > 0.0) w.xyz += normalize(w.xyz - uCam) * uPuff * 3.5;
+  vP=w.xyz;
   vN=mat3(uM)*aNor; vAo=aAo; vCi=int(aCi+0.5); gl_Position=uVP*w; }`,
 `#version 300 es
 precision highp float;
 in vec3 vN; in vec3 vP; in float vAo; flat in int vCi; out vec4 frag;
 uniform vec3 uCam,uHaze;
 uniform vec3 uC0,uC1,uC2,uC3;
-uniform float uFog;
+uniform float uFog, uInk;
 void main(){
   vec3 base = vCi==1?uC1 : vCi==2?uC2 : vCi==3?uC3 : uC0;
   float dist = length(vP-uCam);
   float fog = clamp(1.0-exp(-dist*dist*uFog), 0.0, 1.0);
+  /* 잉크 — 만화의 테두리. 부풀린 실루엣이 몸 밖으로 삐져나온 곳만 남습니다 */
+  if (uInk > 0.5) { frag=vec4(mix(vec3(0.10,0.025,0.02), uHaze, fog), 1.0); return; }
   if (vCi>=2) { frag=vec4(mix(base,uHaze,fog),1.0); return; }  /* 발광·어둠은 그대로 */
   vec3 n=normalize(vN); vec3 V=normalize(uCam-vP);
   if (dot(n,V)<0.0) n=-n;
@@ -2044,14 +2050,18 @@ void main(){
      지형과 같은 선형 공간에서, 같은 태양(uSun 방향·색), 같은 보라 그늘을 씁니다.
      그늘의 색이 같아야 한 그림입니다. */
   float key=max(dot(n,normalize(vec3(0.15,0.28,0.95))),0.0);
-  /* 지형과 같은 3.5단 명암 끊기 — 로브가 조각이 아니라 셀이 됩니다 */
-  float q=key*3.5;
-  key=mix(key, (floor(q)+smoothstep(0.30,0.70,fract(q)))/3.5, 0.55);
-  vec3 amb=mix(vec3(0.50,0.30,0.15), vec3(0.38,0.31,0.30), n.y*0.5+0.5);
-  float rim=pow(1.0-max(dot(n,V),0.0),3.2);
-  float ao=1.0-0.5*vAo;
-  vec3 c=base*(amb*ao+vec3(1.30,0.82,0.45)*key)*(1.0+rim*1.2);
-  c+=vec3(1.25,0.66,0.24)*rim*rim*0.30;
+  /* 만화는 여기서 결정됩니다: 두 단으로 뚝 끊고 거의 전부 끊긴 쪽을 씁니다.
+     3.5단 55%는 "조각에 살짝 만화"였지 만화가 아니었습니다. */
+  float q=key*2.0;
+  key=mix(key, (floor(q)+smoothstep(0.44,0.56,fract(q)))/2.0, 0.85);
+  /* 림은 부드러운 지수 대신 뚝 끊긴 띠 — 셀 하이라이트 */
+  float rim=smoothstep(0.62,0.72,1.0-max(dot(n,V),0.0))*0.9;
+  float ao=1.0-0.28*vAo;   /* 만화는 AO 도 얕게 — 굴곡을 선과 단이 말하게 */
+  /* 만화의 두 색: 그늘 셀도 선명한 빨강이어야지 검붉은 흙색이면 그냥 어두운
+     3D 입니다. 밝음/그늘을 색 곱 둘로 딱 정해 놓고 key 로 고릅니다. */
+  vec3 c=base*mix(vec3(0.55,0.38,0.34), vec3(1.30,1.02,0.72), key)*ao;
+  c*=1.0+rim*0.9;
+  c+=vec3(1.25,0.66,0.24)*rim*0.35;
   frag=vec4(mix(c,uHaze,fog),1.0);
 }`);
 /* ══════════ 후처리 ══════════
@@ -2157,7 +2167,7 @@ function makePost() {
 
 const uniFig = {
   vp:U(figProg,'uVP'), m:U(figProg,'uM'), cam:U(figProg,'uCam'), haze:U(figProg,'uHaze'),
-  fog:U(figProg,'uFog'),
+  fog:U(figProg,'uFog'), puff:U(figProg,'uPuff'), ink:U(figProg,'uInk'),
   c0:U(figProg,'uC0'), c1:U(figProg,'uC1'), c2:U(figProg,'uC2'), c3:U(figProg,'uC3')
 };
 /* 나: 적 로브 + 모래색 띠 + 앰버 눈금 · 무리: 회보라, 띠 없음.
@@ -3246,6 +3256,7 @@ function frame(now) {
   gl.uniform3fv(uniFig.cam, eye);
   gl.uniform3fv(uniFig.haze, P.haze);
   gl.uniform1f(uniFig.fog, 0.0000128);
+  gl.uniform1f(uniFig.puff, 0.0); gl.uniform1f(uniFig.ink, 0.0);
   gl.disable(gl.CULL_FACE);               /* 옷단 안쪽·스카프 뒷면이 보여야 합니다 */
 
   /* 무리 — 같은 조각, 색만 회청이고 띠가 없습니다. 그 차이가 곧 "나"입니다.
@@ -3287,6 +3298,9 @@ function frame(now) {
     gl.uniformMatrix4fv(uniFig.m, false,
       mul(trs(c.x, height(c.x, c.z) + Math.abs(Math.sin(cph))*0.05*mv, c.z, heading + Math.PI, 1),
           rotZ(Math.sin(cph)*0.04*mv)));
+    gl.uniform1f(uniFig.puff, 0.048); gl.uniform1f(uniFig.ink, 1.0);
+    gl.drawArrays(gl.TRIANGLES, 0, slotCrowd.n);
+    gl.uniform1f(uniFig.puff, 0.0); gl.uniform1f(uniFig.ink, 0.0);
     gl.drawArrays(gl.TRIANGLES, 0, slotCrowd.n);
   }
 
@@ -3301,6 +3315,9 @@ function frame(now) {
                  mul(rotX(-(tPitch + pitchG)), rotZ(rock - tRoll)));
   gl.uniformMatrix4fv(uniFig.m, false, me);
   gl.bindVertexArray(slotMe.vao);
+  gl.uniform1f(uniFig.puff, 0.048); gl.uniform1f(uniFig.ink, 1.0);
+  gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
+  gl.uniform1f(uniFig.puff, 0.0); gl.uniform1f(uniFig.ink, 0.0);
   gl.drawArrays(gl.TRIANGLES, 0, slotMe.n);
 
   /* 스카프 — 서 있으면 가라앉습니다. 바람은 내가 만드는 거니까 */
