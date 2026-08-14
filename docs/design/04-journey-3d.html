@@ -390,7 +390,13 @@ void main(){
     float spec = pow(max(dot(reflect(-normalize(uSun), n), normalize(uCam - vW)), 0.0), 22.0);
     c += vec3(1.0,0.86,0.6) * step(0.994, g) * spec * uGlit * 7.0 * near;
     /* 해를 향해 걸을 때 사막 전체에 깔리는 반짝임 띠 — 저니의 그 바다 같은 면 */
-    c += vec3(1.0,0.80,0.50) * spec * uGlit * 0.55;
+    c += vec3(1.0,0.80,0.50) * spec * uGlit * 0.80;
+    /* 모래알 — 매끈한 플라스틱을 죽이는 가는 입자. 근경에만 */
+    float grn = fract(sin(dot(floor(vW.xz*23.0), vec2(41.113,289.97)))*43758.5453);
+    c *= 1.0 + (grn - 0.5) * 0.11 * near;
+    /* 잔물결 한 겹 더 — 바람 가로결. 발밑 언덕이 "면"이 아니라 "모래"가 됩니다 */
+    float rr = sin(vW.x*1.9 + vW.z*3.1) * sin(vW.x*0.7 - vW.z*1.1 + 2.2);
+    c *= 1.0 + rr * 0.05 * exp(-dist/60.0) * smoothstep(0.55, 0.9, n.y);
   }
   /* 접지 그림자 — 인물 발밑의 부드러운 타원. 06 시트에서 "이게 없으면 무엇을
      해도 떠 보인다"라고 적어 놓고 정작 사막에는 이식을 빼먹었습니다. 그게
@@ -924,9 +930,15 @@ const FIG_CROWD = { c0:[0.37,0.325,0.30], c1:[0.42,0.375,0.35], c2:[0.5,0.45,0.4
 
    상자 하나하나의 감김 방향에 목숨이 걸려 있습니다. 지형에서 이미 한 번
    뒤집혀서 절반이 안 보였으므로, 여기서는 면마다 바깥쪽으로 CCW를 맞춰 둡니다. */
+let BOXWEAR = 0;   /* 모서리 마모 — 반듯한 직육면체는 돌이 아니라 레고입니다 */
 function box(v, cx, cy, cz, a, bb, c) {
-  const X=(s)=>cx+s*a, Y=(s)=>cy+s*bb, Z=(s)=>cz+s*c;
-  const p=(sx,sy,sz)=>[X(sx),Y(sy),Z(sz)];
+  const wr = BOXWEAR;
+  const J = (sx,sy,sz,k) => {
+    const h = Math.sin(cx*12.9898 + cy*78.233 + cz*37.719 + sx*3.1 + sy*5.7 + sz*9.3 + k*17.0)*43758.5453;
+    return (h - Math.floor(h) - 0.5) * wr;
+  };
+  /* 꼭짓점 단위로 흔들어야 면이 안 갈라집니다 — 같은 s 조합은 같은 이동 */
+  const p=(sx,sy,sz)=>[cx+sx*a*(1.0+J(sx,sy,sz,1)), cy+sy*bb*(1.0+J(sx,sy,sz,2)), cz+sz*c*(1.0+J(sx,sy,sz,3))];
   const q=(A,B,C,D)=>{ v.push(...A,...B,...C, ...A,...C,...D); };
   q(p(1,-1,-1),p(1,1,-1),p(1,1,1),p(1,-1,1));       /* +X */
   q(p(-1,-1,1),p(-1,1,1),p(-1,1,-1),p(-1,-1,-1));   /* -X */
@@ -995,13 +1007,16 @@ const templeMeshes = (() => {
   const spots = [[8.3,2.1],[-8.6,3.4],[7.9,-3.8],[-8.2,-3.2],[3.1,8.6],[-4.2,8.9]];
   return V.map((build, i) => {
     const v = [];
+    BOXWEAR = 0.05;                /* 세월 — 모서리가 반듯하면 신축 건물 */
     skel(v); build(v);
     const R = (k) => { const x = Math.sin(k*127.1 + i*311.7)*43758.5453; return x - Math.floor(x); };
+    BOXWEAR = 0.16;              /* 돌은 상자가 아닙니다 */
     for (let k = 0; k < 3; k++) {
       const s = spots[(i*2 + k*3) % spots.length], sz = 0.55 + R(k+2)*0.6;
       box(v, s[0] + (R(k+3)-0.5)*1.6, 0.8 + sz*0.35, s[1] + (R(k+4)-0.5)*1.6,
           sz, sz*0.8, sz*1.1);
     }
+    BOXWEAR = 0;
     return mesh(new Float32Array(v));
   });
 })();
@@ -1051,10 +1066,12 @@ const templeGlyphs = (() => {
 /* 빈 문틀 — 기둥 둘, 가운데가 끊긴 상인방 */
 const voidMesh = (() => {
   const v = [];
+  BOXWEAR = 0.09;
   box(v, -2.1, 2.0, 0, 0.42, 2.4, 0.42);
   box(v,  2.1, 2.0, 0, 0.42, 2.4, 0.42);
   box(v, -1.55, 4.55, 0, 0.75, 0.32, 0.38);   /* 상인방 왼쪽 토막 */
   box(v,  1.62, 4.49, 0, 0.68, 0.30, 0.36);   /* 오른쪽 토막 — 살짝 어긋나 있음 */
+  BOXWEAR = 0;
   return mesh(new Float32Array(v));
 })();
 
@@ -1350,6 +1367,7 @@ let footI = 0, footN = 0, footAcc = 0, footSide = 1;
 const MAIN_X = (z) => MOUNTAIN.x * z / MOUNTAIN.z;
 const relics = (() => {
   const v = [];
+  BOXWEAR = 0.15;
   const H = (k) => { const x = Math.sin(k*127.1)*43758.5453; return x - Math.floor(x); };
   let n = 0;
   for (let i = 1; n < 64 && i < 500; i++) {
@@ -1366,6 +1384,7 @@ const relics = (() => {
     } else box(v, x, g + 0.2, z, 1.5, 0.28, 0.5);
     n++;
   }
+  BOXWEAR = 0;
   return mesh(new Float32Array(v));
 })();
 const finEl = document.getElementById('fin');
