@@ -272,7 +272,7 @@ void main(){
 }`, `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 frag;
-uniform vec3 uHaze, uHigh; uniform float uSunX;
+uniform vec3 uHaze, uHigh; uniform float uSunX, uCool;
 void main(){
   float t = clamp(vUv.y, 0.0, 1.0);
   vec3 c = mix(uHaze, uHigh, pow(t, 0.85));
@@ -306,6 +306,9 @@ void main(){
   /* 높은 권운 — 넓고 흐린 결. 띠 둘만으로는 하늘 위쪽이 여전히 빈 벽입니다. */
   float v1 = sin(vUv.x*2.3 + vUv.y*7.0 + 0.8) * sin(vUv.x*5.1 - vUv.y*3.2 - 1.1);
   c = mix(c, vec3(1.00,0.88,0.68), max(v1, 0.0) * 0.22 * smoothstep(0.35, 0.75, t));
+  /* 세계가 식으면 하늘의 노을기(해·구름 리터럴)도 같이 식습니다 */
+  float cl = dot(c, vec3(0.299,0.587,0.114));
+  c = mix(c, mix(vec3(cl), c, 0.35) * vec3(0.74, 0.91, 1.26), uCool);
   /* 디더 — 8비트 그라데이션 줄무늬(밴딩)를 잘게 부숩니다. 마감의 반은 이런 것 */
   c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453) - 0.5) * (2.0/255.0);
   frag = vec4(c, 1.0);
@@ -472,7 +475,8 @@ void main(){
 
 const U = (p, n) => gl.getUniformLocation(p, n);
 const uni = {
-  sky:  { haze: U(skyProg,'uHaze'), high: U(skyProg,'uHigh'), sunX: U(skyProg,'uSunX') },
+  sky:  { haze: U(skyProg,'uHaze'), high: U(skyProg,'uHigh'), sunX: U(skyProg,'uSunX'),
+          cool: U(skyProg,'uCool') },
   lit:  { vp:U(lit,'uVP'), model:U(lit,'uModel'), origin:U(lit,'uOrigin'), terrain:U(lit,'uTerrain'),
           cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
           haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit'),
@@ -1219,7 +1223,8 @@ let P0 = { x: 0, z: 0 }, yaw = 0, camYaw = 0, camY = 0, moved = 0, walkA = 0, sp
 let walkS = 0;   /* walkA 를 늦게 좇는 그림자 — 차이가 곧 가속(앞쏠림)과 반동(뒷정리) */
 let keys = { f:false, l:false, r:false };
 let camBack = 30, camUp = 16;   /* 인트로 리빌 — 높이서 시작해 목표 lerp 가 내려앉힙니다 */
-let cineT = 0, cineMode = null;  /* 연출 순간 — 'lantern'(사막 점등) · 'end'(산으로 걸어 들어감) */
+let cineT = 0, cineMode = null;
+let wcool = 0;   /* 본 신전 수/8 를 천천히 좇음 — 세계가 식어가는 정도 */  /* 연출 순간 — 'lantern'(사막 점등) · 'end'(산으로 걸어 들어감) */
 const MOUNTAIN = { x: 14, z: 440 };             /* 월드에 못박힌 목표. 저니의 산입니다 */
 
 /* 프로토타입에는 셋만 세워 둡니다. 본편에서는 여덟 개고, 안의 본문은
@@ -1694,10 +1699,23 @@ function frame(now) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, post.fboMS);
   gl.viewport(0, 0, post.W2, post.H2);
 
+  /* 신전을 볼 때마다 세계가 식어갑니다 — 황금 사막이 새벽의 푸른빛으로.
+     성장이 UI 가 아니라 세계 자체에 보이게(가방·스카프와 같은 원칙).
+     문은 선택이므로, 하나도 안 보면 사막은 끝까지 금색입니다. */
+  wcool += (TEMPLES.filter(t => t.seen).length / 8 - wcool) * Math.min(1, 0.22*dt);
+  const CW = (a, b) => [a[0]+(b[0]-a[0])*wcool, a[1]+(b[1]-a[1])*wcool, a[2]+(b[2]-a[2])*wcool];
+  const PAL = {
+    haze: CW(P.haze, [0.58, 0.72, 0.92]),
+    high: CW(P.high, [0.22, 0.36, 0.64]),
+    lit:  CW(P.lit,  [0.70, 0.83, 1.02]),
+    dark: CW(P.dark, [0.25, 0.33, 0.56]),
+    mtn:  CW(P.mtn,  [0.42, 0.50, 0.64])
+  };
   /* 하늘 */
   gl.depthMask(false);
   gl.useProgram(skyProg);
-  gl.uniform3fv(uni.sky.haze, P.haze); gl.uniform3fv(uni.sky.high, P.high);
+  gl.uniform3fv(uni.sky.haze, PAL.haze); gl.uniform3fv(uni.sky.high, PAL.high);
+  gl.uniform1f(uni.sky.cool, wcool);
   gl.uniform1f(uni.sky.sunX, 0.5 - camYaw*0.28);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.depthMask(true);
@@ -1708,7 +1726,7 @@ function frame(now) {
   gl.useProgram(farProg);
   gl.uniformMatrix4fv(uni.far.vp, false, VP);
   gl.uniform3fv(uni.far.cam, eye);
-  gl.uniform3fv(uni.far.haze, P.haze); gl.uniform3fv(uni.far.tint, P.mtn);
+  gl.uniform3fv(uni.far.haze, PAL.haze); gl.uniform3fv(uni.far.tint, PAL.mtn);
   /* 겹은 멀수록 하늘에 잠깁니다: 0.13 < 0.24 < 0.46.
      능선은 세계가 아니라 카메라에 붙습니다 — 배경막이라 다가가면 안 되고,
      북쪽(+z, 산 방향)에 늘 같은 크기로 서서 지평선을 받칩니다. */
@@ -1730,7 +1748,7 @@ function frame(now) {
   gl.useProgram(lit);
   gl.uniformMatrix4fv(uni.lit.vp, false, VP);
   gl.uniform3fv(uni.lit.cam, eye); gl.uniform3fv(uni.lit.sun, P.sun);
-  gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.000024);   /* 유적이 빛에 잠길 만큼 */
+  gl.uniform3fv(uni.lit.haze, PAL.haze); gl.uniform1f(uni.lit.fog, 0.000024);   /* 유적이 빛에 잠길 만큼 */
   gl.uniform2f(uni.lit.pxz, px, pz); gl.uniform1f(uni.lit.py, py);
   gl.uniform1f(uni.lit.time, el);
   /* 그림자 드리우는 것들: 신전 8 + 빈 문틀 + 근처 무리 (최대 24) */
@@ -1753,7 +1771,7 @@ function frame(now) {
     gl.uniform4fv(uni.lit.foot, FOOT);
     gl.uniform1i(uni.lit.footN, footN);
   }
-  gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
+  gl.uniform3fv(uni.lit.litc, PAL.lit); gl.uniform3fv(uni.lit.dark, PAL.dark);
   gl.uniform1f(uni.lit.glit, 1.0);
   gl.uniform1i(uni.lit.terrain, 1);
   /* 칸 단위로 스냅합니다. 이게 없으면 정점이 매 프레임 지형 위를 미끄러지고,
@@ -1820,7 +1838,7 @@ function frame(now) {
   gl.useProgram(figProg);
   gl.uniformMatrix4fv(uniFig.vp, false, VP);
   gl.uniform3fv(uniFig.cam, eye);
-  gl.uniform3fv(uniFig.haze, P.haze);
+  gl.uniform3fv(uniFig.haze, PAL.haze);
   gl.uniform1f(uniFig.fog, 0.000024);
   gl.uniform1f(uniFig.puff, 0.0); gl.uniform1f(uniFig.ink, 0.0);
   gl.disable(gl.CULL_FACE);               /* 옷단 안쪽·스카프 뒷면이 보여야 합니다 */
@@ -1920,7 +1938,7 @@ function frame(now) {
   }
   /* 능선 모래 연기 — 랜턴과 무관하게 늘 붑니다 */
   slotWisps.set(buildWisps(el, px, pz));
-  gl.uniform3fv(uniFig.c2, [0.90, 0.66, 0.40]);
+  gl.uniform3fv(uniFig.c2, CW([0.90, 0.66, 0.40], [0.72, 0.82, 0.95]));
   gl.uniformMatrix4fv(uniFig.m, false, ident());
   gl.bindVertexArray(slotWisps.vao);
   gl.drawArrays(gl.TRIANGLES, 0, slotWisps.n);

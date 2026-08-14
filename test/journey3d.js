@@ -76,12 +76,14 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
   s = await S();
   ok(/열리지 않습니다/.test(s.enter), '빈 문틀: ' + s.enter);
 
-  /* 엔딩 — 트리거 뒤 3.2초 워크인 연출이 흐른 다음에야 자막이 뜬다. 폴링. */
+  /* 엔딩 — 트리거 뒤 3.2초 워크인 연출이 흐른 다음에야 자막이 뜬다.
+     소프트웨어 렌더러는 fps 가 낮아 dt 클램프 탓에 연출 3.2초가 벽시계로
+     20초 가까이 걸린다 — 실기 문제가 아니라 이 환경의 시계 문제. 넉넉히 폴링. */
   await tp(14, 410, 0); await walk(5000);
   s = await S();
   ok(s.ended, '엔딩 도달 (z=' + s.z + ')');
   let fin = { on: false, cnt: '' };
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 50; i++) {
     fin = await p.evaluate(() => ({
       on: document.getElementById('fin').classList.contains('on'),
       cnt: document.getElementById('fin-cnt').textContent
