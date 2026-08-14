@@ -3371,32 +3371,15 @@ function frame(now) {
     gl.drawArrays(gl.TRIANGLES, 0, templeGlyphs.n);
   }
   gl.uniform1f(uni.lit.emit, 0.0);
-  /* 윤곽선 — 신전도 만화입니다. 살짝 키워 앞면을 걸러내고(inverted hull)
-     잉크색 발광으로 그리면, 실루엣 바깥으로 삐져나온 테만 남습니다.
-     box() 와인딩이 일관 CCW 라 가능한 방법 — 인물은 와인딩이 섞여 못 씁니다. */
-  gl.uniform1f(uni.lit.emit, 1.0);
-  gl.uniform3fv(uni.lit.litc, [0.26, 0.145, 0.10]);
-  gl.cullFace(gl.FRONT);
-  TEMPLES.forEach((t, ti) => {
-    gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y - 0.10, t.z, t.yaw, 1.028), rotZ(t.tilt)));
-    gl.bindVertexArray(templeMeshes[ti].vao);
-    gl.drawArrays(gl.TRIANGLES, 0, templeMeshes[ti].n);
-  });
-  gl.cullFace(gl.BACK);
-  gl.uniform1f(uni.lit.emit, 0.0);
+  /* 신전 윤곽선(inverted hull)은 넣었다 뺐습니다 — 만화 지시로 넣었지만,
+     하이키·짙은 안개 룩에서는 빛에 잠긴 부드러운 돌에 먹선만 남아 겉돌았습니다
+     ("신전이 좀 이상해, 테두리가 있달까"). 인물 잉크선은 유지합니다. */
   /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
   gl.uniform3fv(uni.lit.litc, [0.38,0.29,0.25]);
   gl.uniform3fv(uni.lit.dark, [0.20,0.16,0.14]);
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
-  gl.uniform1f(uni.lit.emit, 1.0);
-  gl.uniform3fv(uni.lit.litc, [0.26, 0.145, 0.10]);
-  gl.cullFace(gl.FRONT);
-  gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y - 0.06, VOIDF.z, VOIDF.yaw, 1.05));
-  gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
-  gl.cullFace(gl.BACK);
-  gl.uniform1f(uni.lit.emit, 0.0);
 
   /* ── 인물들 — 06의 조각과 조명으로 ── */
   gl.useProgram(figProg);
