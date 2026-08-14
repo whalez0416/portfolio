@@ -1539,7 +1539,7 @@ void main(){
   c += vec3(1.00,0.92,0.75) * smoothstep(0.052, 0.038, d);
   /* 지평선 홍조 — 노을은 해 주변만 물드는 게 아니라 지평선 전체가 달아오릅니다.
      이게 없으면 해 반대쪽 하늘이 그냥 그라데이션 벽입니다. */
-  c += vec3(0.42,0.16,0.05) * exp(-pow((t - 0.07)/0.14, 2.0)) * 0.55;
+  c += vec3(0.60,0.44,0.24) * exp(-pow((t - 0.08)/0.22, 2.0)) * 0.85;   /* 지평선이 발광 */
   /* 어스름의 첫 별 — 높은 하늘에만, 드물게. 셀마다 난수 위치에 점 하나라
      격자로 안 읽힙니다. */
   vec2 sg = vec2(vUv.x*90.0, vUv.y*50.0);
@@ -1547,19 +1547,19 @@ void main(){
   float sh2 = fract(sin(dot(sid, vec2(127.1,311.7)))*43758.5453);
   vec2 sof = vec2(fract(sh2*13.7), fract(sh2*7.31))*0.7 + 0.15;
   float star = smoothstep(0.10, 0.02, length(sf - sof)) * step(0.94, sh2);
-  c += vec3(1.0,0.95,0.85) * star * smoothstep(0.70, 0.95, t) * 0.34;
+  c += vec3(1.0,0.95,0.85) * star * smoothstep(0.88, 0.99, t) * 0.06;   /* 낮 하늘 — 별은 흔적만 */
   /* 노을 구름 — 얇은 띠 두 줄. 아랫면만 해에 그을려 있습니다.
      빈 그라데이션 하늘은 스크린세이버지 장면이 아닙니다. */
   float w1 = vUv.y - 0.30 - 0.045*sin(vUv.x*5.1 + 1.2) - 0.015*sin(vUv.x*13.0);
   float b1 = smoothstep(0.030, 0.006, abs(w1));
-  c = mix(c, vec3(0.34,0.19,0.26), b1*0.42);
-  c += vec3(0.95,0.45,0.22) * smoothstep(0.018, 0.002, abs(w1+0.012)) * 0.30;
+  c = mix(c, vec3(1.03,0.92,0.74), b1*0.38);   /* 그을린 띠가 아니라 크림 구름 */
+  c += vec3(1.08,0.88,0.58) * smoothstep(0.018, 0.002, abs(w1+0.012)) * 0.22;
   float w2 = vUv.y - 0.445 - 0.03*sin(vUv.x*3.4 - 0.7) - 0.012*sin(vUv.x*9.5+2.0);
   float b2 = smoothstep(0.022, 0.005, abs(w2));
-  c = mix(c, vec3(0.27,0.17,0.26), b2*0.34);
+  c = mix(c, vec3(1.01,0.90,0.72), b2*0.30);
   /* 높은 권운 — 넓고 흐린 결. 띠 둘만으로는 하늘 위쪽이 여전히 빈 벽입니다. */
   float v1 = sin(vUv.x*2.3 + vUv.y*7.0 + 0.8) * sin(vUv.x*5.1 - vUv.y*3.2 - 1.1);
-  c = mix(c, vec3(0.19,0.15,0.24), max(v1, 0.0) * 0.16 * smoothstep(0.40, 0.75, t));
+  c = mix(c, vec3(1.00,0.88,0.68), max(v1, 0.0) * 0.22 * smoothstep(0.35, 0.75, t));
   /* 디더 — 8비트 그라데이션 줄무늬(밴딩)를 잘게 부숩니다. 마감의 반은 이런 것 */
   c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453) - 0.5) * (2.0/255.0);
   frag = vec4(c, 1.0);
@@ -1681,9 +1681,9 @@ void main(){
       float t2 = dot(o, sunAway), s3 = dot(o, sunSide);
       float w2 = uCast[i].z, len2 = uCast[i].w;
       float e2 = pow(s3 / w2, 2.0) + pow((t2 - len2*0.34) / (len2*0.60), 2.0);
-      sh *= 1.0 - 0.40 * exp(-max(e2, 0.0) * 1.7);
+      sh *= 1.0 - 0.22 * exp(-max(e2, 0.0) * 1.7);
     }
-    c *= max(sh, 0.42);                            /* 겹쳐도 새까매지지는 않게 */
+    c *= max(sh, 0.66);                            /* 안개 낀 빛의 그림자는 옅다 */
     /* 발자국 — 지나온 자리가 잠깐 눌려 있습니다. 9초에 걸쳐 모래가 메웁니다 */
     for (int i = 0; i < 24; i++) {
       if (i >= uFootN) break;
@@ -2049,7 +2049,7 @@ void main(){
   float dist = length(vP-uCam);
   float fog = clamp(1.0-exp(-dist*dist*uFog), 0.0, 1.0);
   /* 잉크 — 만화의 테두리. 부풀린 실루엣이 몸 밖으로 삐져나온 곳만 남습니다 */
-  if (uInk > 0.5) { frag=vec4(mix(vec3(0.10,0.025,0.02), uHaze, fog), 1.0); return; }
+  if (uInk > 0.5) { frag=vec4(mix(vec3(0.20,0.06,0.045), uHaze, fog), 1.0); return; }
   if (vCi>=2) { frag=vec4(mix(base,uHaze,fog),1.0); return; }  /* 발광·어둠은 그대로 */
   vec3 n=normalize(vN); vec3 V=normalize(uCam-vP);
   if (dot(n,V)<0.0) n=-n;
@@ -2067,7 +2067,7 @@ void main(){
   float ao=1.0-0.28*vAo;   /* 만화는 AO 도 얕게 — 굴곡을 선과 단이 말하게 */
   /* 만화의 두 색: 그늘 셀도 선명한 빨강이어야지 검붉은 흙색이면 그냥 어두운
      3D 입니다. 밝음/그늘을 색 곱 둘로 딱 정해 놓고 key 로 고릅니다. */
-  vec3 c=base*mix(vec3(0.52,0.40,0.55), vec3(1.30,1.02,0.72), key)*ao;
+  vec3 c=base*mix(vec3(0.55,0.40,0.34), vec3(1.30,1.02,0.72), key)*ao;
   c*=1.0+rim*0.9;
   c+=vec3(1.25,0.66,0.24)*rim*0.35;
   frag=vec4(mix(c,uHaze,fog),1.0);
@@ -2116,20 +2116,20 @@ void main(){
   c.g = texture(uTex, vUv).g;
   c.b = texture(uTex, vUv - ca).b;
   c += texture(uBloom, vUv).rgb * 0.55;
-  c = aces(c * 1.06);
+  c = aces(c * 1.14);   /* 하이키 — 세계가 밝아야 인물이 어둡다 */
   float l = dot(c, vec3(0.299,0.587,0.114));
   /* 필름 대비 S커브 — 중간톤 뭉개짐이 "물빠진 파스텔"의 정체였다 */
-  c = mix(c, c*c*(3.0 - 2.0*c), 0.38);
+  c = mix(c, c*c*(3.0 - 2.0*c), 0.15);
   c = mix(c, c * vec3(1.06,0.97,0.90), smoothstep(0.2, 0.75, l));   /* 하이라이트만 노을 쪽 */
-  c = mix(c, c * vec3(0.96,0.93,1.12), (1.0 - smoothstep(0.05, 0.42, l)) * 0.55); /* 그늘은 찬 보라 */
-  c = mix(vec3(l), c, 1.30);
+  c = mix(c, c * vec3(1.00,0.96,0.90), (1.0 - smoothstep(0.05, 0.42, l)) * 0.30); /* 그늘도 따뜻하게 */
+  c = mix(vec3(l), c, 1.10);
 
   /* 화면 단계 포스터라이즈·윤곽선은 걷어냈습니다 — 하늘과 안개까지 통째로
      끊어서 "필터가 덧씌워진" 티가 났습니다. 만화 느낌은 여기(화면)가 아니라
      각 재질의 조명 계산에서 명암을 끊는 것으로 옮겼습니다. */
 
   /* 비네트 + 아주 옅은 그레인 */
-  c *= 1.0 - 0.34*smoothstep(0.30, 1.05, r2*2.4);
+  c *= 1.0 - 0.20*smoothstep(0.30, 1.05, r2*2.4);
   float g = fract(sin(dot(gl_FragCoord.xy + fract(uT)*61.0, vec2(12.9898,78.233)))*43758.5453);
   c += (g - 0.5) * 0.010;
   frag = vec4(c, 1.0);
@@ -2181,7 +2181,7 @@ const uniFig = {
 /* 나: 적 로브 + 모래색 띠 + 앰버 눈금 · 무리: 회보라, 띠 없음.
    전부 사막 팔레트의 가족입니다 — 로브의 적은 노을의 적이고,
    무리의 보라는 그늘의 보라입니다. 남의 색을 데려오지 않습니다. */
-const FIG_ME    = { c0:[0.72,0.19,0.13], c1:[1.0,0.74,0.42], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
+const FIG_ME    = { c0:[0.56,0.145,0.10], c1:[1.0,0.74,0.42], c2:[1.0,0.72,0.20], c3:[0.05,0.035,0.03] };
 const FIG_CROWD = { c0:[0.37,0.325,0.30], c1:[0.42,0.375,0.35], c2:[0.5,0.45,0.4],  c3:[0.05,0.04,0.04] };
 
 /* ── 신전 ──
@@ -2379,13 +2379,16 @@ const summitGlow = mesh(new Float32Array([
 ]));
 /* ═══════════ 팔레트 ═══════════ */
 const P = {
-  haze: [0.66, 0.40, 0.20],     /* 더 금색으로 — 파스텔 살구가 물빠진 느낌의 반이었다 */
-  high: [0.07, 0.075, 0.17],    /* 하늘 꼭대기는 더 깊게 — 얕으면 낮하늘이 된다 */
+  /* 레퍼런스 3장의 판정: 저니의 그 장면은 황혼 고대비가 아니라 "백주의 빛에
+     잠긴" 하이키다. 하늘도 안개도 크림골드로 발광하고, 어두운 것은 인물과
+     비석뿐. 남색 하늘과 보라 그늘은 여기서 전부 철회한다. */
+  haze: [0.97, 0.82, 0.58],     /* 안개이자 지평선 — 빛 그 자체 */
+  high: [0.88, 0.66, 0.38],     /* 하늘 꼭대기도 따뜻한 금색 */
   /* 저니 사막의 절반은 색 대비입니다: 해가 닿는 면은 진한 주황,
      그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
      아무리 굴곡이 있어도 흙더미로 보입니다. */
-  lit:  [1.10, 0.62, 0.20],     /* 능선 너머 볕 면 — 1 을 넘겨 블룸이 받게 */
-  dark: [0.25, 0.215, 0.40],    /* 그늘은 보라/파랑 틴트 — 예전엔 "보라색 물체"로
+  lit:  [1.06, 0.80, 0.50],     /* 볕 면 — 연한 금모래. 채도보다 밝기가 저니다 */
+  dark: [0.62, 0.43, 0.25],     /* 하이키의 그늘 — 얕고 따뜻하게. 대비는 인물이 만든다 */    /* 그늘은 보라/파랑 틴트 — 예전엔 "보라색 물체"로
                                    읽혀서 뺐지만, 고채도 셀 + 역광에서는 보색 대비가
                                    저니의 그 색이 된다. 명도는 호박색 때와 동일 */
   /* 해는 하나여야 합니다. 하늘의 해 원반도, 긴 그림자도, 인물 키도 전부
@@ -2394,7 +2397,7 @@ const P = {
      얹어도 밋밋했던 근본 원인. 이제 지형도 역광입니다: 능선 너머가 타고,
      보이는 사면은 그늘이 됩니다. 저니가 해를 향해 걷는 게임인 이유. */
   sun:  [0.15, 0.28, 0.95],
-  mtn:  [0.33, 0.255, 0.22]
+  mtn:  [0.55, 0.42, 0.30]
 };
 
 /* ═══════════ 상태 ═══════════ */
@@ -3202,7 +3205,7 @@ function frame(now) {
   gl.useProgram(lit);
   gl.uniformMatrix4fv(uni.lit.vp, false, VP);
   gl.uniform3fv(uni.lit.cam, eye); gl.uniform3fv(uni.lit.sun, P.sun);
-  gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.0000128);
+  gl.uniform3fv(uni.lit.haze, P.haze); gl.uniform1f(uni.lit.fog, 0.000024);   /* 유적이 빛에 잠길 만큼 */
   gl.uniform2f(uni.lit.pxz, px, pz); gl.uniform1f(uni.lit.py, py);
   gl.uniform1f(uni.lit.time, el);
   /* 그림자 드리우는 것들: 신전 8 + 빈 문틀 + 근처 무리 (최대 24) */
@@ -3239,16 +3242,16 @@ function frame(now) {
   /* 신전은 사막과 같은 돌입니다: 볕 면은 모래의 주황 가족, 그늘은 지형과
      같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
      이유가 이 두 상수였습니다. */
-  gl.uniform3fv(uni.lit.litc, [0.98,0.56,0.23]);
-  gl.uniform3fv(uni.lit.dark, [0.25,0.21,0.38]);    /* 돌 그늘도 같은 보라 가족 */
+  gl.uniform3fv(uni.lit.litc, [0.88,0.55,0.34]);
+  gl.uniform3fv(uni.lit.dark, [0.52,0.34,0.24]);    /* 녹슨 벽돌 — 모래보다 짙게, 검지 않게 */
   TEMPLES.forEach((t, ti) => {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
     gl.bindVertexArray(templeMeshes[ti].vao);
     gl.drawArrays(gl.TRIANGLES, 0, templeMeshes[ti].n);
   });
   /* 돌무지 — 유적과 같은 돌이되 조금 어둡게. 월드 좌표로 구워 뒀으니 모델은 단위행렬 */
-  gl.uniform3fv(uni.lit.litc, [0.84,0.46,0.19]);
-  gl.uniform3fv(uni.lit.dark, [0.23,0.19,0.34]);
+  gl.uniform3fv(uni.lit.litc, [0.42,0.34,0.30]);
+  gl.uniform3fv(uni.lit.dark, [0.22,0.17,0.15]);   /* 하이키에서 악센트는 어둠이다 */
   gl.uniformMatrix4fv(uni.lit.model, false, ident());
   gl.bindVertexArray(cairns.vao);
   gl.drawArrays(gl.TRIANGLES, 0, cairns.n);
@@ -3266,8 +3269,8 @@ function frame(now) {
   /* 모래 둔덕 — 사막과 같은 모래색, 지형과 같은 그늘.
      이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
   gl.uniform1f(uni.lit.emit, 0.0);
-  gl.uniform3fv(uni.lit.litc, [1.06, 0.61, 0.20]);
-  gl.uniform3fv(uni.lit.dark, [0.25, 0.215, 0.40]);
+  gl.uniform3fv(uni.lit.litc, [1.04, 0.78, 0.48]);
+  gl.uniform3fv(uni.lit.dark, [0.68, 0.48, 0.28]);
   gl.bindVertexArray(templeSkirt.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
@@ -3286,7 +3289,7 @@ function frame(now) {
      잉크색 발광으로 그리면, 실루엣 바깥으로 삐져나온 테만 남습니다.
      box() 와인딩이 일관 CCW 라 가능한 방법 — 인물은 와인딩이 섞여 못 씁니다. */
   gl.uniform1f(uni.lit.emit, 1.0);
-  gl.uniform3fv(uni.lit.litc, [0.10, 0.05, 0.055]);
+  gl.uniform3fv(uni.lit.litc, [0.26, 0.145, 0.10]);
   gl.cullFace(gl.FRONT);
   TEMPLES.forEach((t, ti) => {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y - 0.10, t.z, t.yaw, 1.028), rotZ(t.tilt)));
@@ -3296,13 +3299,13 @@ function frame(now) {
   gl.cullFace(gl.BACK);
   gl.uniform1f(uni.lit.emit, 0.0);
   /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
-  gl.uniform3fv(uni.lit.litc, [0.52,0.38,0.30]);
-  gl.uniform3fv(uni.lit.dark, [0.24,0.18,0.28]);
+  gl.uniform3fv(uni.lit.litc, [0.38,0.29,0.25]);
+  gl.uniform3fv(uni.lit.dark, [0.20,0.16,0.14]);
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
   gl.uniform1f(uni.lit.emit, 1.0);
-  gl.uniform3fv(uni.lit.litc, [0.10, 0.05, 0.055]);
+  gl.uniform3fv(uni.lit.litc, [0.26, 0.145, 0.10]);
   gl.cullFace(gl.FRONT);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y - 0.06, VOIDF.z, VOIDF.yaw, 1.05));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
@@ -3314,7 +3317,7 @@ function frame(now) {
   gl.uniformMatrix4fv(uniFig.vp, false, VP);
   gl.uniform3fv(uniFig.cam, eye);
   gl.uniform3fv(uniFig.haze, P.haze);
-  gl.uniform1f(uniFig.fog, 0.0000128);
+  gl.uniform1f(uniFig.fog, 0.000024);
   gl.uniform1f(uniFig.puff, 0.0); gl.uniform1f(uniFig.ink, 0.0);
   gl.disable(gl.CULL_FACE);               /* 옷단 안쪽·스카프 뒷면이 보여야 합니다 */
 
