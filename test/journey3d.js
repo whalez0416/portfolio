@@ -39,7 +39,7 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
   /* 도입 + 1장 */
   await walk(2200);
   let s = await S();
-  ok(/이력서|산까지/.test(s.text), '도입: ' + s.text.slice(0, 60));
+  ok(/병원 마케팅|그 시간/.test(s.text), '도입: ' + s.text.slice(0, 60));
   ok(s.badge === '2014', '연도 2014');
 
   /* 5장 — 갈라짐. 격자 밀도를 올린 뒤 소프트웨어 렌더러가 느려져 "걸어서 문턱
