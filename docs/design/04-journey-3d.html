@@ -439,7 +439,7 @@ void main(){
       vec2 fo = vW.xz - uFoot[i].xy;
       float fe = dot(fo, fo) / (uFoot[i].z * uFoot[i].z);
       float ff = clamp(1.0 - (uTime - uFoot[i].w) / 16.0, 0.0, 1.0);
-      c *= 1.0 - 0.45 * ff * exp(-fe * 1.2);
+      c *= 1.0 - 0.55 * ff * exp(-fe * 1.2);   /* 하이키 모래에서도 읽히게 */
     }
   }
   float f = 1.0 - exp(-dist*dist*uFog);
@@ -1443,7 +1443,7 @@ let lantern = false, ended = false;
 const CASTS = new Float32Array(24 * 4);
 /* 발자국 링버퍼 — (x, z, 반지름, 찍힌 시각). 잊히는 건 셰이더가 uTime 으로 합니다 */
 const FOOT = new Float32Array(24 * 4);
-let footI = 0, footN = 0, footAcc = 0, footSide = 1;
+let footI = 0, footN = 0, footAcc = 0;
 /* 흩어진 잔해 — 유적 사이의 사막이 비어 있으면 미니멀이 아니라 미완성입니다.
    반쯤 묻힌 돌덩이·부러진 기둥 토막·넘어진 상인방이 "여기 문명이 있었다"를 깝니다. */
 const MAIN_X = (z) => MOUNTAIN.x * z / MOUNTAIN.z;
@@ -1597,16 +1597,31 @@ function frame(now) {
       else { P0.x = ox; P0.z = oz; }
     }
     moved += v * dt;
-    /* 발자국 — 걸음마다 좌우 번갈아 한 점, 활강은 넓게 한 줄(썰매 자국) */
-    footAcc += v * dt;
-    if (footAcc > (glide > .3 ? 0.8 : 1.4)) {
-      footAcc = 0; footSide = -footSide;
-      const sideO = glide > .3 ? 0 : footSide * 0.22;
-      FOOT[footI*4]   = P0.x - fx*0.5 + fz*sideO;
-      FOOT[footI*4+1] = P0.z - fz*0.5 - fx*sideO;
-      FOOT[footI*4+2] = glide > .3 ? 0.95 : 0.52;
+    /* 발자국 — 거리 누적기로 찍었더니 눈에 보이는 발과 박자가 어긋났다.
+       이제 발이 실제로 딛는 순간(스윙 위상이 0 을 지나는 순간), 그 발이
+       내려앉는 바로 그 자리에 찍는다 — 인물 발 메시와 같은 식(0.34+0.10 앞). */
+    const stampFoot = (side, r) => {
+      const cY = Math.cos(yaw), sY = Math.sin(yaw);
+      FOOT[footI*4]   = P0.x - cY*side*0.13 + 0.44*sY;
+      FOOT[footI*4+1] = P0.z + sY*side*0.13 + 0.44*cY;
+      FOOT[footI*4+2] = r;
       FOOT[footI*4+3] = el;
       footI = (footI + 1) % 24; footN = Math.min(24, footN + 1);
+      
+    };
+    if (glide > .3) {                                  /* 활강 — 이어지는 썰매 자국 */
+      footAcc += v * dt;
+      if (footAcc > 0.8) {
+        footAcc = 0;
+        FOOT[footI*4] = P0.x - fx*0.5; FOOT[footI*4+1] = P0.z - fz*0.5;
+        FOOT[footI*4+2] = 0.95; FOOT[footI*4+3] = el;
+        footI = (footI + 1) % 24; footN = Math.min(24, footN + 1);
+      }
+    } else {
+      footAcc = 0;
+      const sN = Math.sin(moved * 1.12), s0 = Math.sin(ph);
+      if (s0 >= 0 && sN < 0) stampFoot(-1, 0.5);       /* 왼발 착지 */
+      if (s0 < 0 && sN >= 0) stampFoot(1, 0.5);        /* 오른발 착지 */
     }
   }
   if (!keys.f && walkA > 0.04) {
