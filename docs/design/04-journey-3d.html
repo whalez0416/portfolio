@@ -365,7 +365,7 @@ void main(){
   float q = d * 3.5;
   float dq = (floor(q) + smoothstep(0.30, 0.70, fract(q))) / 3.5;
   d = mix(d, dq, 0.55);
-  vec3 c = mix(uDark, uLit, pow(d, 0.85));
+  vec3 c = mix(uDark, uLit, pow(d, 1.08));   /* 0.85 는 중간톤이 떠서 파스텔이 됐다 */
   float dist = dE;
   /* 모래 결과 반짝임. 저니 사막의 절반은 이겁니다 — 없으면 그냥 갈색 언덕이고,
      실제로 근경이 주황색 그라데이션처럼 텅 비어 보였습니다.
@@ -836,11 +836,14 @@ void main(){
   c.r = texture(uTex, vUv + ca).r;
   c.g = texture(uTex, vUv).g;
   c.b = texture(uTex, vUv - ca).b;
-  c += texture(uBloom, vUv).rgb * 0.50;
-  c = aces(c * 1.04);
+  c += texture(uBloom, vUv).rgb * 0.55;
+  c = aces(c * 1.06);
   float l = dot(c, vec3(0.299,0.587,0.114));
-  c = mix(c, c * vec3(1.05,0.98,0.92), smoothstep(0.2, 0.75, l));   /* 그늘 쪽 냉색 푸시 제거 */
-  c = mix(vec3(l), c, 1.14);
+  /* 필름 대비 S커브 — 중간톤 뭉개짐이 "물빠진 파스텔"의 정체였다 */
+  c = mix(c, c*c*(3.0 - 2.0*c), 0.38);
+  c = mix(c, c * vec3(1.06,0.97,0.90), smoothstep(0.2, 0.75, l));   /* 하이라이트만 노을 쪽 */
+  c = mix(c, c * vec3(1.02,0.90,0.78), (1.0 - smoothstep(0.05, 0.42, l)) * 0.7);  /* 그늘은 탄 주황 */
+  c = mix(vec3(l), c, 1.30);
 
   /* 화면 단계 포스터라이즈·윤곽선은 걷어냈습니다 — 하늘과 안개까지 통째로
      끊어서 "필터가 덧씌워진" 티가 났습니다. 만화 느낌은 여기(화면)가 아니라
@@ -1087,13 +1090,13 @@ const summitGlow = mesh(new Float32Array([
 
 /* ═══════════ 팔레트 ═══════════ */
 const P = {
-  haze: [0.62, 0.42, 0.26],
-  high: [0.10, 0.10, 0.19],
+  haze: [0.66, 0.40, 0.20],     /* 더 금색으로 — 파스텔 살구가 물빠진 느낌의 반이었다 */
+  high: [0.07, 0.075, 0.17],    /* 하늘 꼭대기는 더 깊게 — 얕으면 낮하늘이 된다 */
   /* 저니 사막의 절반은 색 대비입니다: 해가 닿는 면은 진한 주황,
      그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
      아무리 굴곡이 있어도 흙더미로 보입니다. */
-  lit:  [0.99, 0.63, 0.25],
-  dark: [0.21, 0.13, 0.105],    /* 그늘은 따뜻한 갈색. 보라는 두 번 지적받고 완전히 뺐다 */
+  lit:  [1.04, 0.60, 0.19],     /* 볕 면은 더 진한 주황 — 1 을 살짝 넘겨 블룸이 받게 */
+  dark: [0.17, 0.095, 0.07],    /* 그늘은 더 깊은 탄 갈색. 얕은 그늘 = 대비 없음 = 밋밋함 */
   sun:  [0.42, 0.42, -1.0],
   mtn:  [0.33, 0.255, 0.22]
 };
@@ -1650,8 +1653,8 @@ function frame(now) {
   /* 신전은 사막과 같은 돌입니다: 볕 면은 모래의 주황 가족, 그늘은 지형과
      같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
      이유가 이 두 상수였습니다. */
-  gl.uniform3fv(uni.lit.litc, [0.88,0.56,0.28]);
-  gl.uniform3fv(uni.lit.dark, [0.24,0.155,0.125]);
+  gl.uniform3fv(uni.lit.litc, [0.92,0.53,0.22]);
+  gl.uniform3fv(uni.lit.dark, [0.19,0.115,0.085]);
   TEMPLES.forEach((t, ti) => {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
     gl.bindVertexArray(templeMeshes[ti].vao);
@@ -1667,8 +1670,8 @@ function frame(now) {
   /* 모래 둔덕 — 사막과 같은 모래색, 지형과 같은 그늘.
      이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
   gl.uniform1f(uni.lit.emit, 0.0);
-  gl.uniform3fv(uni.lit.litc, [0.97, 0.615, 0.245]);
-  gl.uniform3fv(uni.lit.dark, [0.21, 0.135, 0.11]);
+  gl.uniform3fv(uni.lit.litc, [1.02, 0.59, 0.19]);
+  gl.uniform3fv(uni.lit.dark, [0.17, 0.10, 0.075]);
   gl.bindVertexArray(templeSkirt.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
@@ -1690,8 +1693,8 @@ function frame(now) {
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
   /* 흩어진 잔해 — 유적과 같은 돌이되 조금 어둡게 */
-  gl.uniform3fv(uni.lit.litc, [0.78,0.48,0.24]);
-  gl.uniform3fv(uni.lit.dark, [0.20,0.13,0.11]);
+  gl.uniform3fv(uni.lit.litc, [0.80,0.44,0.18]);
+  gl.uniform3fv(uni.lit.dark, [0.16,0.10,0.08]);
   gl.uniformMatrix4fv(uni.lit.model, false, ident());
   gl.bindVertexArray(relics.vao);
   gl.drawArrays(gl.TRIANGLES, 0, relics.n);
