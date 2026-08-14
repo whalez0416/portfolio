@@ -282,6 +282,27 @@
   }
   .jn__tick.on { opacity: 1; }
 
+  /* 타이틀 카드 — 인트로 하강 중 산 위에 이름이 떴다 사라집니다.
+     저니의 첫 화면(산 위의 로고)이 레퍼런스. 큰 글자 규칙대로 문장은
+     전부 narrative.md 에 있는 것만. */
+  .jn__title {
+    position: absolute; left: 0; right: 0; top: 19%; pointer-events: none;
+    text-align: center; color: #FFF9EA;
+    font-weight: 200; font-size: clamp(1.5rem, 4vw, 2.9rem);
+    letter-spacing: .72em; text-indent: .72em;  /* 자간만큼 밀리는 것을 상쇄 */
+    background: radial-gradient(46% 40% at 50% 44%, rgba(50,26,10,.34) 0%, rgba(50,26,10,0) 100%);
+    text-shadow: 0 0 18px rgba(255,240,200,.95), 0 0 46px rgba(255,190,90,.6),
+                 0 2px 16px rgba(55,25,8,.8);
+    opacity: 0; transition: opacity 1.6s ease;
+  }
+  .jn__title.on { opacity: 1; }
+  .jn__title i {
+    display: block; font-style: normal; letter-spacing: .3em; text-indent: .3em;
+    font-size: clamp(.6rem, 1.15vw, .82rem); margin-top: .85rem;
+    color: rgba(255,246,230,.78);
+  }
+  @media (prefers-reduced-motion: reduce) { .jn__title { transition: none; } }
+
   /* 나침반 — 신전에서 나오면 어디가 어디인지 모르게 됩니다.
      지도가 아니라 얇은 원판 하나: 진행 방향이 늘 위, 산이 침, 신전이 점. */
   .jn__nav {
@@ -712,6 +733,7 @@
             </span>
           </div>
           <p class="jn__tick" id="jn-tick" aria-hidden="true"></p>
+<p class="jn__title" id="jn-title" aria-hidden="true">최희준<i>의료 마케팅 12년 — 걸어서 읽는 이력서</i></p>
           <canvas class="jn__nav" id="jn-nav" width="232" height="232" aria-hidden="true"></canvas>
           <!-- a button, not a caption: on touch there is no Enter key, and this
                is the only thing on screen that offers to open a door -->
@@ -2977,6 +2999,12 @@ function drawNav() {
          알아서 내려앉습니다. 조작은 잠그지 않습니다 — 첫 걸음과 하강이 겹쳐도
          저니의 오프닝처럼 자연스럽습니다. */
       camBack = 30; camUp = 16;
+      /* 타이틀 카드 — 하강하는 동안 산 위에 떠 있다가 첫 자막 전에 비켜줍니다 */
+      var ttl = document.getElementById('jn-title');
+      if (ttl) {
+        ttl.classList.add('on');
+        setTimeout(function () { ttl.classList.remove('on'); }, 3600);
+      }
       chEl.textContent = scene + ' / 10';
       statEl.textContent = GLOK ? '걷는 중' : '그림 없이 진행 중';
       if (cv.focus) cv.focus();

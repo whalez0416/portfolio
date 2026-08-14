@@ -129,6 +129,13 @@
 
 <canvas id="gl"></canvas>
 <div class="say"><b id="line"></b></div>
+<div id="title" style="position:absolute;left:0;right:0;top:19%;pointer-events:none;
+  text-align:center;color:#FFF9EA;font-weight:200;font-size:clamp(1.5rem,4vw,2.9rem);
+  letter-spacing:.72em;text-indent:.72em;
+  background:radial-gradient(46% 40% at 50% 44%, rgba(50,26,10,.34) 0%, rgba(50,26,10,0) 100%);text-shadow:0 0 18px rgba(255,240,200,.95),0 0 46px rgba(255,190,90,.6),0 2px 16px rgba(55,25,8,.8);
+  opacity:0;transition:opacity 1.6s ease;">최희준<i style="display:block;font-style:normal;
+  letter-spacing:.3em;text-indent:.3em;font-size:clamp(.6rem,1.15vw,.82rem);margin-top:.85rem;
+  color:rgba(255,246,230,.78);">의료 마케팅 12년 — 걸어서 읽는 이력서</i></div>
 <div class="badge">2014</div>
 <div class="hint" id="hint">↑ 걷기 &nbsp;·&nbsp; ← → 방향 &nbsp;·&nbsp; 산 쪽으로, 유적을 찾아보세요</div>
 <div class="enter" id="enter"></div>
@@ -1976,4 +1983,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+/* 타이틀 카드 — 인트로 하강과 같은 호흡 */
+const ttl = document.getElementById('title');
+setTimeout(() => ttl.style.opacity = 1, 350);
+setTimeout(() => ttl.style.opacity = 0, 3900);
 </script>
