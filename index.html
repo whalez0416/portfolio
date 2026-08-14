@@ -2591,10 +2591,39 @@ let footI = 0, footN = 0, footAcc = 0, footSide = 1;   /* 그림자를 드리우
         o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + len);
       } catch (e) { snd = false; }
     }
+    /* 바람 — 파일 없이 브라운 노이즈 루프. 사막의 바닥 소리라서 이것 하나로
+       "무음의 어색함"이 사라집니다. 게인은 프레임 루프가 걷기·활강을 따라 몰고,
+       소리를 끄면 컨텍스트째 재웁니다. */
+    let wind = null;
+    function windStart() {
+      if (!snd || wind) return;
+      try {
+        if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+        const len = 2 * AC.sampleRate;
+        const buf = AC.createBuffer(1, len, AC.sampleRate);
+        const d = buf.getChannelData(0);
+        let v = 0;
+        for (let i = 0; i < len; i++) { v = v*0.98 + (Math.random()*2 - 1)*0.02; d[i] = v*3; }
+        const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+        const lp = AC.createBiquadFilter(); lp.type = 'lowpass';
+        lp.frequency.value = 420; lp.Q.value = 0.4;
+        const g = AC.createGain(); g.gain.value = 0.0;
+        src.connect(lp); lp.connect(g); g.connect(AC.destination);
+        src.start();
+        wind = { g: g, lp: lp };
+      } catch (e) { wind = null; }
+    }
     const SFX = {
       door:   function () { beep(320, .18, 'sine', .05); },
-      reveal: function () { beep(180, .5, 'triangle', .07); beep(540, .6, 'sine', .04); },
-      end:    function () { beep(240, .7, 'sine', .05); }
+      /* 랜턴 — 이 게임의 전부인 순간. 블립 둘로는 모자라서 화음을 폅니다 */
+      reveal: function () {
+        beep(220, 1.2, 'sine', .05);
+        setTimeout(function () { beep(330, 1.1, 'sine', .045); }, 180);
+        setTimeout(function () { beep(440, 1.0, 'triangle', .04); }, 360);
+        setTimeout(function () { beep(554, 1.6, 'sine', .035); }, 540);
+      },
+      end:    function () { beep(240, .7, 'sine', .05); beep(360, 1.1, 'sine', .03); },
+      step:   function () { beep(82 + Math.random()*18, .07, 'sine', .016); }
     };
 function sayLine(s, secs) {          /* 대기열 무시하고 바로 — 랜턴 전환용 */
   lineQueue.length = 0;
@@ -2884,6 +2913,8 @@ function drawNav() {
     const sndBtn = document.getElementById('jn-snd');
     if (sndBtn) sndBtn.addEventListener('click', function () {
       snd = !snd;
+      if (snd) { windStart(); if (AC && AC.resume) AC.resume(); }
+      else if (AC && AC.suspend) AC.suspend();
       sndBtn.setAttribute('aria-pressed', snd ? 'true' : 'false');
       sndBtn.setAttribute('aria-label', snd ? '소리 끄기' : '소리 켜기');
       sndBtn.textContent = snd ? '♪ 소리 켬' : '♪ 소리';
@@ -2946,6 +2977,12 @@ function frame(now) {
   spdK += (Math.max(.55, Math.min(2.1, 1 - slopeF*2.1)) - spdK)
           * Math.min(1, (glide > .1 ? 5.0 : 2.5)*dt);
   const steer = (keys.r?1:0) - (keys.l?1:0);
+  /* 바람 — 서 있으면 잦아들고, 걸으면 일고, 활강에선 몰아칩니다 */
+  if (wind) {
+    const wg = snd ? (0.045 + walkA*0.03 + glide*0.07) : 0;
+    wind.g.gain.value += (wg - wind.g.gain.value) * Math.min(1, 2.5*dt);
+    wind.lp.frequency.value = 420 + glide*380;
+  }
 
   if (keys.f) {
     /* 맥동은 있되 들리지 않게: 0.4 진폭 |sin| 은 로봇 걸음이었습니다.
@@ -2978,6 +3015,7 @@ function frame(now) {
       FOOT[footI*4+2] = glide > .3 ? 0.95 : 0.52;
       FOOT[footI*4+3] = el;
       footI = (footI + 1) % 24; footN = Math.min(24, footN + 1);
+      if (glide < .3) SFX.step();
     }
   }
   /* 문으로 걸어 들어가면 그대로 들어가집니다 — Enter 를 기다리지 않습니다.
