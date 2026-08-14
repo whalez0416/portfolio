@@ -1651,7 +1651,7 @@ void main(){
     float spec = pow(max(dot(reflect(-normalize(uSun), n), normalize(uCam - vW)), 0.0), 22.0);
     c += vec3(1.0,0.86,0.6) * step(0.994, g) * spec * uGlit * 7.0 * near;
     /* 해를 향해 걸을 때 사막 전체에 깔리는 반짝임 띠 — 저니의 그 바다 같은 면 */
-    c += vec3(1.0,0.80,0.50) * spec * uGlit * 0.80;
+    c += vec3(1.05,0.72,0.32) * spec * uGlit * 0.55;
     /* 모래알 — 매끈한 플라스틱을 죽이는 가는 입자. 근경에만 */
     float grn = fract(sin(dot(floor(vW.xz*23.0), vec2(41.113,289.97)))*43758.5453);
     c *= 1.0 + (grn - 0.5) * 0.11 * near;
@@ -2382,9 +2382,15 @@ const P = {
   /* 저니 사막의 절반은 색 대비입니다: 해가 닿는 면은 진한 주황,
      그늘은 모래 갈색이 아니라 차가운 보라입니다. 그늘이 갈색이면
      아무리 굴곡이 있어도 흙더미로 보입니다. */
-  lit:  [1.04, 0.60, 0.19],     /* 볕 면은 더 진한 주황 — 1 을 살짝 넘겨 블룸이 받게 */
-  dark: [0.17, 0.095, 0.07],    /* 그늘은 더 깊은 탄 갈색. 얕은 그늘 = 대비 없음 = 밋밋함 */
-  sun:  [0.42, 0.42, -1.0],
+  lit:  [1.10, 0.62, 0.20],     /* 능선 너머 볕 면 — 1 을 넘겨 블룸이 받게 */
+  dark: [0.42, 0.225, 0.115],   /* 역광의 그늘은 죽은 색이 아니라 빛이 도는 호박색 —
+                                   하늘과 모래가 서로 비춰주는 사막의 그늘 */
+  /* 해는 하나여야 합니다. 하늘의 해 원반도, 긴 그림자도, 인물 키도 전부
+     정면(+z) 지평선의 해를 가리키는데 지형 디퓨즈만 등 뒤(-z)에서 쏘고
+     있었습니다 — 보이는 언덕 면이 죄다 순광으로 고르게 밝아서, 무엇을
+     얹어도 밋밋했던 근본 원인. 이제 지형도 역광입니다: 능선 너머가 타고,
+     보이는 사면은 그늘이 됩니다. 저니가 해를 향해 걷는 게임인 이유. */
+  sun:  [0.15, 0.28, 0.95],
   mtn:  [0.33, 0.255, 0.22]
 };
 
@@ -3221,16 +3227,16 @@ function frame(now) {
   /* 신전은 사막과 같은 돌입니다: 볕 면은 모래의 주황 가족, 그늘은 지형과
      같은 차가운 보라. 베이지 상자였을 때 "배경에 오려붙인 건물"로 보였던
      이유가 이 두 상수였습니다. */
-  gl.uniform3fv(uni.lit.litc, [0.92,0.53,0.22]);
-  gl.uniform3fv(uni.lit.dark, [0.19,0.115,0.085]);
+  gl.uniform3fv(uni.lit.litc, [0.98,0.56,0.23]);
+  gl.uniform3fv(uni.lit.dark, [0.40,0.215,0.115]);   /* 역광의 돌 — 모래가 되쏘는 바운스 */
   TEMPLES.forEach((t, ti) => {
     gl.uniformMatrix4fv(uni.lit.model, false, mul(trs(t.x, t.y, t.z, t.yaw, 1), rotZ(t.tilt)));
     gl.bindVertexArray(templeMeshes[ti].vao);
     gl.drawArrays(gl.TRIANGLES, 0, templeMeshes[ti].n);
   });
   /* 돌무지 — 유적과 같은 돌이되 조금 어둡게. 월드 좌표로 구워 뒀으니 모델은 단위행렬 */
-  gl.uniform3fv(uni.lit.litc, [0.80,0.44,0.18]);
-  gl.uniform3fv(uni.lit.dark, [0.16,0.10,0.08]);
+  gl.uniform3fv(uni.lit.litc, [0.84,0.46,0.19]);
+  gl.uniform3fv(uni.lit.dark, [0.33,0.18,0.10]);
   gl.uniformMatrix4fv(uni.lit.model, false, ident());
   gl.bindVertexArray(cairns.vao);
   gl.drawArrays(gl.TRIANGLES, 0, cairns.n);
@@ -3248,8 +3254,8 @@ function frame(now) {
   /* 모래 둔덕 — 사막과 같은 모래색, 지형과 같은 그늘.
      이 지점은 발광(emit=1) 블록 한가운데라, 껐다가 문양 전에 다시 켭니다 */
   gl.uniform1f(uni.lit.emit, 0.0);
-  gl.uniform3fv(uni.lit.litc, [1.02, 0.59, 0.19]);
-  gl.uniform3fv(uni.lit.dark, [0.17, 0.10, 0.075]);
+  gl.uniform3fv(uni.lit.litc, [1.06, 0.61, 0.20]);
+  gl.uniform3fv(uni.lit.dark, [0.42, 0.225, 0.115]);
   gl.bindVertexArray(templeSkirt.vao);
   for (const t of TEMPLES) {
     gl.uniformMatrix4fv(uni.lit.model, false, trs(t.x, t.y + 1.05, t.z, t.yaw, 1));
@@ -3266,7 +3272,7 @@ function frame(now) {
   gl.uniform1f(uni.lit.emit, 0.0);
   /* 빈 문틀 — 불도 안 켜지고, 들어가지지도 않습니다. 볕을 덜 받는 죽은 돌 */
   gl.uniform3fv(uni.lit.litc, [0.52,0.38,0.30]);
-  gl.uniform3fv(uni.lit.dark, [0.17,0.12,0.10]);
+  gl.uniform3fv(uni.lit.dark, [0.26,0.17,0.13]);
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
