@@ -415,6 +415,14 @@ void main(){
       sh *= 1.0 - 0.40 * exp(-max(e2, 0.0) * 1.7);
     }
     c *= max(sh, 0.42);                            /* 겹쳐도 새까매지지는 않게 */
+    /* 발자국 — 지나온 자리가 잠깐 눌려 있습니다. 9초에 걸쳐 모래가 메웁니다 */
+    for (int i = 0; i < 24; i++) {
+      if (i >= uFootN) break;
+      vec2 fo = vW.xz - uFoot[i].xy;
+      float fe = dot(fo, fo) / (uFoot[i].z * uFoot[i].z);
+      float ff = clamp(1.0 - (uTime - uFoot[i].w) / 16.0, 0.0, 1.0);
+      c *= 1.0 - 0.45 * ff * exp(-fe * 1.2);
+    }
   }
   float f = 1.0 - exp(-dist*dist*uFog);
   frag = vec4(mix(c, uHaze, clamp(f,0.0,1.0)), 1.0);
@@ -423,7 +431,8 @@ const lit = program(litVS.replace('uniform vec3 uCam;',
   'uniform vec3 uCam;'),
   litFS.replace('uniform float uFog, uGlit, uEmit;',
   'uniform float uFog, uGlit, uEmit, uPY, uTime;\nuniform vec2 uPXZ;\n' +
-  'uniform vec4 uCast[24];\nuniform int uCastN;'));
+  'uniform vec4 uCast[24];\nuniform int uCastN;\n' +
+  'uniform vec4 uFoot[24];\nuniform int uFootN;'));
 
 /* 멀리 있는 산 — 저니는 처음부터 끝까지 목표가 지평선에 보입니다.
    안개를 거의 안 먹여서, 뿌옇지만 절대 사라지지 않게 둡니다. */
@@ -453,7 +462,8 @@ const uni = {
           cam:U(lit,'uCam'), sun:U(lit,'uSun'), litc:U(lit,'uLit'), dark:U(lit,'uDark'),
           haze:U(lit,'uHaze'), fog:U(lit,'uFog'), glit:U(lit,'uGlit'), emit:U(lit,'uEmit'),
           pxz:U(lit,'uPXZ'), py:U(lit,'uPY'), time:U(lit,'uTime'),
-          cast:U(lit,'uCast'), castN:U(lit,'uCastN') },
+          cast:U(lit,'uCast'), castN:U(lit,'uCastN'),
+          foot:U(lit,'uFoot'), footN:U(lit,'uFootN') },
   far:  { vp:U(farProg,'uVP'), model:U(farProg,'uModel'), haze:U(farProg,'uHaze'),
           tint:U(farProg,'uTint'), mix:U(farProg,'uMix'), cam:U(farProg,'uCam') }
 };
@@ -667,6 +677,7 @@ const slotCrowd = dynSlot(4000);
 const slotScarf = dynSlot(400);
 const slotMotes = dynSlot(600);
 const slotBanner = dynSlot(4000);
+const slotWisps = dynSlot(300);
 
 /* 깃발 천 — 신전 앞 두 기둥 끝에서 펄럭입니다. 저니 유적의 서명 같은 물건이고,
    정지된 돌 무더기에 "지금도 바람이 분다"를 얹는 유일한 움직임입니다.
@@ -710,6 +721,36 @@ function buildMotes(el2, cx2, cz2) {
     const s = 0.055 + (i%4)*0.02;
     m.tri([x-s,y,z],[x+s,y,z],[x,y+s*2.2,z], 0, 2);
     m.tri([x,y,z-s],[x,y,z+s],[x,y+s*2.2,z], 0, 2);
+  }
+  return m;
+}
+
+/* 능선 모래 연기 — 마루에서 바람에 흩날리는 모래알. 저니 사막의 서명이고,
+   "사막이 살아 있다"의 절반입니다. 등성이 항(1-|sin|)의 마루선이 해석적이라
+   (기울기 0.031,-0.017), 아무 점이나 가장 가까운 마루로 사영해 얹습니다. */
+function buildWisps(el2, cx2, cz2) {
+  const m = new FMesh();
+  const gx = 0.0310, gz = -0.0170, gm = Math.hypot(gx, gz);
+  for (let i = 0; i < 30; i++) {
+    const a0 = i*2.399, r = 12 + (i*89 % 70);
+    let x = cx2 + Math.cos(a0)*r, z = cz2 + Math.sin(a0)*r;
+    const u = x*gx + z*gz + 0.8;
+    const du = u - Math.round(u/Math.PI)*Math.PI;
+    x -= du*gx/(gm*gm); z -= du*gz/(gm*gm);          /* 마루선 위로 */
+    /* 등성이 항만의 마루라서, 다른 사인 항이 마루를 옮긴 자리면 흰 색종이가
+       사면 한가운데 떠 있게 됩니다 — 실제로 양옆보다 높은 자리만 씁니다 */
+    const nx2 = gx/gm, nz2 = gz/gm, hC = height(x, z);
+    if (hC < height(x + nx2*2.2, z + nz2*2.2) || hC < height(x - nx2*2.2, z - nz2*2.2)) continue;
+    const tx = -gz/gm, tz = gx/gm;                    /* 마루 접선 = 바람 길 */
+    const sp = 3.0 + (i%4)*0.8;
+    const off = ((el2*sp + i*7.3) % 11) - 3;
+    for (let k = 0; k < 3; k++) {
+      const wx = x + tx*(off + k*0.55) + Math.sin(el2*2.1 + i + k)*0.2;
+      const wz = z + tz*(off + k*0.55);
+      const wy = height(wx, wz) + 0.14 + k*0.10 + Math.sin(el2*3.0 + i*1.3 + k)*0.08;
+      const s = 0.038 + (k === 1 ? 0.018 : 0);
+      m.tri([wx-s,wy,wz],[wx+s,wy,wz],[wx,wy+s*1.8,wz], 0, 2);
+    }
   }
   return m;
 }
@@ -1288,6 +1329,32 @@ function goIn(t) {
 }
 let lantern = false, ended = false;
 const CASTS = new Float32Array(24 * 4);
+/* 발자국 링버퍼 — (x, z, 반지름, 찍힌 시각). 잊히는 건 셰이더가 uTime 으로 합니다 */
+const FOOT = new Float32Array(24 * 4);
+let footI = 0, footN = 0, footAcc = 0, footSide = 1;
+/* 흩어진 잔해 — 유적 사이의 사막이 비어 있으면 미니멀이 아니라 미완성입니다.
+   반쯤 묻힌 돌덩이·부러진 기둥 토막·넘어진 상인방이 "여기 문명이 있었다"를 깝니다. */
+const MAIN_X = (z) => MOUNTAIN.x * z / MOUNTAIN.z;
+const relics = (() => {
+  const v = [];
+  const H = (k) => { const x = Math.sin(k*127.1)*43758.5453; return x - Math.floor(x); };
+  let n = 0;
+  for (let i = 1; n < 64 && i < 500; i++) {
+    const z = 4 + H(i*3+1)*428;
+    const x = MAIN_X(z) + (H(i*3+2) - 0.5)*120;
+    let bad = Math.hypot(VOIDF.x - x, VOIDF.z - z) < 10;
+    for (const t of TEMPLES) if (Math.hypot(t.x - x, t.z - z) < 14) { bad = true; break; }
+    if (bad) continue;
+    const g = height(x, z), r = H(i*7+3), sz = 0.5 + r*0.9;
+    if (r < 0.62) box(v, x, g + sz*0.25, z, sz, sz*0.55, sz*0.8);
+    else if (r < 0.87) {
+      box(v, x, g + 0.5, z, 0.42, 0.65, 0.42);
+      box(v, x + 0.9 + r, g + 0.16, z + 0.5, 0.40, 0.24, 0.40);
+    } else box(v, x, g + 0.2, z, 1.5, 0.28, 0.5);
+    n++;
+  }
+  return mesh(new Float32Array(v));
+})();
 const finEl = document.getElementById('fin');
 document.getElementById('fin-again').addEventListener('click', () => location.reload());
 function goOut() {
@@ -1414,6 +1481,17 @@ function frame(now) {
       else { P0.x = ox; P0.z = oz; }
     }
     moved += v * dt;
+    /* 발자국 — 걸음마다 좌우 번갈아 한 점, 활강은 넓게 한 줄(썰매 자국) */
+    footAcc += v * dt;
+    if (footAcc > (glide > .3 ? 0.8 : 1.15)) {
+      footAcc = 0; footSide = -footSide;
+      const sideO = glide > .3 ? 0 : footSide * 0.22;
+      FOOT[footI*4]   = P0.x - fx*0.5 + fz*sideO;
+      FOOT[footI*4+1] = P0.z - fz*0.5 - fx*sideO;
+      FOOT[footI*4+2] = glide > .3 ? 0.95 : 0.52;
+      FOOT[footI*4+3] = el;
+      footI = (footI + 1) % 24; footN = Math.min(24, footN + 1);
+    }
   }
   /* 문으로 걸어 들어가면 그대로 들어가집니다 — Enter 를 기다리지 않습니다.
      문 앞에서 키를 누르는 건 "읽으시겠습니까"이고, 문지방을 넘는 건 이미 대답입니다. */
@@ -1555,6 +1633,8 @@ function frame(now) {
     }
     gl.uniform4fv(uni.lit.cast, CASTS);
     gl.uniform1i(uni.lit.castN, n2);
+    gl.uniform4fv(uni.lit.foot, FOOT);
+    gl.uniform1i(uni.lit.footN, footN);
   }
   gl.uniform3fv(uni.lit.litc, P.lit); gl.uniform3fv(uni.lit.dark, P.dark);
   gl.uniform1f(uni.lit.glit, 1.0);
@@ -1609,6 +1689,12 @@ function frame(now) {
   gl.bindVertexArray(voidMesh.vao);
   gl.uniformMatrix4fv(uni.lit.model, false, trs(VOIDF.x, VOIDF.y, VOIDF.z, VOIDF.yaw, 1));
   gl.drawArrays(gl.TRIANGLES, 0, voidMesh.n);
+  /* 흩어진 잔해 — 유적과 같은 돌이되 조금 어둡게 */
+  gl.uniform3fv(uni.lit.litc, [0.78,0.48,0.24]);
+  gl.uniform3fv(uni.lit.dark, [0.20,0.13,0.11]);
+  gl.uniformMatrix4fv(uni.lit.model, false, ident());
+  gl.bindVertexArray(relics.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, relics.n);
 
   /* ── 인물들 — 06의 조각과 조명으로 ── */
   gl.useProgram(figProg);
@@ -1695,6 +1781,12 @@ function frame(now) {
     gl.bindVertexArray(slotBanner.vao);
     gl.drawArrays(gl.TRIANGLES, 0, slotBanner.n);
   }
+  /* 능선 모래 연기 — 랜턴과 무관하게 늘 붑니다 */
+  slotWisps.set(buildWisps(el, px, pz));
+  gl.uniform3fv(uniFig.c2, [0.90, 0.66, 0.40]);
+  gl.uniformMatrix4fv(uniFig.m, false, ident());
+  gl.bindVertexArray(slotWisps.vao);
+  gl.drawArrays(gl.TRIANGLES, 0, slotWisps.n);
   gl.enable(gl.CULL_FACE);
 
   /* ── 후처리 체인 ── */
