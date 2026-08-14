@@ -1920,7 +1920,7 @@ function buildFigure(walk, ph, plain) {
   /* ── 걸음의 몸짓 ──
      어깨·후드는 걸음과 반대로 살짝 감기고(역회전), 옷단은 좌우로 스윙.
      발보다 먼저 돌립니다 — 발은 땅에 붙어야 하니까. */
-  const tw = walk * Math.sin(ph) * 0.09;
+  const tw = walk * Math.sin(ph) * 0.065;
   for (let k = 0; k < m.p.length; k += 3) {
     const y = m.p[k+1];
     const f = Math.min(1, Math.max(0, (y - 0.75) / 0.6));
@@ -1929,7 +1929,7 @@ function buildFigure(walk, ph, plain) {
       const x = m.p[k], z = m.p[k+2];
       m.p[k] = x*cc - z*ss; m.p[k+2] = x*ss + z*cc;
     }
-    if (y < 0.62) m.p[k] += walk * Math.sin(ph) * 0.055 * (1 - y/0.62);
+    if (y < 0.62) m.p[k] += walk * Math.sin(ph) * 0.038 * (1 - y/0.62);
   }
   /* 발 — 스윙 반 박자(들려서 앞으로), 디딤 반 박자(로브 밑에서 뒤로).
      앞으로 차는 순간만 옷단 밖으로 나옵니다 — 로브 실루엣은 안 건드리고
@@ -1937,7 +1937,7 @@ function buildFigure(walk, ph, plain) {
   const foot = (side, phase) => {
     const sw = Math.sin(phase);
     const fz = Math.cos(phase) * 0.34 * walk - 0.10;       /* 앞이 로컬 -z */
-    const fy = Math.max(0, sw) * 0.12 * walk;
+    const fy = Math.max(0, sw) * 0.075 * walk;   /* 발을 높이 들면 행진이 된다 */
     const fx = side * 0.13;
     const hx = 0.055, hy = 0.10, hz = 0.10;
     const b0 = [fx-hx, fy+0.005, fz-hz], b1 = [fx+hx, fy+0.005, fz-hz],
@@ -3103,7 +3103,8 @@ function frame(now) {
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
   walkA += ((keys.f ? 1 : 0) - walkA) * Math.min(1, 4*dt);   /* 출발·정지를 부드럽게 */
   walkS += (walkA - walkS) * Math.min(1, 7*dt);
-  const ph = moved * 1.45;                                    /* 걸음 위상 = 거리 */
+  const ph = moved * 1.12;                                    /* 걸음 위상 = 거리. 1.45 는
+                                             잰걸음이라 통통 튀었다 — 순례자는 성큼성큼 */
 
   /* 경사가 속도를 정합니다 — 사막이니까. 오르막은 무겁고(최저 0.55배)
      내리막은 모래에 실려 내려갑니다(최대 1.5배). 급히 바뀌지 않도록 걸러서,
@@ -3128,7 +3129,7 @@ function frame(now) {
        sin² 라 꺾임이 없고, 활강에선 걸음 자체가 사라집니다 — 발이 땅을 안 딛으니까. */
     const ox = P0.x, oz = P0.z;
     const s2 = Math.sin(ph)*Math.sin(ph);
-    const pulse = (0.93 + 0.13*s2) * (1 - glide*0.7) + glide*1.15;
+    const pulse = (0.965 + 0.055*s2) * (1 - glide*0.7) + glide*1.15;   /* 맥동은 흔적만 */
     const v = SPEED * spdK * pulse;
     P0.x += fx * v * dt; P0.z += fz * v * dt;
     /* 활강 중 조향은 걷는 회전이 아니라 카빙 — 옆으로 실제로 흘러갑니다 */
@@ -3146,7 +3147,7 @@ function frame(now) {
     moved += v * dt;
     /* 발자국 — 걸음마다 좌우 번갈아 한 점, 활강은 넓게 한 줄(썰매 자국) */
     footAcc += v * dt;
-    if (footAcc > (glide > .3 ? 0.8 : 1.15)) {
+    if (footAcc > (glide > .3 ? 0.8 : 1.4)) {
       footAcc = 0; footSide = -footSide;
       const sideO = glide > .3 ? 0 : footSide * 0.22;
       FOOT[footI*4]   = P0.x - fx*0.5 + fz*sideO;
@@ -3210,8 +3211,8 @@ function frame(now) {
      활강 중에 몸이 뚝딱거리면 그 순간 걷기가 아니라 기계가 됩니다.
      전부 위상 ph(거리)에 묶여 있어 발과 땅이 밀리지 않습니다. */
   const calm  = 1 - glide*0.85;                          /* 활강 중엔 걸음의 몸짓이 거의 사라짐 */
-  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.038 * calm - glide*0.05;  /* 모래에 살짝 가라앉음 */
-  const rock  = walkA * Math.sin(ph) * 0.026 * calm
+  const walk  = walkA * Math.abs(Math.sin(ph)) * 0.021 * calm - glide*0.05;  /* 모래에 살짝 가라앉음 */
+  const rock  = walkA * Math.sin(ph) * 0.017 * calm
               + steer * glide * 0.10;                    /* 카빙 — 조향 쪽으로 기욺 */
   const pitchG= walkA * (0.045 + glide*0.12);            /* 활강에선 몸이 실림 */
   /* 지형 기울기 따라 눕기 — 언덕을 오르는데 몸이 수직이면 그게 곧 "떠 있음"입니다 */
@@ -3445,8 +3446,8 @@ function frame(now) {
        무리도 걷습니다 — 서 있는 사람은 바운스 없이 서 있습니다. */
     const cph = el*3.0 + c.t*7, mv = spd > 0 ? 1 : 0;
     gl.uniformMatrix4fv(uniFig.m, false,
-      mul(trs(c.x, height(c.x, c.z) + Math.abs(Math.sin(cph))*0.05*mv, c.z, heading + Math.PI, 1),
-          rotZ(Math.sin(cph)*0.04*mv)));
+      mul(trs(c.x, height(c.x, c.z) + Math.abs(Math.sin(cph))*0.028*mv, c.z, heading + Math.PI, 1),
+          rotZ(Math.sin(cph)*0.026*mv)));
     gl.uniform1f(uniFig.puff, 0.048); gl.uniform1f(uniFig.ink, 1.0);
     gl.drawArrays(gl.TRIANGLES, 0, slotCrowd.n);
     gl.uniform1f(uniFig.puff, 0.0); gl.uniform1f(uniFig.ink, 0.0);
@@ -3463,13 +3464,14 @@ function frame(now) {
   /* 스쿼시&스트레치 — 미는 발에서 늘고(1.03) 딛는 발에서 눌립니다(0.97).
      부피 보존: 가로는 세로의 역제곱근. 출발 직전엔 살짝 웅크리고(예비동작),
      서면 walkS 가 늦게 따라오며 반동으로 자세가 정리됩니다(오버슈트 이징). */
-  const stretch = walkA * Math.sin(ph*2.0) * 0.033 * calm;
-  const antic   = keys.f ? Math.max(0, 0.22 - walkA) * 0.35 : 0;
+  /* 스쿼시&스트레치 0.033 은 젤리였다 — 순례자는 튀지 않는다. 흔적만 */
+  const stretch = walkA * Math.sin(ph*2.0) * 0.009 * calm;
+  const antic   = keys.f ? Math.max(0, 0.22 - walkA) * 0.20 : 0;
   const breath  = (1 - walkA) * Math.sin(el*1.4) * 0.010;   /* 서 있어도 숨은 쉽니다 */
   const sy  = 1 + stretch - antic + breath;
   const sxz = 1 / Math.sqrt(Math.max(0.7, sy));
   const scl = M4(); scl[0] = sxz; scl[5] = sy; scl[10] = sxz; scl[15] = 1;
-  const surge = (walkA - walkS) * 0.55;          /* +가속 앞쏠림 / -정지 뒷반동 */
+  const surge = (walkA - walkS) * 0.28;          /* +가속 앞쏠림 / -정지 뒷반동, 절제 */
   const me = mul(trs(px, py + walk, pz, yaw + Math.PI, 1),
                  mul(rotX(-(tPitch + pitchG + surge)), mul(rotZ(rock - tRoll), scl)));
   gl.uniformMatrix4fv(uniFig.m, false, me);
