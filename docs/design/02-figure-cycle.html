@@ -1,0 +1,262 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>body{margin:0;background:#0a0a0d;display:flex;flex-direction:column;gap:20px;padding:20px}
+canvas{display:block}</style>
+<canvas id="cycle" width="1760" height="760"></canvas>
+<canvas id="scene" width="1600" height="900"></canvas>
+<script>
+const TAU = Math.PI * 2;
+
+/* ============================================================
+   Back-view runner, take 2.
+
+   Take 1 failed because both legs used fold = 0.5 - 0.5·sin(p) at π apart,
+   which makes them IDENTICAL at t=0 and t=0.5, and a sinusoid loiters near
+   the middle. A run is not sinusoidal: it is a long stance with the foot
+   pinned to the ground, then a short violent swing with the heel snapping up
+   to the buttock. Legs are now solved with two-bone IK against an explicit
+   foot path, so during stance the foot really is on the floor.
+   ============================================================ */
+const L = {
+  ground: 0.0, hip: 0.500, waist: 0.610, shoulder: 0.800, crown: 0.945,
+  hipHW: 0.050, shHW: 0.105, headRX: 0.055, headRY: 0.067,
+  thigh: 0.240, shin: 0.225,
+  thighW: 0.062, shinW: 0.046, upperW: 0.045, foreW: 0.033,
+  upperArm: 0.150, foreArm: 0.145
+};
+
+/* foot path for one leg. u = 0 at contact.
+   NO inverse kinematics here. Two-bone IK flings the knee sideways by up to a
+   quarter of body height once the leg folds and the hip-to-ankle distance
+   collapses — from behind that reads as a cancan kick, not a stride. Seen from
+   behind a folded knee travels almost straight INTO the screen, so the honest
+   projection is a foreshortened (shorter) limb, not a splayed one. Joints are
+   therefore placed directly, with lateral travel kept deliberately tiny. */
+function footPath(u) {
+  u = u - Math.floor(u);
+  if (u < 0.42) {                                  // stance — pinned to the floor
+    const k = u / 0.42;
+    return {
+      y: 0.010 + 0.085 * Math.max(0, k - 0.72) / 0.28,   // heel peels at toe-off
+      lift: 0,
+      squash: 0.03 * Math.sin(k * Math.PI)               // knee bends under load
+    };
+  }
+  const k = (u - 0.42) / 0.58;                     // swing — heel snaps to the buttock
+  const arc = Math.sin(k * Math.PI);
+  const hard = Math.pow(arc, 0.72);
+  return { y: 0.015 + 0.415 * hard, lift: hard, squash: 0 };
+}
+
+function seg(g, x0, y0, x1, y1, w, h, baseY, cx) {
+  g.lineWidth = Math.max(0.8, w * h);
+  g.beginPath();
+  g.moveTo(cx + x0 * h, baseY - y0 * h);
+  g.lineTo(cx + x1 * h, baseY - y1 * h);
+  g.stroke();
+}
+
+function runner(g, cx, baseY, h, t, fill, opts) {
+  opts = opts || {};
+  const u = t - Math.floor(t);
+  const p = u * TAU;
+  const bob = -0.026 * Math.cos(2 * p) - 0.010;
+  const shTilt  =  0.055 * Math.cos(p);      // shoulder line rises on one side
+  const hipTilt = -0.030 * Math.cos(p);
+  const sway    =  0.012 * Math.cos(p);      // whole body drifts side to side
+
+  g.save();
+  if (opts.blur) g.filter = 'blur(' + opts.blur + 'px)';
+  g.fillStyle = fill; g.strokeStyle = fill;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const P = (x, y) => [cx + (x + sway) * h, baseY - (y + bob) * h];
+
+  /* ---------- legs ---------- */
+  const legs = [];
+  for (const side of [-1, 1]) {
+    const f = footPath(u + (side < 0 ? 0 : 0.5));
+    const hipX = side * L.hipHW + sway;
+    const hipY = L.hip + bob + hipTilt * side * 0.30;
+    /* thigh foreshortens as the knee drives forward; lateral travel stays tiny
+       because from behind the knee goes away from you, not out to the side */
+    const kx = hipX + side * (0.008 + 0.030 * f.lift);
+    const ky = hipY - L.thigh * (1 - 0.46 * f.lift) + f.squash;
+    const ankX = kx + side * (0.004 + 0.014 * f.lift);
+    const ankY = L.ground + f.y + bob;
+    legs.push({ hipX, hipY, kx, ky, ankX, ankY, lift: f.lift, side });
+  }
+  legs.sort((a, b) => b.lift - a.lift);          // swinging leg behind the planted one
+  for (const lg of legs) {
+    seg(g, lg.hipX, lg.hipY - bob, lg.kx, lg.ky - bob, L.thighW, h, baseY, cx);
+    seg(g, lg.kx, lg.ky - bob, lg.ankX, lg.ankY - bob, L.shinW, h, baseY, cx);
+    const toeX = lg.ankX + lg.side * (0.024 - 0.014 * lg.lift);
+    const toeY = lg.ankY - bob + 0.030 * lg.lift - 0.004;
+    seg(g, lg.ankX, lg.ankY - bob, toeX, toeY, L.shinW * 0.85, h, baseY, cx);
+  }
+
+  /* ---------- torso ---------- */
+  const shLy = L.shoulder + shTilt, shRy = L.shoulder - shTilt;
+  const hpLy = L.hip + hipTilt,     hpRy = L.hip - hipTilt;
+  g.beginPath();
+  g.moveTo(...P(-L.shHW, shLy));
+  g.quadraticCurveTo(...P(-L.shHW * 0.86, L.waist), ...P(-L.hipHW - 0.010, hpLy));
+  g.lineTo(...P(L.hipHW + 0.010, hpRy));
+  g.quadraticCurveTo(...P(L.shHW * 0.86, L.waist), ...P(L.shHW, shRy));
+  g.quadraticCurveTo(...P(0, L.shoulder + 0.042), ...P(-L.shHW, shLy));
+  g.closePath();
+  g.fill();
+
+  /* ---------- arms: elbows flare out, hands ride up and down ---------- */
+  for (const side of [-1, 1]) {
+    const q = p + (side < 0 ? Math.PI : 0);
+    const sw = Math.cos(q);                        // +1 forward, -1 back
+    const shX = side * L.shHW * 0.88 + sway;
+    const shY = (side < 0 ? shLy : shRy) - 0.012;
+    const elbX = shX + side * (0.052 + 0.030 * Math.max(0, -sw));
+    const elbY = shY - L.upperArm + 0.030 * sw;
+    const hndX = elbX - side * (0.040 + 0.030 * Math.max(0, sw));
+    const hndY = elbY + 0.038 + 0.115 * sw;
+    seg(g, shX, shY, elbX, elbY, L.upperW, h, baseY, cx);
+    seg(g, elbX, elbY, hndX, hndY, L.foreW, h, baseY, cx);
+  }
+
+  /* ---------- neck + head ---------- */
+  seg(g, sway, L.shoulder, sway + shTilt * 0.30, L.shoulder + 0.055, 0.055, h, baseY, cx);
+  const hx = cx + (sway + shTilt * 0.45) * h;
+  const hy = baseY - (L.crown - L.headRY + bob) * h;
+  g.beginPath();
+  g.ellipse(hx, hy, L.headRX * h, L.headRY * h, shTilt * 1.4, 0, TAU);
+  g.fill();
+  g.filter = 'none';
+
+  /* ---------- rim light ---------- */
+  if (opts.rim) {
+    const s = opts.rimSide || -1;
+    g.strokeStyle = opts.rim;
+    g.lineWidth = Math.max(1.0, h * 0.012);
+    g.beginPath();
+    g.ellipse(hx, hy, L.headRX * h, L.headRY * h, shTilt * 1.4,
+              s < 0 ? Math.PI * 0.60 : Math.PI * 1.40,
+              s < 0 ? Math.PI * 1.32 : Math.PI * 2.12);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(...P(s * L.shHW, (s < 0 ? shLy : shRy) - 0.015));
+    g.quadraticCurveTo(...P(s * L.shHW * 0.88, L.waist), ...P(s * (L.hipHW + 0.008), s < 0 ? hpLy : hpRy));
+    g.stroke();
+    /* only the planted leg gets a rim — tracing the swinging one produced a
+       long amber bar shooting off to the side */
+    const planted = legs.reduce((a, b) => (a.lift <= b.lift ? a : b));
+    if (planted.side === s && planted.lift < 0.35) {
+      g.beginPath();
+      g.moveTo(...P(planted.hipX + s * L.thighW * 0.42, planted.hipY - bob));
+      g.lineTo(...P(planted.kx + s * L.thighW * 0.38, planted.ky - bob));
+      g.stroke();
+    }
+  }
+  g.restore();
+}
+
+/* ============================================================ cycle sheet */
+(function () {
+  const g = document.getElementById('cycle').getContext('2d');
+  const W = 1760, H = 760;
+  g.fillStyle = '#14161D'; g.fillRect(0, 0, W, H);
+
+  const n = 8;
+  const bigBase = 470, bigH = 380;
+  g.fillStyle = 'rgba(255,174,26,.16)'; g.fillRect(0, bigBase, W, 1);
+  for (let i = 0; i < n; i++) {
+    const cx = (W / n) * (i + 0.5);
+    g.fillStyle = 'rgba(255,255,255,.045)'; g.fillRect(cx - 0.5, 46, 1, bigBase - 60);
+    runner(g, cx, bigBase, bigH, i / n, '#05060B', { rim: 'rgba(255,174,26,.95)', rimSide: -1 });
+    g.fillStyle = 'rgba(140,150,170,.55)';
+    g.font = '13px ui-monospace, monospace'; g.textAlign = 'center';
+    g.fillText((i / n).toFixed(3), cx, bigBase + 24);
+  }
+
+  /* the size it will really be played at */
+  const smBase = 700, smH = 150;
+  g.fillStyle = 'rgba(255,174,26,.16)'; g.fillRect(0, smBase, W, 1);
+  for (let i = 0; i < n; i++) {
+    const cx = (W / n) * (i + 0.5);
+    runner(g, cx, smBase, smH, i / n, '#05060B', { rim: 'rgba(255,174,26,.95)', rimSide: -1 });
+  }
+  g.fillStyle = 'rgba(200,210,230,.75)';
+  g.font = '15px ui-monospace, monospace'; g.textAlign = 'left';
+  g.fillText('run cycle — back view · 380px', 20, 30);
+  g.fillText('same cycle at in-game size · 150px', 20, smBase - 128);
+})();
+
+/* ============================================================ in scene */
+(function () {
+  const g = document.getElementById('scene').getContext('2d');
+  const W = 1600, H = 900, HORIZON = H * 0.455, F = 950, CAM_H = 1.65, ROAD_HW = 3.4;
+  const proj = z => { const s = F / z; return { y: HORIZON + CAM_H * s, hw: ROAD_HW * s, s }; };
+
+  g.fillStyle = '#07070A'; g.fillRect(0, 0, W, H);
+  let sk = g.createLinearGradient(0, 0, 0, HORIZON);
+  sk.addColorStop(0, '#07070A'); sk.addColorStop(1, '#0E1016');
+  g.fillStyle = sk; g.fillRect(0, 0, W, HORIZON);
+  let gr = g.createLinearGradient(0, HORIZON, 0, H);
+  gr.addColorStop(0, '#0B0C11'); gr.addColorStop(1, '#050508');
+  g.fillStyle = gr; g.fillRect(0, HORIZON, W, H - HORIZON);
+
+  const hg = g.createLinearGradient(0, HORIZON - 90, 0, HORIZON + 4);
+  hg.addColorStop(0, 'rgba(255,174,26,0)'); hg.addColorStop(1, 'rgba(255,174,26,.20)');
+  g.fillStyle = hg; g.fillRect(0, HORIZON - 90, W, 94);
+  g.fillStyle = 'rgba(255,174,26,.55)'; g.fillRect(0, HORIZON - 1, W, 1.5);
+
+  g.lineWidth = 1.2;
+  for (let i = -7; i <= 7; i++) {
+    const t = i / 7;
+    g.strokeStyle = 'rgba(255,174,26,' + (i === 0 ? .30 : .10 + .10 * (1 - Math.abs(t))) + ')';
+    g.beginPath();
+    for (let z = 5; z < 240; z *= 1.05) {
+      const pr = proj(z), x = W / 2 + t * pr.hw;
+      z === 5 ? g.moveTo(x, pr.y) : g.lineTo(x, pr.y);
+    }
+    g.stroke();
+  }
+  for (let z = 6; z < 200; z += 4) {
+    const pr = proj(z);
+    g.strokeStyle = 'rgba(255,174,26,' + Math.max(0.05, 0.34 - z / 260) + ')';
+    g.lineWidth = Math.max(0.6, 2.4 * pr.s / F);
+    g.beginPath(); g.moveTo(W / 2 - pr.hw, pr.y); g.lineTo(W / 2 + pr.hw, pr.y); g.stroke();
+  }
+  g.strokeStyle = 'rgba(110,139,181,.45)'; g.lineWidth = 2;
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    for (let z = 5; z < 240; z *= 1.05) {
+      const pr = proj(z), x = W / 2 + side * pr.hw;
+      z === 5 ? g.moveTo(x, pr.y) : g.lineTo(x, pr.y);
+    }
+    g.stroke();
+  }
+
+  const CROWD = [
+    { z: 10.5, lane: -0.62, t: 0.15 }, { z: 12.5, lane: 0.44, t: 0.62 },
+    { z: 15,   lane: -0.20, t: 0.38 }, { z: 18,   lane: 0.70, t: 0.87 },
+    { z: 22,   lane: -0.74, t: 0.05 }, { z: 27,   lane: 0.16, t: 0.51 },
+    { z: 34,   lane: -0.42, t: 0.74 }, { z: 43,   lane: 0.55, t: 0.28 },
+    { z: 56,   lane: -0.66, t: 0.93 }, { z: 74,   lane: 0.26, t: 0.44 }
+  ];
+  for (const c of CROWD) {
+    const pr = proj(c.z);
+    g.globalAlpha = Math.max(0.16, 1 - c.z / 95);
+    runner(g, W / 2 + c.lane * pr.hw, pr.y, 1.75 * pr.s, c.t, '#12161F');
+    g.globalAlpha = Math.max(0.10, 0.45 - c.z / 160);
+    runner(g, W / 2 + c.lane * pr.hw, pr.y, 1.75 * pr.s, c.t, 'rgba(110,139,181,.5)', { blur: 1.4 });
+  }
+  g.globalAlpha = 1;
+
+  const PZ = 7.4, pp = proj(PZ);
+  runner(g, W / 2 - 0.10 * pp.hw, pp.y, 1.75 * pp.s, 0.30, '#04050A',
+         { rim: 'rgba(255,174,26,.95)', rimSide: -1 });
+
+  const v = g.createRadialGradient(W / 2, H * 0.52, H * 0.25, W / 2, H * 0.52, W * 0.72);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+})();
+
+document.title = 'ready';
+</script>

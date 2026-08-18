@@ -1,0 +1,378 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>body{margin:0;background:#111;display:flex;flex-direction:column;gap:24px;padding:24px}canvas{display:block;width:1600px;height:900px}</style>
+<canvas id="A" width="1600" height="900"></canvas>
+<canvas id="B" width="1600" height="900"></canvas>
+<canvas id="C" width="1600" height="900"></canvas>
+<script>
+const W = 1600, H = 900;
+const HORIZON = H * 0.455;
+const F = 950;          // focal length, px
+const CAM_H = 1.65;     // camera height, world units
+const ROAD_HW = 3.4;    // road half-width, world units
+
+/* pseudo-3D projection: everything scales as F/z off the horizon */
+function proj(z) {
+  const s = F / z;
+  return { y: HORIZON + CAM_H * s, hw: ROAD_HW * s, s };
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ---------- a back-view runner, drawn as paths so it scales cleanly ---------- */
+function runner(g, cx, baseY, h, phase, fill, opts) {
+  opts = opts || {};
+  const u = h / 100;                     // one unit = 1% of height
+  const swing = Math.sin(phase);
+  const lift  = Math.cos(phase);
+
+  g.save();
+  g.translate(cx, baseY);
+  g.fillStyle = fill;
+  if (opts.blur) g.filter = `blur(${opts.blur}px)`;
+
+  // trailing leg / leading leg
+  const legW = 9 * u;
+  for (const side of [-1, 1]) {
+    const sw = side * swing;
+    g.beginPath();
+    g.moveTo(-legW / 2 + side * 5 * u, -46 * u);
+    g.lineTo(legW / 2 + side * 5 * u, -46 * u);
+    g.lineTo(legW / 2 + side * 5 * u + sw * 11 * u, -2 * u - Math.max(0, side * lift) * 12 * u);
+    g.lineTo(-legW / 2 + side * 5 * u + sw * 11 * u, 0);
+    g.closePath();
+    g.fill();
+  }
+
+  // torso: shoulders down to hips
+  g.beginPath();
+  g.moveTo(-13 * u, -84 * u);
+  g.quadraticCurveTo(-16 * u, -66 * u, -11 * u, -44 * u);
+  g.lineTo(11 * u, -44 * u);
+  g.quadraticCurveTo(16 * u, -66 * u, 13 * u, -84 * u);
+  g.quadraticCurveTo(0, -90 * u, -13 * u, -84 * u);
+  g.closePath();
+  g.fill();
+
+  // arms swinging opposite the legs — from behind you mostly see elbows
+  for (const side of [-1, 1]) {
+    const sw = -side * swing;
+    g.beginPath();
+    g.moveTo(side * 12 * u, -82 * u);
+    g.quadraticCurveTo(side * 19 * u, -70 * u, side * 16 * u + sw * 6 * u, -54 * u);
+    g.lineTo(side * 11 * u + sw * 6 * u, -54 * u);
+    g.quadraticCurveTo(side * 13 * u, -70 * u, side * 7 * u, -80 * u);
+    g.closePath();
+    g.fill();
+  }
+
+  // head + neck
+  g.beginPath();
+  g.ellipse(0, -95 * u, 8.5 * u, 9.5 * u, 0, 0, 6.284);
+  g.fill();
+  g.fillRect(-4 * u, -88 * u, 8 * u, 5 * u);
+
+  g.filter = 'none';
+
+  if (opts.rim) {                        // a thin light along one edge
+    g.strokeStyle = opts.rim;
+    g.lineWidth = Math.max(1, 1.6 * u);
+    g.beginPath();
+    g.moveTo(-13.5 * u, -83 * u);
+    g.quadraticCurveTo(-16.5 * u, -66 * u, -11.5 * u, -45 * u);
+    g.stroke();
+    g.beginPath();
+    g.ellipse(0, -95 * u, 8.5 * u, 9.5 * u, 0, Math.PI * 0.72, Math.PI * 1.42);
+    g.stroke();
+  }
+  g.restore();
+}
+
+/* crowd laid out identically in every direction so they stay comparable */
+const CROWD = [
+  { z: 14, lane: -0.55, ph: 0.4 }, { z: 18, lane:  0.30, ph: 2.1 },
+  { z: 23, lane: -0.10, ph: 1.2 }, { z: 29, lane:  0.62, ph: 3.4 },
+  { z: 36, lane: -0.70, ph: 0.9 }, { z: 44, lane:  0.12, ph: 2.7 },
+  { z: 55, lane: -0.35, ph: 1.8 }, { z: 68, lane:  0.48, ph: 0.2 },
+  { z: 84, lane: -0.62, ph: 2.4 }, { z: 104, lane: 0.22, ph: 1.5 }
+];
+const PLAYER_Z = 5.6;
+
+function grain(g, alpha, size) {
+  const n = document.createElement('canvas');
+  n.width = n.height = 128;
+  const nx = n.getContext('2d');
+  const img = nx.createImageData(128, 128);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 128 + (Math.random() - 0.5) * 255;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  nx.putImageData(img, 0, 0);
+  g.save();
+  g.globalAlpha = alpha;
+  g.globalCompositeOperation = 'overlay';
+  const p = g.createPattern(n, 'repeat');
+  g.fillStyle = p;
+  g.fillRect(0, 0, W, H);
+  g.restore();
+}
+
+function vignette(g, strength) {
+  const v = g.createRadialGradient(W / 2, H * 0.52, H * 0.25, W / 2, H * 0.52, W * 0.72);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, `rgba(0,0,0,${strength})`);
+  g.fillStyle = v;
+  g.fillRect(0, 0, W, H);
+}
+
+/* road surface as one quad from the near edge to the far edge */
+function roadPath(g, zNear, zFar) {
+  const n = proj(zNear), f = proj(zFar);
+  g.beginPath();
+  g.moveTo(W / 2 - n.hw, n.y);
+  g.lineTo(W / 2 + n.hw, n.y);
+  g.lineTo(W / 2 + f.hw, f.y);
+  g.lineTo(W / 2 - f.hw, f.y);
+  g.closePath();
+}
+
+/* ============================================================ A
+   실루엣 + 대기원근 — graphic, high contrast, one accent  */
+function dirA() {
+  const g = document.getElementById('A').getContext('2d');
+
+  const sky = g.createLinearGradient(0, 0, 0, HORIZON + 40);
+  sky.addColorStop(0.00, '#05060B');
+  sky.addColorStop(0.45, '#0B1020');
+  sky.addColorStop(0.80, '#16203A');
+  sky.addColorStop(1.00, '#2A3557');
+  g.fillStyle = sky; g.fillRect(0, 0, W, HORIZON + 40);
+
+  const ground = g.createLinearGradient(0, HORIZON, 0, H);
+  ground.addColorStop(0, '#131A2B');
+  ground.addColorStop(1, '#05070C');
+  g.fillStyle = ground; g.fillRect(0, HORIZON, W, H - HORIZON);
+
+  // a cold bloom sitting on the horizon line
+  const bloom = g.createRadialGradient(W / 2, HORIZON, 0, W / 2, HORIZON, W * 0.42);
+  bloom.addColorStop(0, 'rgba(120,150,210,.30)');
+  bloom.addColorStop(1, 'rgba(120,150,210,0)');
+  g.fillStyle = bloom; g.fillRect(0, HORIZON - 260, W, 420);
+
+  // distant skyline, flattened by haze
+  g.fillStyle = 'rgba(8,11,20,.85)';
+  let sx = -40;
+  while (sx < W) {
+    const bw = 30 + Math.random() * 90, bh = 20 + Math.random() * 105;
+    g.fillRect(sx, HORIZON - bh, bw, bh + 6);
+    sx += bw + 8 + Math.random() * 40;
+  }
+
+  // road
+  roadPath(g, PLAYER_Z - 2, 220);
+  const rg = g.createLinearGradient(0, HORIZON, 0, H);
+  rg.addColorStop(0, '#1B2338');
+  rg.addColorStop(1, '#0A0E18');
+  g.fillStyle = rg; g.fill();
+
+  // edges
+  g.strokeStyle = 'rgba(150,175,225,.22)'; g.lineWidth = 2;
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    for (let z = PLAYER_Z - 2; z < 220; z *= 1.06) {
+      const p = proj(z);
+      const x = W / 2 + side * p.hw;
+      z === PLAYER_Z - 2 ? g.moveTo(x, p.y) : g.lineTo(x, p.y);
+    }
+    g.stroke();
+  }
+
+  // centre dashes, spaced in world units so they compress correctly
+  g.fillStyle = 'rgba(190,210,245,.30)';
+  for (let z = 6; z < 190; z += 6) {
+    const a = proj(z), b = proj(z + 3);
+    g.beginPath();
+    g.moveTo(W / 2 - a.hw * .035, a.y); g.lineTo(W / 2 + a.hw * .035, a.y);
+    g.lineTo(W / 2 + b.hw * .035, b.y); g.lineTo(W / 2 - b.hw * .035, b.y);
+    g.closePath(); g.fill();
+  }
+
+  // fog bands
+  for (let i = 0; i < 5; i++) {
+    const z = 26 + i * 26, p = proj(z);
+    const fg = g.createLinearGradient(0, p.y - 70, 0, p.y + 26);
+    fg.addColorStop(0, 'rgba(120,150,205,0)');
+    fg.addColorStop(0.6, `rgba(120,150,205,${0.09 - i * 0.014})`);
+    fg.addColorStop(1, 'rgba(120,150,205,0)');
+    g.fillStyle = fg; g.fillRect(0, p.y - 70, W, 96);
+  }
+
+  // crowd — pure black, dissolving into the haze
+  for (const c of CROWD) {
+    const p = proj(c.z);
+    const h = 1.75 * p.s;
+    g.globalAlpha = Math.max(0.12, 1 - c.z / 120);
+    runner(g, W / 2 + c.lane * p.hw, p.y, h, c.ph, '#03050A',
+           { blur: Math.min(4, c.z / 26) });
+  }
+  g.globalAlpha = 1;
+
+  // the one who is about to turn off — amber rim, nothing else coloured
+  const pp = proj(PLAYER_Z);
+  runner(g, W / 2 - 0.12 * pp.hw, pp.y, 1.75 * pp.s, 1.1, '#020306',
+         { rim: 'rgba(255,174,26,.85)' });
+
+  vignette(g, 0.62);
+  grain(g, 0.05);
+}
+
+/* ============================================================ B
+   계측 그리드 — the site's readout identity pushed into depth */
+function dirB() {
+  const g = document.getElementById('B').getContext('2d');
+
+  g.fillStyle = '#07070A'; g.fillRect(0, 0, W, H);
+  const sky = g.createLinearGradient(0, 0, 0, HORIZON);
+  sky.addColorStop(0, '#07070A');
+  sky.addColorStop(1, '#0E1016');
+  g.fillStyle = sky; g.fillRect(0, 0, W, HORIZON);
+
+  const ground = g.createLinearGradient(0, HORIZON, 0, H);
+  ground.addColorStop(0, '#0B0C11');
+  ground.addColorStop(1, '#050508');
+  g.fillStyle = ground; g.fillRect(0, HORIZON, W, H - HORIZON);
+
+  // horizon readout line + its falloff
+  const hg = g.createLinearGradient(0, HORIZON - 90, 0, HORIZON + 4);
+  hg.addColorStop(0, 'rgba(255,174,26,0)');
+  hg.addColorStop(1, 'rgba(255,174,26,.20)');
+  g.fillStyle = hg; g.fillRect(0, HORIZON - 90, W, 94);
+  g.fillStyle = 'rgba(255,174,26,.55)'; g.fillRect(0, HORIZON - 1, W, 1.5);
+
+  // longitudinal grid: the road is a measuring surface
+  g.lineWidth = 1.2;
+  for (let i = -7; i <= 7; i++) {
+    const t = i / 7;
+    g.strokeStyle = `rgba(255,174,26,${i === 0 ? .30 : .10 + .10 * (1 - Math.abs(t))})`;
+    g.beginPath();
+    for (let z = PLAYER_Z - 2; z < 240; z *= 1.05) {
+      const p = proj(z);
+      const x = W / 2 + t * p.hw;
+      z === PLAYER_Z - 2 ? g.moveTo(x, p.y) : g.lineTo(x, p.y);
+    }
+    g.stroke();
+  }
+  // depth ticks, one per world unit — reads as a scale, not as scenery
+  for (let z = 6; z < 200; z += 4) {
+    const p = proj(z);
+    const a = Math.max(0.05, 0.34 - z / 260);
+    g.strokeStyle = `rgba(255,174,26,${a})`;
+    g.lineWidth = Math.max(0.6, 2.4 * p.s / F);
+    g.beginPath();
+    g.moveTo(W / 2 - p.hw, p.y); g.lineTo(W / 2 + p.hw, p.y);
+    g.stroke();
+  }
+  // steel road edges
+  g.strokeStyle = 'rgba(110,139,181,.45)'; g.lineWidth = 2;
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    for (let z = PLAYER_Z - 2; z < 240; z *= 1.05) {
+      const p = proj(z);
+      const x = W / 2 + side * p.hw;
+      z === PLAYER_Z - 2 ? g.moveTo(x, p.y) : g.lineTo(x, p.y);
+    }
+    g.stroke();
+  }
+
+  // crowd as cool wireframe-ish plates: measured, not lit
+  for (const c of CROWD) {
+    const p = proj(c.z);
+    g.globalAlpha = Math.max(0.14, 1 - c.z / 130);
+    runner(g, W / 2 + c.lane * p.hw, p.y, 1.75 * p.s, c.ph, '#12161F');
+    g.globalAlpha = Math.max(0.10, 0.5 - c.z / 200);
+    runner(g, W / 2 + c.lane * p.hw, p.y, 1.75 * p.s, c.ph, 'rgba(110,139,181,.5)',
+           { blur: 1.5 });
+  }
+  g.globalAlpha = 1;
+
+  const pp = proj(PLAYER_Z);
+  runner(g, W / 2 - 0.12 * pp.hw, pp.y, 1.75 * pp.s, 1.1, '#0A0C12',
+         { rim: 'rgba(255,174,26,.95)' });
+
+  vignette(g, 0.55);
+  grain(g, 0.045);
+}
+
+/* ============================================================ C
+   회화적 안개 — soft, atmospheric, temperature contrast */
+function dirC() {
+  const g = document.getElementById('C').getContext('2d');
+
+  const sky = g.createLinearGradient(0, 0, 0, HORIZON + 90);
+  sky.addColorStop(0.00, '#0C0A12');
+  sky.addColorStop(0.40, '#1A1725');
+  sky.addColorStop(0.72, '#3A3247');
+  sky.addColorStop(0.92, '#6E5B63');
+  sky.addColorStop(1.00, '#8C7364');
+  g.fillStyle = sky; g.fillRect(0, 0, W, HORIZON + 90);
+
+  const ground = g.createLinearGradient(0, HORIZON, 0, H);
+  ground.addColorStop(0, '#4A3E43');
+  ground.addColorStop(0.35, '#241E27');
+  ground.addColorStop(1, '#0A080D');
+  g.fillStyle = ground; g.fillRect(0, HORIZON, W, H - HORIZON);
+
+  // low warm sun sitting just under the horizon
+  const sun = g.createRadialGradient(W * 0.52, HORIZON + 10, 0, W * 0.52, HORIZON + 10, W * 0.5);
+  sun.addColorStop(0, 'rgba(255,196,140,.42)');
+  sun.addColorStop(0.35, 'rgba(214,140,110,.16)');
+  sun.addColorStop(1, 'rgba(214,140,110,0)');
+  g.fillStyle = sun; g.fillRect(0, HORIZON - 340, W, 520);
+
+  // the path is barely drawn — mist does the work
+  roadPath(g, PLAYER_Z - 2, 200);
+  const rg = g.createLinearGradient(0, HORIZON, 0, H);
+  rg.addColorStop(0, 'rgba(150,124,112,.30)');
+  rg.addColorStop(1, 'rgba(30,25,32,.10)');
+  g.fillStyle = rg; g.fill();
+
+  g.strokeStyle = 'rgba(226,190,166,.16)'; g.lineWidth = 3;
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    for (let z = PLAYER_Z - 2; z < 200; z *= 1.06) {
+      const p = proj(z);
+      const x = W / 2 + side * p.hw;
+      z === PLAYER_Z - 2 ? g.moveTo(x, p.y) : g.lineTo(x, p.y);
+    }
+    g.stroke();
+  }
+
+  // stacked mist, thickest at the horizon
+  for (let i = 0; i < 9; i++) {
+    const z = 12 + i * 22, p = proj(z);
+    const fg = g.createLinearGradient(0, p.y - 120, 0, p.y + 40);
+    fg.addColorStop(0, 'rgba(214,178,158,0)');
+    fg.addColorStop(0.55, `rgba(214,178,158,${0.13 - i * 0.012})`);
+    fg.addColorStop(1, 'rgba(214,178,158,0)');
+    g.fillStyle = fg; g.fillRect(0, p.y - 120, W, 160);
+  }
+
+  for (const c of CROWD) {
+    const p = proj(c.z);
+    g.globalAlpha = Math.max(0.10, 0.92 - c.z / 95);
+    runner(g, W / 2 + c.lane * p.hw, p.y, 1.75 * p.s, c.ph, '#160F14',
+           { blur: Math.min(7, 1 + c.z / 16) });
+  }
+  g.globalAlpha = 1;
+
+  const pp = proj(PLAYER_Z);
+  runner(g, W / 2 - 0.12 * pp.hw, pp.y, 1.75 * pp.s, 1.1, '#100A0E',
+         { rim: 'rgba(255,190,120,.75)' });
+
+  vignette(g, 0.5);
+  grain(g, 0.06);
+}
+
+dirA(); dirB(); dirC();
+document.title = 'ready';
+</script>
